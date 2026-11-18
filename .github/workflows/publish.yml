@@ -7,7 +7,6 @@ on:
       - "platforms/**"
       - "resource-types/**"
       - "bundles/**"
-      - "modules/**"
       - ".github/workflows/publish.yml"
   workflow_dispatch:
     inputs:
@@ -66,11 +65,6 @@ jobs:
           for kind in platforms resource-types bundles; do
             awk -F/ -v k="$kind" '$1 == k && NF > 2 { print $1 "/" $2 }' changed.txt | sort -u > "$kind.txt"
           done
-          # Bundles carry their own copy of the shared modules, so a module change republishes each bundle that uses one.
-          if grep -q '^modules/' changed.txt; then
-            { grep -ls 'source *= *"./modules/' bundles/*/src/*.tf || true; } | awk -F/ '{ print $1 "/" $2 }' >> bundles.txt
-            sort -u -o bundles.txt bundles.txt
-          fi
           for kind in platforms resource-types bundles; do
             echo "$kind:"; sed 's/^/  /' "$kind.txt"
           done
@@ -85,9 +79,6 @@ jobs:
             mass repository create "$name" -t resource-type >/dev/null 2>&1 || true
             mass resource-type publish "$dir"
           done
-
-      - name: Copy shared modules into bundles
-        run: make modules
 
       - name: Publish bundles
         run: |

@@ -2,7 +2,7 @@ name: massdriver-project
 description: >-
   A Massdriver project for one application, with its environments and a group that can deploy
   into them. The factory makes one per environment, so each factory environment is an application.
-source_url: https://github.com/massdriver-catalogs/massdriver-project-factory/tree/aws-github/bundles/massdriver-project
+source_url: https://github.com/massdriver-catalogs/project-factory-aws-github/tree/main/bundles/massdriver-project
 version: 0.0.0
 
 params:

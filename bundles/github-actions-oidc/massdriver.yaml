@@ -2,7 +2,7 @@ name: github-actions-oidc
 description: >-
   Lets GitHub Actions workflows in this AWS account get short-lived credentials instead of stored
   access keys. Deploy once per account; every repository's push role trusts it.
-source_url: https://github.com/massdriver-catalogs/massdriver-project-factory/tree/aws-github/bundles/github-actions-oidc
+source_url: https://github.com/massdriver-catalogs/project-factory-aws-github/tree/main/bundles/github-actions-oidc
 version: 0.0.0
 
 params:

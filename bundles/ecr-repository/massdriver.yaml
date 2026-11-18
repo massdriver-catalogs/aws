@@ -2,7 +2,7 @@ name: ecr-repository
 description: >-
   One container image repository for one app, with ready-made push and pull IAM policies that
   pipelines and functions attach instead of writing their own.
-source_url: https://github.com/massdriver-catalogs/massdriver-project-factory/tree/aws-github/bundles/ecr-repository
+source_url: https://github.com/massdriver-catalogs/project-factory-aws-github/tree/main/bundles/ecr-repository
 version: 0.0.0
 
 params:

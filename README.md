@@ -155,17 +155,12 @@ flowchart LR
 
 Arrows into and out of the factory are environment defaults, not links. The codebase reaches the application's project because it is shared with every environment whose `md-project` is that project; it still has to be set as each environment's default there, since the Massdriver Terraform provider can't set environment defaults yet.
 
-## Shared modules
-
-`modules/` is for OpenTofu shared across cloud variants. A published bundle contains only its own directory, so bundles source modules as `./modules/<name>` and `make modules` copies `modules/` into each bundle that uses one, before build and publish. The copies are not committed.
-
 ## Repository layout
 
 ```
 platforms/        Credential types
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
-modules/          OpenTofu shared by bundles
 bootstrap/        The factory project and its canvas, from one terraform apply
 .github/workflows Publishing
 ```
