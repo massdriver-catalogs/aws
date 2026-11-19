@@ -1,0 +1,229 @@
+name: mariadb
+description: >-
+  An RDS MariaDB database in the environment's VPC, reachable only from things that attach its
+  client security group, with the password in Secrets Manager.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/mariadb
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Development
+      engine_version: "11.4"
+      instance_class: db.t4g.micro
+      storage_gb: 20
+      storage_max_gb: 100
+      multi_az: false
+      backup_retention_days: 1
+      deletion_protection: false
+      skip_final_snapshot: true
+      performance_insights: false
+      enhanced_monitoring: false
+      log_retention_days: 7
+      database_name: app
+      username: app_admin
+      password_version: 1
+    - __name: Production
+      engine_version: "11.4"
+      instance_class: db.m7g.large
+      storage_gb: 100
+      storage_max_gb: 1000
+      multi_az: true
+      backup_retention_days: 14
+      deletion_protection: true
+      skip_final_snapshot: false
+      performance_insights: true
+      enhanced_monitoring: true
+      log_retention_days: 365
+      database_name: app
+      username: app_admin
+      password_version: 1
+  required:
+    - engine_version
+    - instance_class
+    - storage_gb
+    - storage_max_gb
+    - multi_az
+    - backup_retention_days
+    - deletion_protection
+    - skip_final_snapshot
+    - performance_insights
+    - enhanced_monitoring
+    - log_retention_days
+    - database_name
+    - username
+    - password_version
+  properties:
+    engine_version:
+      title: MariaDB version
+      description: >-
+        Upgrades go forward only, one deploy at a time, with a few minutes of downtime. Going back
+        to an older version means restoring a snapshot into a new database.
+      type: string
+      default: "11.4"
+      oneOf:
+        - const: "11.8"
+          title: "11.8"
+        - const: "11.4"
+          title: "11.4"
+        - const: "10.11"
+          title: "10.11"
+    instance_class:
+      title: Instance size
+      description: >-
+        Changing it restarts the database; with Multi-AZ the pause is about a minute.
+        ***~$12 to ~$245/month per instance.***
+      type: string
+      default: db.t4g.micro
+      oneOf:
+        - const: db.t4g.micro
+          title: db.t4g.micro — 2 vCPU burst, 1 GB (~$12/month)
+        - const: db.t4g.small
+          title: db.t4g.small — 2 vCPU burst, 2 GB (~$24/month)
+        - const: db.t4g.medium
+          title: db.t4g.medium — 2 vCPU burst, 4 GB (~$48/month)
+        - const: db.m7g.large
+          title: db.m7g.large — 2 vCPU, 8 GB (~$120/month)
+        - const: db.m7g.xlarge
+          title: db.m7g.xlarge — 4 vCPU, 16 GB (~$245/month)
+        - const: db.r7g.large
+          title: db.r7g.large — 2 vCPU, 16 GB (~$175/month)
+    storage_gb:
+      title: Storage (GB)
+      description: >-
+        gp3 SSD. Storage can grow but never shrink. ***~$0.12/GB-month.***
+      type: integer
+      default: 20
+      minimum: 20
+      maximum: 16384
+    storage_max_gb:
+      title: Grow storage up to (GB)
+      description: >-
+        RDS adds storage on its own when free space runs low, up to this size. Set to 0 to turn it
+        off.
+      type: integer
+      default: 100
+      minimum: 0
+      maximum: 16384
+    multi_az:
+      title: Multi-AZ
+      description: >-
+        A standby copy in a second zone takes over in about a minute if the first fails.
+        ***Doubles instance and storage cost.***
+      type: boolean
+      default: false
+    backup_retention_days:
+      title: Keep backups for (days)
+      description: >-
+        Daily snapshots plus logs to restore to any second in this window. ***Free up to the
+        database's size, then ~$0.10/GB-month.***
+      type: integer
+      default: 1
+      minimum: 1
+      maximum: 35
+    deletion_protection:
+      title: Deletion protection
+      description: Blocks deleting the database, including by decommissioning, until turned off.
+      type: boolean
+      default: false
+    skip_final_snapshot:
+      title: Skip final snapshot
+      description: >-
+        Only applies when deletion protection is off. On decommission the data is gone for good;
+        otherwise a final snapshot is kept until you delete it.
+      type: boolean
+      default: true
+    performance_insights:
+      title: Performance Insights
+      description: >-
+        Shows which queries use the most time. Keeps 7 days at no charge. Needs db.t4g.medium or
+        larger.
+      type: boolean
+      default: false
+    enhanced_monitoring:
+      title: Enhanced monitoring
+      description: >-
+        Per-process CPU, memory and disk metrics every 60 seconds. ***~$3/month per instance in
+        CloudWatch Logs.***
+      type: boolean
+      default: false
+    log_retention_days:
+      title: Keep database logs for (days)
+      description: "***~$0.50/GB ingested, ~$0.03/GB-month stored.***"
+      type: integer
+      default: 7
+      enum:
+        - 1
+        - 7
+        - 30
+        - 90
+        - 365
+    database_name:
+      title: Database name
+      description: The database created at the start. Others can be added later with SQL.
+      type: string
+      default: app
+      $md.immutable: true
+      pattern: ^[a-z][a-z0-9_]{0,62}$
+      message:
+        pattern: "Lowercase letters, digits and underscore, starting with a letter."
+    username:
+      title: Admin username
+      type: string
+      default: app_admin
+      $md.immutable: true
+      pattern: ^[a-z][a-z0-9_]{0,15}$
+      not:
+        enum:
+          - root
+          - rdsadmin
+      message:
+        pattern: "Up to 16 lowercase letters, digits and underscore, starting with a letter."
+        not: "That name is reserved by RDS."
+    password_version:
+      title: Password version
+      description: >-
+        Raise by one and deploy to set a new password. Apps holding the old one fail to connect
+        until they read the new one.
+      type: integer
+      default: 1
+      minimum: 1
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  network:
+    resource_type: aws-vpc@0.0.0
+    required: true
+
+resources:
+  database:
+    resource_type: aws-mariadb@0.0.0
+    required: true
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+    config:
+      checkov:
+        halt_on_failure: '.params.md_metadata.default_tags["md-target"] == "production"'
+
+ui:
+  ui:order:
+    - engine_version
+    - instance_class
+    - storage_gb
+    - storage_max_gb
+    - multi_az
+    - backup_retention_days
+    - deletion_protection
+    - skip_final_snapshot
+    - performance_insights
+    - enhanced_monitoring
+    - log_retention_days
+    - database_name
+    - username
+    - password_version
+    - "*"
+  password_version:
+    ui:widget: updown
