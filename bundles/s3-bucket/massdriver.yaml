@@ -1,0 +1,122 @@
+name: s3-bucket
+description: >-
+  A private S3 bucket for one app's files, with versioning, cleanup rules and ready-made read and
+  read-write IAM policies that apps attach instead of writing their own.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/s3-bucket
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Development
+      region: us-east-1
+      versioning: false
+      noncurrent_version_expiration_days: 7
+      object_expiration_days: 0
+      cors_allowed_origins: []
+      encryption: AES256
+    - __name: Production
+      region: us-east-1
+      versioning: true
+      noncurrent_version_expiration_days: 90
+      object_expiration_days: 0
+      cors_allowed_origins: []
+      encryption: KMS
+  required:
+    - region
+    - versioning
+    - noncurrent_version_expiration_days
+    - object_expiration_days
+    - encryption
+  properties:
+    region:
+      title: Region
+      description: Apps using this bucket should run in the same region.
+      type: string
+      default: us-east-1
+      $md.immutable: true
+      oneOf:
+        - const: us-east-1
+          title: us-east-1 (N. Virginia)
+        - const: us-east-2
+          title: us-east-2 (Ohio)
+        - const: us-west-2
+          title: us-west-2 (Oregon)
+        - const: eu-west-1
+          title: eu-west-1 (Ireland)
+        - const: eu-central-1
+          title: eu-central-1 (Frankfurt)
+        - const: ap-northeast-1
+          title: ap-northeast-1 (Tokyo)
+    versioning:
+      title: Keep old versions
+      description: >-
+        Overwritten and deleted files are kept as old versions, so a mistake can be undone. Old
+        versions are billed as storage. ***Storage is ~$0.023/GB-month.***
+      type: boolean
+      default: false
+    noncurrent_version_expiration_days:
+      title: Delete old versions after (days)
+      description: How long an overwritten or deleted file can still be restored.
+      type: integer
+      default: 30
+      minimum: 1
+      maximum: 3650
+    object_expiration_days:
+      title: Delete files after (days)
+      description: Every file is deleted this many days after it was written. 0 keeps files until deleted.
+      type: integer
+      default: 0
+      minimum: 0
+      maximum: 3650
+    cors_allowed_origins:
+      title: Browser upload origins
+      description: >-
+        Websites allowed to upload and download directly from a browser with presigned URLs, such as
+        `https://app.example.com`. Leave empty if only servers use the bucket.
+      type: array
+      default: []
+      items:
+        type: string
+        pattern: ^https?://[^/\s]+$
+        message:
+          pattern: "A scheme and host with no path, e.g. https://app.example.com"
+    encryption:
+      title: Encryption
+      description: >-
+        Files are always encrypted. A customer-managed KMS key adds key-level audit and revocation.
+        ***A KMS key is ~$1/month plus request charges.***
+      type: string
+      default: AES256
+      oneOf:
+        - const: AES256
+          title: S3-managed (SSE-S3)
+        - const: KMS
+          title: Customer-managed KMS key
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+
+resources:
+  bucket:
+    resource_type: aws-s3-bucket@0.0.0
+    required: true
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+
+ui:
+  ui:order:
+    - region
+    - versioning
+    - noncurrent_version_expiration_days
+    - object_expiration_days
+    - cors_allowed_origins
+    - encryption
+    - "*"
+  noncurrent_version_expiration_days:
+    ui:widget: updown
+  object_expiration_days:
+    ui:widget: updown
