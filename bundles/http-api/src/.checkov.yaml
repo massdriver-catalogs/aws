@@ -1,0 +1,9 @@
+skip-check:
+  # The alarm modules come from the Terraform registry, which pins by version.
+  # Commit hashes only exist for git sources.
+  - CKV_TF_1
+
+  # The access log holds one line per request. It is encrypted with a key AWS
+  # owns; a customer managed key adds one to rotate, pay for and keep
+  # available, or API Gateway stops writing logs.
+  - CKV_AWS_158

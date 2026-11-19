@@ -1,0 +1,22 @@
+skip-check:
+  # The alarm modules come from the Terraform registry, which pins by version.
+  # Commit hashes only exist for git sources.
+  - CKV_TF_1
+
+  # The log group holds the app's output. It is encrypted with a key AWS owns;
+  # a customer managed key adds one to rotate, pay for and keep available, or
+  # logs stop being written.
+  - CKV_AWS_158
+
+  # The function reaches AWS APIs, the internet and its own dependencies
+  # through the VPC's egress; those destinations aren't known to this bundle.
+  - CKV_AWS_382
+
+  # A function dead-letter queue only catches asynchronous invocations. API
+  # Gateway calls synchronously, and queue messages fail over to the queue's
+  # own dead-letter queue.
+  - CKV_AWS_116
+
+  # Lambda code signing only applies to zip packages; app code ships as
+  # container images.
+  - CKV_AWS_272
