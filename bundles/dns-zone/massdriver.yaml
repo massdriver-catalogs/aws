@@ -1,0 +1,131 @@
+name: dns-zone
+description: >-
+  A Route 53 hosted zone for one environment's domain and an ACM certificate for the domain and
+  every name directly under it. APIs and services in the environment put their subdomains here.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/dns-zone
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Development
+      domain: dev.example.com
+      region: us-east-1
+      hosted_zone:
+        source: create
+      validation_timeout_minutes: 30
+    - __name: Production
+      domain: example.com
+      region: us-east-1
+      hosted_zone:
+        source: create
+      validation_timeout_minutes: 30
+  required:
+    - domain
+    - region
+    - hosted_zone
+    - validation_timeout_minutes
+  properties:
+    domain:
+      title: Domain
+      description: >-
+        The environment's domain, such as dev.example.com. APIs and services get names under it,
+        like api.dev.example.com.
+      type: string
+      $md.immutable: true
+      pattern: ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$
+      message:
+        pattern: "Must be a lowercase domain name without a trailing dot, for example dev.example.com."
+    region:
+      title: Region
+      description: >-
+        Where the certificate is made. Load balancers and APIs that use it must be in the same
+        region.
+      type: string
+      default: us-east-1
+      $md.immutable: true
+      oneOf:
+        - const: us-east-1
+          title: us-east-1 (N. Virginia)
+        - const: us-east-2
+          title: us-east-2 (Ohio)
+        - const: us-west-2
+          title: us-west-2 (Oregon)
+        - const: eu-west-1
+          title: eu-west-1 (Ireland)
+        - const: eu-central-1
+          title: eu-central-1 (Frankfurt)
+        - const: ap-northeast-1
+          title: ap-northeast-1 (Tokyo)
+    hosted_zone:
+      title: Hosted zone
+      type: object
+      required:
+        - source
+      properties:
+        source:
+          title: Hosted zone
+          description: "***A new hosted zone is $0.50/month plus $0.40 per million queries.***"
+          type: string
+          default: create
+          $md.immutable: true
+          oneOf:
+            - const: create
+              title: Create a new hosted zone
+            - const: existing
+              title: Use a hosted zone that already exists in this account
+      dependencies:
+        source:
+          oneOf:
+            - properties:
+                source:
+                  const: create
+            - required:
+                - zone_id
+              properties:
+                source:
+                  const: existing
+                zone_id:
+                  title: Hosted zone ID
+                  description: A public hosted zone whose name is exactly the domain above.
+                  type: string
+                  pattern: ^Z[A-Z0-9]+$
+                  message:
+                    pattern: "Must be a hosted zone ID, for example Z0123456789ABCDEFGHIJ."
+                  $md.immutable: true
+    validation_timeout_minutes:
+      title: Certificate validation timeout (minutes)
+      description: >-
+        How long a deploy waits for the certificate to be issued. A new zone's certificate can't be
+        issued until the domain is delegated to it.
+      type: integer
+      default: 30
+      enum:
+        - 10
+        - 30
+        - 60
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+
+resources:
+  zone:
+    resource_type: aws-dns-zone@0.0.0
+    required: true
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+
+ui:
+  ui:order:
+    - domain
+    - region
+    - hosted_zone
+    - validation_timeout_minutes
+    - "*"
+  hosted_zone:
+    ui:order:
+      - source
+      - zone_id
