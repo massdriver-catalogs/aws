@@ -1,0 +1,46 @@
+name: aws-valkey
+version: 0.0.0
+label: AWS Valkey Cache
+
+ui:
+  connectionOrientation: link
+
+schema:
+  title: AWS Valkey Cache
+  description: >-
+    An ElastiCache Serverless Valkey cache, Redis compatible. Connections need TLS. Consumers
+    attach the client security group to reach it.
+  type: object
+  additionalProperties: false
+  required:
+    - name
+    - region
+    - hostname
+    - port
+    - client_security_group_id
+  properties:
+    name:
+      title: Cache Name
+      type: string
+      minLength: 1
+    region:
+      title: Region
+      type: string
+      minLength: 1
+    hostname:
+      title: Hostname
+      type: string
+      minLength: 1
+    port:
+      title: Port
+      type: integer
+      default: 6379
+    reader_hostname:
+      title: Reader Hostname
+      description: Spreads reads across replicas. Use the hostname for writes.
+      type: string
+    client_security_group_id:
+      title: Client Security Group ID
+      description: Attach this group to anything that connects to the cache.
+      type: string
+      pattern: ^sg-[a-f0-9]+$

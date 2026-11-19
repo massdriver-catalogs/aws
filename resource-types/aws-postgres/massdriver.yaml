@@ -1,0 +1,83 @@
+name: aws-postgres
+version: 0.0.0
+label: AWS PostgreSQL
+
+ui:
+  connectionOrientation: link
+
+schema:
+  title: AWS PostgreSQL
+  description: >-
+    An RDS PostgreSQL database. Consumers attach the client security group to reach it and read the
+    password from the secret, or from the resource.
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - region
+    - hostname
+    - port
+    - database
+    - username
+    - password
+    - secret_arn
+    - client_security_group_id
+    - policies
+  properties:
+    id:
+      title: Instance ID
+      type: string
+      minLength: 1
+    region:
+      title: Region
+      type: string
+      minLength: 1
+    hostname:
+      title: Hostname
+      type: string
+      minLength: 1
+    port:
+      title: Port
+      type: integer
+      default: 5432
+    database:
+      title: Database
+      type: string
+      minLength: 1
+    username:
+      title: Username
+      type: string
+      minLength: 1
+    password:
+      title: Password
+      type: string
+      $md.sensitive: true
+    secret_arn:
+      title: Secret ARN
+      description: A Secrets Manager secret holding username and password as JSON.
+      type: string
+      pattern: "^arn:aws(-[a-z]+)*:secretsmanager:"
+    client_security_group_id:
+      title: Client Security Group ID
+      description: Attach this group to anything that connects to the database.
+      type: string
+      pattern: ^sg-[a-f0-9]+$
+    policies:
+      title: Access Policies
+      description: IAM managed policies a consumer attaches to its role.
+      type: array
+      minItems: 1
+      items:
+        type: object
+        additionalProperties: false
+        required:
+          - name
+          - arn
+        properties:
+          name:
+            title: Name
+            description: What the policy allows, e.g. read or read-write.
+            type: string
+          arn:
+            title: Policy ARN
+            type: string

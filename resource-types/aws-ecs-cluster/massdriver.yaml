@@ -1,0 +1,68 @@
+name: aws-ecs-cluster
+version: 0.0.0
+label: AWS ECS Cluster
+
+ui:
+  connectionOrientation: environmentDefault
+  environmentDefaultGroup: compute
+
+schema:
+  title: AWS ECS Cluster
+  description: >-
+    A Fargate cluster and the load balancer its services share. A service adds a rule for its own
+    subdomain to the HTTPS listener.
+  type: object
+  additionalProperties: false
+  required:
+    - name
+    - arn
+    - region
+    - load_balancer
+  properties:
+    name:
+      title: Cluster Name
+      type: string
+      minLength: 1
+    arn:
+      title: Cluster ARN
+      type: string
+      minLength: 1
+    region:
+      title: Region
+      type: string
+      minLength: 1
+    load_balancer:
+      title: Load Balancer
+      type: object
+      additionalProperties: false
+      required:
+        - arn
+        - dns_name
+        - zone_id
+        - security_group_id
+        - listener_arn
+      properties:
+        arn:
+          title: ARN
+          type: string
+        dns_name:
+          title: DNS Name
+          type: string
+        zone_id:
+          title: Hosted Zone ID
+          description: The load balancer's own zone, for alias records.
+          type: string
+        security_group_id:
+          title: Security Group ID
+          description: Services allow traffic from this group to their container port.
+          type: string
+        listener_arn:
+          title: Listener ARN
+          description: HTTPS when the cluster has a DNS zone, otherwise HTTP. Services add rules here.
+          type: string
+        protocol:
+          title: Listener Protocol
+          type: string
+          enum:
+            - HTTP
+            - HTTPS
