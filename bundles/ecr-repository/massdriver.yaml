@@ -2,13 +2,12 @@ name: ecr-repository
 description: >-
   One container image repository for one app, with ready-made push and pull IAM policies that
   pipelines and functions attach instead of writing their own.
-source_url: https://github.com/massdriver-catalogs/project-factory-aws-github/tree/main/bundles/ecr-repository
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/ecr-repository
 version: 0.0.0
 
 params:
   examples:
     - __name: Development
-      monthly_budget: 2
       region: us-east-1
       tag_mutability: IMMUTABLE
       scan_on_push: true
@@ -16,7 +15,6 @@ params:
       untagged_expiry_days: 1
       encryption: AES256
     - __name: Production
-      monthly_budget: 20
       region: us-east-1
       tag_mutability: IMMUTABLE
       scan_on_push: true
@@ -31,14 +29,6 @@ params:
     - untagged_expiry_days
     - encryption
   properties:
-    monthly_budget:
-      title: Monthly budget (USD)
-      description: >-
-        What this instance should cost in a month. When Massdriver's cost data goes over it, a
-        cheaper configuration is proposed for review.
-      type: number
-      minimum: 0
-      default: 2
     region:
       title: Region
       description: Functions pulling from this repository must be in the same region.

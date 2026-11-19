@@ -9,7 +9,7 @@ version: 0.0.0
 params:
   examples:
     - __name: Development
-      image: ""
+      image_uri: ""
       port: 8080
       size: 256/512
       architecture: arm64
@@ -22,7 +22,7 @@ params:
       environment: []
       log_retention_days: 1
     - __name: Production
-      image: ""
+      image_uri: ""
       port: 8080
       size: 1024/2048
       architecture: arm64
@@ -35,7 +35,7 @@ params:
       environment: []
       log_retention_days: 30
   required:
-    - image
+    - image_uri
     - port
     - size
     - architecture
@@ -48,7 +48,7 @@ params:
     - environment
     - log_retention_days
   properties:
-    image:
+    image_uri:
       title: Container image
       description: >-
         An image by tag or digest, built for the **Architecture** below. Leave empty to run
@@ -263,7 +263,7 @@ steps:
 
 ui:
   ui:order:
-    - image
+    - image_uri
     - port
     - subdomain
     - health_check_path

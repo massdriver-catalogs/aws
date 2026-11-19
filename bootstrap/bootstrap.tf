@@ -25,17 +25,17 @@ resource "massdriver_service_account_group_membership" "catalog_publisher" {
   service_account_id = massdriver_service_account.catalog_publisher[0].id
 }
 
-resource "massdriver_project" "factory" {
-  identifier  = var.factory.identifier
-  name        = var.factory.name
-  description = var.factory.description
-  attributes  = var.factory.attributes
+resource "massdriver_project" "onboarding" {
+  identifier  = var.onboarding.identifier
+  name        = var.onboarding.name
+  description = var.onboarding.description
+  attributes  = var.onboarding.attributes
 }
 
 resource "massdriver_environment" "application" {
   for_each = var.applications
 
-  project_id = massdriver_project.factory.id
+  project_id = massdriver_project.onboarding.id
   identifier = each.key
   name       = each.value.name
   attributes = each.value.attributes

@@ -1,6 +1,6 @@
 # Massdriver Project
 
-The Massdriver project one application lives in. In the factory, every environment deploys one of these, so adding a factory environment adds an application.
+The Massdriver project an app lives in. In the onboarding project, every environment deploys one of these, so adding an environment there adds an app.
 
 ## What it creates
 
@@ -12,7 +12,7 @@ The Massdriver project one application lives in. In the factory, every environme
 
 The project resource it produces carries the project's identifier, its environments and the deploy group. The Git repository bundle reads it to point its pipeline at the project. The codebase bundle reads it to share the codebase with the project's environments.
 
-The project's environments start empty. Their defaults (cloud credentials, network, and the codebase) are set on each environment after the factory has deployed; Massdriver's Terraform provider can't set environment defaults yet.
+The project's environments start empty. Their defaults (the AWS credential, VPC, DNS zone, cluster and codebase) are set on each environment after this deploys; Massdriver's Terraform provider can't set environment defaults yet.
 
 ## Attributes
 

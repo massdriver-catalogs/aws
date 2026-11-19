@@ -1,7 +1,7 @@
 locals {
   name      = var.md_metadata.name_prefix
-  has_image = var.image != ""
-  image     = local.has_image ? var.image : "public.ecr.aws/nginx/nginx:stable-alpine"
+  has_image = var.image_uri != ""
+  image     = local.has_image ? var.image_uri : "public.ecr.aws/nginx/nginx:stable-alpine"
   port      = local.has_image ? var.port : 80
   health    = local.has_image ? var.health_check_path : "/"
 

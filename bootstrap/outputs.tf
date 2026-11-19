@@ -5,5 +5,5 @@ output "catalog_publisher_token" {
 }
 
 output "environments" {
-  value = { for k, e in massdriver_environment.application : k => "${var.factory.identifier}-${k}" }
+  value = { for k, e in massdriver_environment.application : k => "${var.onboarding.identifier}-${k}" }
 }

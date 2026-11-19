@@ -18,7 +18,7 @@ locals {
 resource "massdriver_component" "this" {
   for_each = local.components
 
-  project_id  = massdriver_project.factory.id
+  project_id  = massdriver_project.onboarding.id
   identifier  = each.key
   name        = each.value.name
   bundle_name = each.value.bundle

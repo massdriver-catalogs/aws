@@ -55,7 +55,7 @@ docker buildx build --platform linux/arm64 -t $REPO:$TAG --push .
 ### 3. Deploy it
 
 ```bash
-mass instance deploy {{id}} --patch ".image = \"$REPO:$TAG\"" --patch '.port = 8080' -m "Ship $TAG" --follow
+mass instance deploy {{id}} --patch ".image_uri = \"$REPO:$TAG\"" --patch '.port = 8080' -m "Ship $TAG" --follow
 ```
 
 The deploy waits until the new tasks are healthy. If they keep failing, it rolls back and fails; see "Deployment rolled back" below.

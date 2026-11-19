@@ -6,7 +6,7 @@ Massdriver deploys into your account by assuming a role you create. The role tru
 2. Open **IAM → Roles → Create role**.
 3. Choose **AWS account**, then **Another AWS account**, and enter `308878630280`.
 4. Tick **Require external ID**, paste your External ID, and click **Next**.
-5. Search for and tick **AdministratorAccess**. The same role deploys the factory and the applications it mints, whose bundles create whatever those applications run on, so it needs it. Click **Next**.
+5. Search for and tick **AdministratorAccess**. Bundles create networks, databases, IAM roles and everything else apps run on, so it needs it. Click **Next**.
 6. Name the role `massdriver` and click **Create role**.
 7. Open the new role and copy the **ARN** at the top of the page.
 

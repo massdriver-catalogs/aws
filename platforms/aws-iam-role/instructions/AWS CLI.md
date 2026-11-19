@@ -30,7 +30,7 @@ aws iam create-role \
 
 ## 3. Give it permission to build
 
-The same role deploys the factory and the applications it mints, whose bundles create whatever those applications run on, so it needs administrator access.
+Bundles create networks, databases, IAM roles and everything else apps run on, so the role needs administrator access.
 
 ```bash
 aws iam attach-role-policy \

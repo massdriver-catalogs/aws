@@ -2,7 +2,7 @@ name: codebase
 description: >-
   An application's codebase: its Git repository and ECR repository as one resource, shared with
   the application's Massdriver project to set as an environment default there.
-source_url: https://github.com/massdriver-catalogs/project-factory-aws-github/tree/main/bundles/codebase
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/codebase
 version: 0.0.0
 
 params:
@@ -18,7 +18,7 @@ params:
       title: Share with the project
       description: >-
         Lets every environment of the application's project use the codebase, so it can be set as
-        their default. Off, only people who can already see the factory can use it.
+        their default. Off, only people who can already see the onboarding project can use it.
       type: boolean
       default: true
 

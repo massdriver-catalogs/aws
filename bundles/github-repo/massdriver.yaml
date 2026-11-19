@@ -2,7 +2,7 @@ name: github-repo
 description: >-
   An application's GitHub repository, with a pipeline that builds an image, pushes it to the
   application's ECR repository and deploys it into the application's Massdriver project.
-source_url: https://github.com/massdriver-catalogs/project-factory-aws-github/tree/main/bundles/github-repo
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/github-repo
 version: 0.0.0
 
 params:
@@ -12,7 +12,7 @@ params:
       default_branch: main
       add_workflows: true
       adopt_existing_repository: false
-      image_platform: linux/amd64
+      image_platform: linux/arm64
       release_component: ""
       release_image_field: image_uri
     - __name: Public
@@ -20,7 +20,7 @@ params:
       default_branch: main
       add_workflows: true
       adopt_existing_repository: false
-      image_platform: linux/amd64
+      image_platform: linux/arm64
       release_component: ""
       release_image_field: image_uri
     - __name: Adopt an existing repository
@@ -28,7 +28,7 @@ params:
       default_branch: main
       add_workflows: false
       adopt_existing_repository: true
-      image_platform: linux/amd64
+      image_platform: linux/arm64
       release_component: ""
       release_image_field: image_uri
   required:
@@ -38,14 +38,6 @@ params:
     - add_workflows
     - image_platform
   properties:
-    monthly_budget:
-      title: Monthly budget (USD)
-      description: >-
-        What this instance should cost in a month. When Massdriver's cost data goes over it, a
-        cheaper configuration is proposed for review.
-      type: number
-      minimum: 0
-      default: 5
     repository_name:
       title: Repository name
       description: >-
@@ -100,9 +92,9 @@ params:
       $md.immutable: true
     image_platform:
       title: Image platform
-      description: The CPU architecture the image is built for. Match what the application runs on.
+      description: The CPU architecture the image is built for. Lambda functions and ECS services here default to Arm.
       type: string
-      default: linux/amd64
+      default: linux/arm64
       oneOf:
         - const: linux/amd64
           title: x86-64 (linux/amd64)
