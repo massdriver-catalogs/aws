@@ -1,0 +1,94 @@
+name: ecs-cluster
+description: >-
+  A Fargate cluster and one internet-facing load balancer that every service in it shares. Connect
+  a DNS zone and the load balancer serves HTTPS with the zone's certificate.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/ecs-cluster
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Development
+      container_insights: disabled
+      access_logs: false
+      access_log_retention_days: 7
+      deletion_protection: false
+    - __name: Production
+      container_insights: enabled
+      access_logs: true
+      access_log_retention_days: 90
+      deletion_protection: true
+  required:
+    - container_insights
+    - access_logs
+    - access_log_retention_days
+    - deletion_protection
+  properties:
+    container_insights:
+      title: Container Insights
+      description: >-
+        CPU, memory and network metrics per service and task in CloudWatch. Enhanced adds
+        per-container detail. ***Billed as CloudWatch metrics, a few dollars a month per service.***
+      type: string
+      default: disabled
+      oneOf:
+        - const: disabled
+          title: "Off"
+        - const: enabled
+          title: "On"
+        - const: enhanced
+          title: Enhanced
+    access_logs:
+      title: Load balancer access logs
+      description: >-
+        One line per request, written to an S3 bucket made for them. Useful for tracing a 5xx back
+        to a client. ***S3 storage, ~$0.023/GB-month.***
+      type: boolean
+      default: false
+    access_log_retention_days:
+      title: Access log retention (days)
+      description: Older log files are deleted from the bucket.
+      type: integer
+      default: 7
+      enum:
+        - 7
+        - 30
+        - 90
+        - 365
+    deletion_protection:
+      title: Deletion protection
+      description: >-
+        The load balancer can't be deleted, so decommissioning fails until this is turned off and
+        deployed. Every service's address depends on it.
+      type: boolean
+      default: false
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  network:
+    resource_type: aws-vpc@0.0.0
+    required: true
+  dns:
+    resource_type: aws-dns-zone@0.0.0
+    required: false
+
+resources:
+  cluster:
+    resource_type: aws-ecs-cluster@0.0.0
+    required: true
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+    config:
+      checkov:
+        halt_on_failure: '.params.md_metadata.default_tags["md-target"] == "production"'
+
+ui:
+  ui:order:
+    - container_insights
+    - access_logs
+    - access_log_retention_days
+    - deletion_protection
+    - "*"
