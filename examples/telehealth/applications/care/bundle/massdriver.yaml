@@ -1,0 +1,31 @@
+name: tendwell-care
+description: >-
+  Tendwell's clinician portal. Shows the day's booked visits from the Visits API, keeps charts in
+  PostgreSQL and visit notes in S3. Runs on the ECS service runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/telehealth/applications/care
+version: 0.0.0
+
+dependencies:
+  visits:
+    resource_type: tendwell-visits-api@0.0.0
+    required: true
+
+resources:
+  care:
+    resource_type: tendwell-care-api@0.0.0
+    required: true
+
+steps:
+  - path: src
+    resources:
+      care:
+        template: |
+          {
+            url: .outputs.url,
+            hostname: .outputs.hostname
+          }
+
+app:
+  runtime: ecs-service
+  envs:
+    VISITS_URL: .dependencies.visits.url

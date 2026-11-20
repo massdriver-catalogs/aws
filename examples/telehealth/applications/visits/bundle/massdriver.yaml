@@ -1,0 +1,24 @@
+name: tendwell-visits
+description: >-
+  Tendwell's booking API. Patients find an open slot and book a video visit; a reminder goes out
+  through the queue for every booking. Runs on the Lambda runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/telehealth/applications/visits
+version: 0.0.0
+
+resources:
+  visits:
+    resource_type: tendwell-visits-api@0.0.0
+    required: true
+
+steps:
+  - path: src
+    resources:
+      visits:
+        template: |
+          {
+            url: .outputs.url,
+            region: .outputs.region
+          }
+
+app:
+  runtime: lambda-function

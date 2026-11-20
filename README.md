@@ -136,6 +136,10 @@ Each attribute key must be defined in the organization before a project can carr
 | `team` | Projects, environments | `payments` | Who owns it; policies that give a team's group deploy rights |
 | `application` | Onboarding environments, app projects | `billing` | Ties an onboarding environment to the project it made |
 
+## Examples
+
+[examples/telehealth](examples/telehealth/) is Tendwell Health, a telehealth company: a platform project, three apps on Lambda and ECS that connect to each other, teams with their own access, and a script that stands it all up.
+
 ## Repository layout
 
 ```
@@ -143,6 +147,7 @@ platforms/        Credentials
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
 bootstrap/        The onboarding project and its canvas
+examples/         Example companies built on the catalog, with their apps
 .github/workflows Publishing
 ```
 

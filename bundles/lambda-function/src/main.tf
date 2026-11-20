@@ -18,6 +18,7 @@ locals {
     for k, v in {
       network  = try(var.network.region, null)
       codebase = try(var.codebase.registry.region, null)
+      registry = try(var.registry.region, null)
       postgres = try(var.postgres.region, null)
       mariadb  = try(var.mariadb.region, null)
       cache    = try(var.cache.region, null)
@@ -31,6 +32,11 @@ locals {
   # A choice that no longer exists on the connected resource falls back to the
   # default instead of failing, so swapping the resource doesn't block deploys.
   codebase_policy = var.codebase == null ? null : concat([for p in var.codebase.registry.policies : p if p.name == "pull"], var.codebase.registry.policies)[0]
+  registry_policy = var.registry == null ? null : concat([for p in var.registry.policies : p if p.name == "pull"], var.registry.policies)[0]
+
+  # An application running on this bundle declares its own variables in its
+  # app block; Massdriver renders them here before the step runs.
+  app_envs = try(jsondecode(file("/massdriver/envs.json")), {})
   table_policy    = var.table == null ? null : concat([for p in var.table.policies : p if p.name == coalesce(var.table_access, "read-write")], [for p in var.table.policies : p if p.name == "read-write"], var.table.policies)[0]
   bucket_policy   = var.bucket == null ? null : concat([for p in var.bucket.policies : p if p.name == coalesce(var.bucket_access, "read-write")], [for p in var.bucket.policies : p if p.name == "read-write"], var.bucket.policies)[0]
   queue_policy    = var.queue == null ? null : concat([for p in var.queue.policies : p if p.name == coalesce(var.queue_access, "send")], [for p in var.queue.policies : p if p.name == "send"], var.queue.policies)[0]
@@ -52,6 +58,7 @@ locals {
   reserved_in_use = [for e in var.environment : e.name if contains(local.reserved_env, e.name)]
 
   environment = merge(
+    local.app_envs,
     { for e in var.environment : e.name => e.value },
     var.postgres == null ? {} : {
       DATABASE_URL = "postgres://${urlencode(var.postgres.username)}:${urlencode(var.postgres.password)}@${var.postgres.hostname}:${var.postgres.port}/${var.postgres.database}"
@@ -131,6 +138,12 @@ resource "aws_iam_role_policy_attachment" "codebase" {
   count      = var.codebase != null ? 1 : 0
   role       = aws_iam_role.function.name
   policy_arn = local.codebase_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "registry" {
+  count      = var.registry != null ? 1 : 0
+  role       = aws_iam_role.function.name
+  policy_arn = local.registry_policy.arn
 }
 
 resource "aws_iam_role_policy_attachment" "databases" {
@@ -244,6 +257,7 @@ resource "aws_lambda_function" "main" {
     aws_iam_role_policy.logs,
     aws_iam_role_policy_attachment.vpc,
     aws_iam_role_policy_attachment.codebase,
+    aws_iam_role_policy_attachment.registry,
   ]
 }
 

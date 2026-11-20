@@ -1,7 +1,12 @@
 locals {
+  # An application running on this bundle declares its own variables in its
+  # app block; Massdriver renders them here before the step runs.
+  app_envs = try(jsondecode(file("/massdriver/envs.json")), {})
+
   # Passwords are injected from Secrets Manager, so connection URLs that would
   # embed them (DATABASE_URL, MYSQL_URL) aren't built.
   environment = merge(
+    local.app_envs,
     { for e in var.environment : e.name => e.value },
     { PORT = tostring(local.port) },
     var.postgres == null ? {} : {

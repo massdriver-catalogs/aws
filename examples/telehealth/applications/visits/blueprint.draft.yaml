@@ -1,0 +1,20 @@
+version: 1
+project: visits
+name: Visits
+components:
+  registry:  { bundle: ecr-repository, name: Image Repository }
+  api:       { bundle: http-api, name: Booking API }
+  slots:     { bundle: dynamodb-table, name: Slots }
+  reminders: { bundle: sqs-queue, name: Reminders Queue }
+  app:       { bundle: tendwell-visits, name: Visits }
+  notifier:  { bundle: tendwell-visits, name: Reminder Sender }
+defaults:
+  - platform/dns.zone
+links:
+  - registry.repository -> app.registry
+  - api.api             -> app.api
+  - slots.table         -> app.table
+  - reminders.queue     -> app.queue
+  - registry.repository -> notifier.registry
+  - api.api             -> notifier.api
+  - reminders.queue     -> notifier.queue

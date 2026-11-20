@@ -93,9 +93,11 @@ resource "aws_instance" "nat" {
     http_put_response_hop_limit = 1
   }
 
+  # Provider default tags stop at the instance; the root volume needs its own.
   root_block_device {
     encrypted   = true
     volume_type = "gp3"
+    tags        = merge(var.md_metadata.default_tags, { Name = "${local.name}-nat" })
   }
 
   maintenance_options {

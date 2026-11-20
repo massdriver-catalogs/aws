@@ -1,0 +1,24 @@
+name: tendwell-care-api
+version: 0.0.0
+label: Tendwell Care API
+
+ui:
+  connectionOrientation: link
+
+schema:
+  title: Tendwell Care API
+  description: The clinician portal's API, which serves charts and closed encounters.
+  type: object
+  additionalProperties: false
+  required:
+    - url
+    - hostname
+  properties:
+    url:
+      title: URL
+      description: Base URL of the API, e.g. https://care.dev.tendwell.health.
+      type: string
+      pattern: ^https://
+    hostname:
+      title: Hostname
+      type: string

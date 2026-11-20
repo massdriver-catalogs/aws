@@ -1,0 +1,24 @@
+name: tendwell-billing-api
+version: 0.0.0
+label: Tendwell Billing API
+
+ui:
+  connectionOrientation: link
+
+schema:
+  title: Tendwell Billing API
+  description: Files insurance claims for closed encounters.
+  type: object
+  additionalProperties: false
+  required:
+    - url
+    - hostname
+  properties:
+    url:
+      title: URL
+      description: Base URL of the API, e.g. https://billing.dev.tendwell.health.
+      type: string
+      pattern: ^https://
+    hostname:
+      title: Hostname
+      type: string

@@ -19,6 +19,7 @@ locals {
   # task's behalf before the container starts.
   pull_policies = merge(
     var.codebase == null ? {} : { for p in var.codebase.registry.policies : "codebase-${p.name}" => p.arn if p.name == "pull" },
+    var.registry == null ? {} : { for p in var.registry.policies : "registry-${p.name}" => p.arn if p.name == "pull" },
     var.postgres == null ? {} : { for p in var.postgres.policies : "postgres-${p.name}" => p.arn },
     var.mariadb == null ? {} : { for p in var.mariadb.policies : "mariadb-${p.name}" => p.arn },
   )

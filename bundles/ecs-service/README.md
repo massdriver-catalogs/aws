@@ -6,7 +6,7 @@ A containerized app on Fargate, in a shared ECS cluster. It runs in the VPC's pr
 
 - **An ECS cluster** and **the VPC** it is in. The VPC needs private subnets.
 - **A DNS zone** for a subdomain. A subdomain without a zone fails the deploy.
-- **A codebase** (optional) lets tasks pull images from its ECR repository.
+- **A codebase** or an **ECR repository** (optional) lets tasks pull images from it.
 
 ## Before your app exists
 
@@ -40,3 +40,7 @@ A deploy starts new tasks, waits for them to pass the health check, then stops t
 ## Debugging
 
 ECS Exec is on, so you can open a shell in a running task. See the operator guide.
+
+## Running an app on it
+
+This bundle is a runtime. An app's own bundle can set `app.runtime: ecs-service` and add its dependencies, environment variables and resources without any infrastructure code; Massdriver builds the two into one bundle when the app is published. The app's variables reach the process alongside the ones above. See [examples/telehealth](../../examples/telehealth/) for three apps built this way.

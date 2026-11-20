@@ -6,7 +6,7 @@ A function on arm64 that answers routes on a connected HTTP API. Connect a datab
 
 - An AWS role to deploy with.
 - An **HTTP API**. The function runs in the API's region, and every connected resource must be in that region too.
-- Optional: the **codebase**, for the ECR repository your images go to. The function gets permission to pull from it.
+- Optional: the **codebase**, or an **ECR repository** on its own, for where your images go. The function gets permission to pull from it.
 - Optional: the **VPC**. It's required when a PostgreSQL or MariaDB database or a Valkey cache is connected, because they only listen inside the VPC.
 
 ## What it makes
@@ -19,7 +19,7 @@ A function on arm64 that answers routes on a connected HTTP API. Connect a datab
 
 Leave **Container image** empty and a built-in placeholder answers every route. It echoes the request and checks each connected resource, so you can see the API, the function and the network work before any real code exists.
 
-To run your own code, push an **arm64** image to the codebase's ECR repository and set its address. The image must speak the Lambda runtime API: start from an AWS base image (`public.ecr.aws/lambda/python`, `nodejs`, …), or add the [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter) to an ordinary web server image. Use a new tag or a digest for every release.
+To run your own code, push an **arm64** image to the ECR repository and set its address. The image must speak the Lambda runtime API: start from an AWS base image (`public.ecr.aws/lambda/python`, `nodejs`, …), or add the [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter) to an ordinary web server image. Use a new tag or a digest for every release.
 
 ## Routes
 
@@ -55,3 +55,7 @@ Inside the VPC, the function reaches AWS services such as DynamoDB, S3 and SQS t
 Set **Queue access** to `consume` and turn on **Consume from the queue**, and Lambda reads the queue and calls the function with up to 10 messages at a time. If the function returns without an error, the messages are deleted; if it fails, they come back after the queue's visibility timeout and, after enough tries, go to the dead-letter queue.
 
 The same function still answers its API routes. Tell the two apart by the event: queue events have a `Records` list.
+
+## Running an app on it
+
+This bundle is a runtime. An app's own bundle can set `app.runtime: lambda-function` and add its dependencies, environment variables and resources without any infrastructure code; Massdriver builds the two into one bundle when the app is published. The app's variables reach the process alongside the ones above. See [examples/telehealth](../../examples/telehealth/) for three apps built this way.
