@@ -14,9 +14,10 @@ terraform {
 
 provider "aws" {
   region = var.network.region
-  assume_role {
-    role_arn    = var.aws_authentication.arn
-    external_id = var.aws_authentication.external_id
+  assume_role_with_web_identity {
+    role_arn                = var.aws_authentication.arn
+    session_name            = var.md_metadata.name_prefix
+    web_identity_token_file = "/massdriver/oidc/${var.aws_authentication.token_level}.jwt"
   }
   default_tags {
     tags = var.md_metadata.default_tags

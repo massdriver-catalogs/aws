@@ -1,13 +1,20 @@
 # Connect your AWS account in the AWS Console
 
-Massdriver deploys into your account by assuming a role you create. The role trusts Massdriver's account only when it presents an External ID: a secret value you choose.
+Massdriver signs an identity token for every deployment. Your AWS account trusts those tokens through an OIDC provider, and lets them assume a role. There are no keys to store or rotate.
 
-1. Make up an External ID: any long, hard-to-guess value, such as the output of `uuidgen` or a password generator. You'll paste it twice.
-2. Open **IAM → Roles → Create role**.
-3. Choose **AWS account**, then **Another AWS account**, and enter `308878630280`.
-4. Tick **Require external ID**, paste your External ID, and click **Next**.
-5. Search for and tick **AdministratorAccess**. Bundles create networks, databases, IAM roles and everything else apps run on, so it needs it. Click **Next**.
-6. Name the role `massdriver` and click **Create role**.
-7. Open the new role and copy the **ARN** at the top of the page.
+You need your Massdriver organization ID; `mass whoami` shows it. Below it's written as `ORG_ID`.
 
-Paste the ARN into **Role ARN**, and your External ID into **External ID**.
+1. Open **IAM → Identity providers**. If `api.massdriver.cloud` is already listed, open it, choose **Add audience**, enter `massdriver:ORG_ID`, and skip to step 3.
+2. Choose **Add provider**, then **OpenID Connect**. Enter the provider URL `https://api.massdriver.cloud` and the audience `massdriver:ORG_ID`, and click **Add provider**.
+3. Open **IAM → Roles → Create role** and choose **Web identity**. Pick `api.massdriver.cloud` as the identity provider and `massdriver:ORG_ID` as the audience. Click **Next**.
+4. Search for and tick **AdministratorAccess**. Bundles create networks, databases, IAM roles and everything else apps run on, so it needs it. Click **Next**.
+5. Name the role `massdriver` and click **Create role**.
+6. Open the role, go to **Trust relationships → Edit trust policy**, and add this line inside `StringEquals`, next to the `aud` line, so only your organization's tokens are accepted. Click **Update policy**.
+
+   ```json
+   "api.massdriver.cloud:sub": "org:ORG_ID"
+   ```
+
+7. Copy the **ARN** at the top of the role's page.
+
+Paste the ARN into **Role ARN** and leave **Token level** on **Organization**.
