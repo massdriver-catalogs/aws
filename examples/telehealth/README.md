@@ -47,16 +47,15 @@ Each app in [applications/](applications/) has:
 
 ## Stand it up
 
-You need an organization with a service account in the Organization Admin group, an AWS role made from the AWS IAM Role credential's instructions, and a domain whose Route 53 zone is in the nonprod account.
+You need an organization with a service account in the Organization Admin group, AWS CLI credentials for the account to deploy into, and a domain whose Route 53 zone is in that account.
 
 ```bash
 export MASSDRIVER_API_KEY=... MASSDRIVER_ORG_ID=...
 export DOMAIN=tendwell.example PARENT_ZONE_ID=Z0123456789ABCDEFGHIJ
-cp terraform.tfvars.example terraform.tfvars   # your role ARNs
 
 ./deploy.sh all dev
 ```
 
-That publishes the catalog and the apps, applies [bootstrap.tf](bootstrap.tf) (projects, environments, components, links, groups, policies and the AWS credentials), deploys dev, and builds and ships each app. The apps then answer at `visits.dev.<domain>`, `care.dev.<domain>` and `billing.dev.<domain>`.
+That makes the IAM role Massdriver deploys with, trusting your organization's identity tokens; publishes the catalog and the apps; applies [bootstrap.tf](bootstrap.tf) (projects, environments, components, links, groups, policies and the AWS credentials); deploys dev; and builds and ships each app. For a separate prod account, make a role there from the AWS IAM Role credential's instructions and set `PROD_ROLE_ARN`. The apps then answer at `visits.dev.<domain>`, `care.dev.<domain>` and `billing.dev.<domain>`.
 
 Run `./deploy.sh` alone to see the individual steps.

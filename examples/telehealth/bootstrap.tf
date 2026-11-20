@@ -294,3 +294,7 @@ output "environments" {
     }
   }
 }
+
+output "one_account" {
+  value = split(":", var.aws_accounts.nonprod.arn)[4] == split(":", var.aws_accounts.prod.arn)[4]
+}

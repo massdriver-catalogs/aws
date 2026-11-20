@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 # Stands up Tendwell Health in a Massdriver organization without GitHub Actions.
 #
+#   ./deploy.sh role                    make the IAM role Massdriver deploys with, in the current AWS account
 #   ./deploy.sh publish                 publish the catalog, then the example apps
 #   ./deploy.sh bootstrap               apply bootstrap.tf and set each environment's AWS credential
 #   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev, staging or prod
 #   ./deploy.sh ship <app> <stage>      build an app's image, push it and deploy it
-#   ./deploy.sh all <stage>             publish, bootstrap, provision and ship every app
+#   ./deploy.sh all <stage>             role, publish, bootstrap, provision and ship every app
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
-# PyYAML, and for ship: docker and AWS CLI credentials for the account the stage deploys into.
+# PyYAML, docker, and AWS CLI credentials for the account the apps deploy into.
 #
 # Settings, from the environment:
 #   DOMAIN            parent domain; each stage gets <stage>.<DOMAIN>    (provision)
 #   PARENT_ZONE_ID    Route 53 zone for DOMAIN in the same account. When set, each stage's
 #                     zone is delegated from it automatically; otherwise delegate by hand.
-#   ONE_ACCOUNT=true  dev, staging and prod share one AWS account          (provision prod)
-#   TF_VAR_aws_accounts, or terraform.tfvars                            (bootstrap)
+#   PROD_ROLE_ARN     a role in a separate prod account; prod uses the role from `role` otherwise
+#   ISSUER            Massdriver's token issuer host; api.massdriver.cloud unless self-hosted
 
 set -euo pipefail
 
@@ -97,7 +98,50 @@ cmd_publish() {
   for app in "${APPS[@]}"; do publish_bundle "$HERE/applications/$app/bundle"; done
 }
 
+# Trusts the organization's deployment identity tokens, the same setup as the
+# aws-iam-role credential's AWS CLI instructions. Safe to rerun.
+cmd_role() {
+  local issuer=${ISSUER:-api.massdriver.cloud} org account provider trust arn
+  org=$(mass whoami -o json | jq -r .organization.id)
+  account=$(aws sts get-caller-identity --query Account --output text)
+  provider="arn:aws:iam::$account:oidc-provider/$issuer"
+
+  log "trust $issuer tokens for $org in account $account"
+  if aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$provider" >/dev/null 2>&1; then
+    aws iam add-client-id-to-open-id-connect-provider --open-id-connect-provider-arn "$provider" --client-id "massdriver:$org"
+  else
+    aws iam create-open-id-connect-provider --url "https://$issuer" --client-id-list "massdriver:$org" >/dev/null
+  fi
+
+  trust=$(jq -n --arg p "$provider" --arg i "$issuer" --arg o "$org" '{
+    Version: "2012-10-17",
+    Statement: [{
+      Effect: "Allow",
+      Principal: {Federated: $p},
+      Action: "sts:AssumeRoleWithWebIdentity",
+      Condition: {StringEquals: {"\($i):aud": "massdriver:\($o)", "\($i):sub": "org:\($o)"}}
+    }]
+  }')
+
+  log "role massdriver-$org"
+  if aws iam get-role --role-name "massdriver-$org" >/dev/null 2>&1; then
+    aws iam update-assume-role-policy --role-name "massdriver-$org" --policy-document "$trust"
+  else
+    aws iam create-role --role-name "massdriver-$org" --description "Massdriver provisioning for $org" \
+      --assume-role-policy-document "$trust" >/dev/null
+  fi
+  aws iam attach-role-policy --role-name "massdriver-$org" --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+  arn=$(aws iam get-role --role-name "massdriver-$org" --query Role.Arn --output text)
+
+  jq -n --arg nonprod "$arn" --arg prod "${PROD_ROLE_ARN:-$arn}" \
+    '{aws_accounts: {nonprod: {arn: $nonprod}, prod: {arn: $prod}}}' >"$HERE/terraform.tfvars.json"
+  echo "$arn" >&2
+}
+
 cmd_bootstrap() {
+  [ -f "$HERE/terraform.tfvars.json" ] || [ -f "$HERE/terraform.tfvars" ] || [ -n "${TF_VAR_aws_accounts:-}" ] ||
+    die "no AWS roles; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
+
   log "apply bootstrap.tf"
   (cd "$HERE" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve)
 
@@ -152,7 +196,7 @@ cmd_provision() {
   # everything runs in one account.
   case "$stage" in
     dev) echo '{"adopt_existing_provider": false}' ;;
-    prod) jq -n --argjson one "${ONE_ACCOUNT:-false}" '{adopt_existing_provider: $one}' ;;
+    prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
   esac | if [ "$stage" != staging ]; then
     log "deploy platform-$stage-oidc"
     mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow
@@ -223,16 +267,18 @@ cmd_ship() {
 }
 
 case "${1:-}" in
+  role) cmd_role ;;
   publish) cmd_publish ;;
   bootstrap) cmd_bootstrap ;;
   provision) cmd_provision "${2:-}" ;;
   ship) cmd_ship "${2:-}" "${3:-}" ;;
   all)
     stage=$(stage_arg "${2:-}")
+    cmd_role
     cmd_publish
     cmd_bootstrap
     cmd_provision "$stage"
     for app in "${APPS[@]}"; do cmd_ship "$app" "$stage"; done
     ;;
-  *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
