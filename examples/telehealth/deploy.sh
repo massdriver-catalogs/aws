@@ -17,6 +17,7 @@
 #                     zone is delegated from it automatically; otherwise delegate by hand.
 #   PROD_ROLE_ARN     a role in a separate prod account; prod uses the role from `role` otherwise
 #   ISSUER            Massdriver's token issuer host; api.massdriver.cloud unless self-hosted
+#   YES=1             skip the confirmation before anything changes in AWS
 
 set -euo pipefail
 
@@ -26,6 +27,53 @@ APPS=(visits care billing)
 
 log() { printf '\n==> %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+CONFIRMED=${YES:-}
+
+# Everything here creates real, billed AWS infrastructure with administrator
+# access, so nothing runs until a person has read what it will do.
+confirm() {
+  [ -n "$CONFIRMED" ] && return
+  printf '\n%s\n\n' "$1" >&2
+  [ -r /dev/tty ] || die "no terminal to confirm on; rerun with YES=1 once you've read the above"
+  local answer
+  read -r -p "Type yes to continue: " answer </dev/tty
+  [ "$answer" = yes ] || die "stopped; nothing was changed"
+  CONFIRMED=1
+}
+
+aws_target() {
+  local account identity
+  account=$(aws sts get-caller-identity --query Account --output text) || die "no AWS credentials; sign in with the AWS CLI first"
+  identity=$(aws sts get-caller-identity --query Arn --output text)
+  echo "AWS account $account, as $identity"
+}
+
+role_plan() {
+  cat <<PLAN
+In $(aws_target):
+  - An IAM OIDC identity provider for ${ISSUER:-api.massdriver.cloud}, or your organization added to the existing one.
+  - An IAM role, massdriver-<org>, with AdministratorAccess. Any deployment in your Massdriver
+    organization can assume it, and bundles use it to create and delete anything in the account.
+PLAN
+}
+
+stage_plan() {
+  local stage=$1 cost='roughly $80/month while it runs (Development presets)'
+  [ "$stage" = prod ] && cost="several hundred dollars a month or more (Production presets: Multi-AZ databases, a NAT gateway per zone)"
+  cat <<PLAN
+Deploys the $stage stage into $(aws_target), region us-east-1:
+  - A VPC with a NAT for internet egress, and flow logs.
+  - A Route 53 hosted zone for $stage.${DOMAIN:-<DOMAIN>}, with a certificate${PARENT_ZONE_ID:+, delegated by an NS record added to zone $PARENT_ZONE_ID}.
+  - An ECS cluster and a public load balancer.
+  - RDS PostgreSQL and RDS MariaDB, a serverless Valkey cache, a DynamoDB table, an SQS queue,
+    two S3 buckets and three ECR repositories.
+  - Two Lambda functions behind API Gateway, and two Fargate services.
+  - IAM roles and security groups for all of it.
+Cost: $cost.
+Remove it with: mass environment decommission <project>-$stage, for billing, care, visits, then platform.
+PLAN
+}
 
 stage_arg() {
   case "${1:-}" in
@@ -102,6 +150,7 @@ cmd_publish() {
 # aws-iam-role credential's AWS CLI instructions. Safe to rerun.
 cmd_role() {
   local issuer=${ISSUER:-api.massdriver.cloud} org account provider trust arn
+  confirm "$(role_plan)"
   org=$(mass whoami -o json | jq -r .organization.id)
   account=$(aws sts get-caller-identity --query Account --output text)
   provider="arn:aws:iam::$account:oidc-provider/$issuer"
@@ -184,6 +233,7 @@ cmd_provision() {
   stage=$(stage_arg "${1:-}")
   [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
   local zone="$stage.$DOMAIN"
+  confirm "$(stage_plan "$stage")"
 
   log "platform-$stage"
   deploy "platform-$stage-network" vpc "$stage"
@@ -274,6 +324,16 @@ case "${1:-}" in
   ship) cmd_ship "${2:-}" "${3:-}" ;;
   all)
     stage=$(stage_arg "${2:-}")
+    [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
+    confirm "$(role_plan)
+
+In your Massdriver organization: publishes the catalog and the Tendwell apps, then creates the
+platform, apps, visits, care and billing projects, their environments, four groups with their
+policies, and the AWS credentials.
+
+$(stage_plan "$stage")
+
+Then builds the three app images with Docker, pushes them to ECR and deploys them."
     cmd_role
     cmd_publish
     cmd_bootstrap
