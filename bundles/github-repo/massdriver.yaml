@@ -7,6 +7,22 @@ version: 0.0.0
 
 params:
   examples:
+    - __name: Development
+      visibility: private
+      default_branch: main
+      add_workflows: true
+      adopt_existing_repository: false
+      image_platform: linux/arm64
+      release_component: ""
+      release_image_field: image_uri
+    - __name: Production
+      visibility: private
+      default_branch: main
+      add_workflows: true
+      adopt_existing_repository: false
+      image_platform: linux/arm64
+      release_component: ""
+      release_image_field: image_uri
     - __name: Private
       visibility: private
       default_branch: main
