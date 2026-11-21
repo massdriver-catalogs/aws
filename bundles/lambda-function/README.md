@@ -48,7 +48,7 @@ The password in `DATABASE_URL` and `MYSQL_URL` is URL-encoded, so special charac
 
 With a database or cache connected, the function runs in the VPC's private subnets and joins each one's client security group, which is what lets it connect. Without one, it stays outside the VPC.
 
-Inside the VPC, the function reaches AWS services such as DynamoDB, S3 and SQS through the VPC's internet egress. If the VPC has no egress, those calls time out unless the VPC has endpoints for them.
+Inside the VPC, the function reaches S3 and DynamoDB through the VPC's gateway endpoints. Other AWS services, such as SQS, go through the VPC's internet egress; with no egress, those calls time out unless the VPC has an interface endpoint for them.
 
 ## Queue
 

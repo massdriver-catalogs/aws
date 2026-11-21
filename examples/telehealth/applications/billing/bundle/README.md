@@ -2,7 +2,7 @@
 
 Turns closed encounters into insurance claims. It came with the Clearpath acquisition and runs on MySQL-compatible MariaDB. It pulls closed encounters from the Care API, prices them, stores each claim, and writes a claim file to S3 for the clearinghouse.
 
-Runs on the catalog's `ecs-service` runtime.
+Runs on the catalog's `ecs-service` runtime: the runtime decides the Fargate service, its load balancer rule, IAM and logs, and this bundle adds the app's contract.
 
 ## Needs
 

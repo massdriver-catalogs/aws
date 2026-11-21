@@ -24,3 +24,4 @@ A `tendwell-visits-api` resource with the API's URL. Care connects to it to list
 | `GET /appointments` | Booked visits |
 | `GET /appointments/{id}` | One booking |
 | `GET /health` | Health check |
+| `GET /reminders` | The reminder sender's own route |

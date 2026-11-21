@@ -18,7 +18,7 @@ Every availability zone gets three subnets.
 
 Space is always laid out for three zones, so going from two zones to three later doesn't move any subnet.
 
-S3 and DynamoDB gateway endpoints are attached to every subnet, so that traffic never goes through egress. Interface endpoints let private and internal subnets reach other AWS APIs, such as ECR and Secrets Manager, without egress.
+S3 and DynamoDB gateway endpoints are attached to every subnet, so that traffic never goes through egress. Turn on **Interface endpoints** to let private and internal subnets reach other AWS APIs, such as ECR and Secrets Manager, without egress.
 
 ## Egress
 

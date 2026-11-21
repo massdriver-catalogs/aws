@@ -6,11 +6,11 @@ Where an app's code lives and where its images go, as one resource: its GitHub r
 
 Every runtime in the app's project needs the registry, in every environment. Links across projects would be set per instance, and a new environment would start without them. One resource, set once as each environment's default, reaches every bundle there.
 
-Bundles read it as `aws-codebase`. `lambda-function` and `ecs-service` attach the registry's **pull** policy to their roles and run `registry.url:<git-sha>`.
+Bundles read it as `aws-codebase`. `lambda-function` and `ecs-service` attach the registry's **pull** policy to their roles, so they can run any image in it, such as the `<registry url>:<git-sha>` tags the pipeline pushes.
 
 ## How it connects
 
-It takes the other onboarding bundles: the repository, the ECR repository and the Massdriver project. It needs no cloud access of its own.
+It takes the other onboarding bundles: the repository, the ECR repository and the Massdriver project. It needs no AWS access, only the Massdriver Service Account credential, to share itself.
 
 With **Share with the project** on, the codebase is shared with every environment whose `md-project` is the app's project, so people working there can pick it as a default without access to the onboarding project. Setting it as the default is still a step per environment, because Massdriver's Terraform provider can't set environment defaults yet:
 

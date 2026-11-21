@@ -6,7 +6,7 @@ Ship apps on AWS with Massdriver. This catalog has the network and DNS for each 
 
 ### Environment
 
-Deploy these once per environment (dev, staging, production) and set each as an environment default. Everything else in the environment finds them on its own.
+Deploy these once per environment (`dev`, `staging`, `prod`) and set each as an environment default. Everything else in the environment finds them on its own.
 
 | Bundle | Makes | Resource type |
 |---|---|---|
@@ -77,7 +77,7 @@ Dotted lines are environment defaults; solid lines are links on the app's canvas
 
 - **Subdomains.** The DNS zone's certificate covers every name one level under it. An `http-api` or `ecs-service` with **Subdomain** `api` answers at `https://api.dev.example.com`, with the record and certificate handled for you. The zone, the API and the cluster must be in the same region.
 - **Databases and caches** sit in the VPC's internal subnets and only accept connections from their own client security group. A runtime joins that group when you link the store to it.
-- **Policies.** Tables, buckets, queues and registries publish IAM policies such as `read`, `read-write`, `send` or `pull`. A runtime attaches the one you pick; nothing writes its own IAM for a store.
+- **Policies.** Tables, buckets, queues and registries publish IAM policies such as `read`, `read-write`, `send` or `pull`. A runtime attaches the one you pick (`ecs-service` attaches all of them if you don't pick); nothing writes its own IAM for a store.
 
 ### Environment variables
 
@@ -119,7 +119,7 @@ flowchart LR
   MDP -. creates .-> App
 ```
 
-- **The pipeline** pushes images to ECR through GitHub's OIDC tokens, on a role only the repository's default branch can assume, so no AWS keys are stored in GitHub. It deploys with its own Massdriver service account, in a group that can only deploy in the environments you list. Set **Release component** and it deploys every merge to that runtime's `image_uri`.
+- **The pipeline** pushes images to ECR through GitHub's OIDC tokens, on a role only the repository's default branch can assume, so no AWS keys are stored in GitHub. It deploys with its own Massdriver service account, in a group that can only deploy in the environments you list. Set **Release to environment** and **Release component** and it deploys every merge, setting that component's **Image param** (`image_uri` by default).
 - **The codebase** is the repository and registry as one resource. Set as the default on the app's environments, it gives every runtime there the registry's pull policy without a link across projects. Environment defaults are a step per environment for now, because Massdriver's Terraform provider can't set them:
 
   ```bash
