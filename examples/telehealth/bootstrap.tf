@@ -4,7 +4,7 @@ terraform {
   required_providers {
     massdriver = {
       source  = "massdriver-cloud/massdriver"
-      version = "~> 2.4"
+      version = "~> 2.5"
     }
   }
 }
@@ -204,6 +204,24 @@ locals {
   read_actions = ["project:view", "resource:view", "repo:view", "repo:pull"]
 }
 
+resource "massdriver_custom_attribute" "team" {
+  key    = "team"
+  scope  = "PROJECT"
+  values = ["platform", "patient-experience", "clinical", "revenue"]
+}
+
+resource "massdriver_custom_attribute" "data_classification" {
+  key    = "data_classification"
+  scope  = "COMPONENT"
+  values = ["phi", "internal", "public"]
+}
+
+resource "massdriver_organization_settings" "this" {
+  # Every bundle's access is granted below, so app bundles stay with their own project.
+  grant_new_bundles_to_all_projects = false
+  default_tags                      = [massdriver_custom_attribute.team.key, massdriver_custom_attribute.data_classification.key]
+}
+
 resource "massdriver_project" "this" {
   for_each = local.projects
 
@@ -211,6 +229,8 @@ resource "massdriver_project" "this" {
   name        = each.value.name
   description = each.value.description
   attributes  = { team = each.value.team }
+
+  depends_on = [massdriver_custom_attribute.team]
 }
 
 import {
@@ -252,7 +272,7 @@ resource "massdriver_component" "this" {
   bundle_name = each.value.bundle
   attributes  = { data_classification = contains(local.phi, each.key) ? "phi" : "internal" }
 
-  depends_on = [massdriver_oci_repository_grant.bundle]
+  depends_on = [massdriver_oci_repository_grant.bundle, massdriver_custom_attribute.data_classification]
 }
 
 resource "massdriver_component_link" "this" {
