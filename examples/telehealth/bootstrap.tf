@@ -156,6 +156,20 @@ locals {
     }
   ]...)
 
+  # Anything that stores or carries patient details. Bookings name the patient,
+  # so Visits counts as well as charts and claims.
+  phi = [
+    "visits-slots", "visits-reminders", "visits-app", "visits-notifier",
+    "care-charts", "care-sessions", "care-documents", "care-app",
+    "billing-ledger", "billing-claims", "billing-app",
+  ]
+
+  # Every catalog bundle is open to every project; each app's bundle only to its own.
+  bundle_access = merge(
+    { for f in fileset("${path.module}/../../bundles", "*/massdriver.yaml") : yamldecode(file("${path.module}/../../bundles/${f}")).name => "*" },
+    { for app in ["visits", "care", "billing"] : yamldecode(file("${path.module}/applications/${app}/bundle/massdriver.yaml")).name => app },
+  )
+
   teams = {
     patient-experience = { name = "Patient Experience", description = "Builds the booking experience patients use." }
     clinical           = { name = "Clinical", description = "Builds the tools clinicians chart and treat with." }
@@ -187,6 +201,21 @@ resource "massdriver_project" "this" {
   identifier  = each.key
   name        = each.value.name
   description = each.value.description
+  attributes  = { team = each.value.team }
+}
+
+resource "massdriver_oci_repository" "bundle" {
+  for_each = local.bundle_access
+
+  name          = each.key
+  artifact_type = "BUNDLE"
+}
+
+resource "massdriver_oci_repository_grant" "bundle" {
+  for_each = local.bundle_access
+
+  repository_id        = massdriver_oci_repository.bundle[each.key].id
+  recipient_conditions = each.value == "*" ? "*" : jsonencode({ "md-project" = [each.value] })
 }
 
 resource "massdriver_environment" "this" {
@@ -206,6 +235,9 @@ resource "massdriver_component" "this" {
   identifier  = each.value.identifier
   name        = each.value.name
   bundle_name = each.value.bundle
+  attributes  = { data_classification = contains(local.phi, each.key) ? "phi" : "internal" }
+
+  depends_on = [massdriver_oci_repository_grant.bundle]
 }
 
 resource "massdriver_component_link" "this" {

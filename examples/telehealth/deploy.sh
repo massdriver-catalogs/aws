@@ -2,11 +2,12 @@
 # Stands up Tendwell Health in a Massdriver organization without GitHub Actions.
 #
 #   ./deploy.sh role                    make the IAM role Massdriver deploys with, in the current AWS account
+#   ./deploy.sh setup                   define custom attributes; create bundle repositories and grants
 #   ./deploy.sh publish                 publish the catalog, then the example apps
 #   ./deploy.sh bootstrap               apply bootstrap.tf and set each environment's AWS credential
 #   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev, staging or prod
 #   ./deploy.sh ship <app> <stage>      build an app's image, push it and deploy it
-#   ./deploy.sh all <stage>             role, publish, bootstrap, provision and ship every app
+#   ./deploy.sh all <stage>             role, setup, publish, bootstrap, provision and ship every app
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
 # PyYAML, docker, and AWS CLI credentials for the account the apps deploy into.
@@ -133,8 +134,47 @@ publish_bundle() {
   local name
   name=$(awk '/^name:/ { print $2; exit }' "$1/massdriver.yaml")
   log "publish bundle $name"
-  mass repository create "$name" -t bundle >/dev/null 2>&1 || true
   mass bundle publish --bundle-directory "$1"
+}
+
+require_roles() {
+  [ -f "$HERE/terraform.tfvars.json" ] || [ -f "$HERE/terraform.tfvars" ] || [ -n "${TF_VAR_aws_accounts:-}" ] ||
+    die "no AWS roles; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
+}
+
+graphql() {
+  local key=${MASSDRIVER_API_KEY:?set MASSDRIVER_API_KEY} org=${MASSDRIVER_ORG_ID:?set MASSDRIVER_ORG_ID} auth
+  case "$key" in
+    md_*) auth="Bearer $key" ;;
+    *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
+  esac
+  curl -sS -X POST "${MASSDRIVER_URL:-https://api.massdriver.cloud}/api/v2" \
+    -H "Authorization: $auth" -H 'content-type: application/json' -d "$1"
+}
+
+# The Terraform provider can't declare custom attributes yet. Defining one that
+# already exists fails harmlessly, so reruns just report it.
+define_attribute() {
+  local key=$1 scope=$2 values=$3
+  graphql "$(jq -n --arg org "$MASSDRIVER_ORG_ID" --arg key "$key" --arg scope "$scope" --argjson values "$values" '{
+    query: "mutation($org: ID!, $input: CreateCustomAttributeInput!) { createCustomAttribute(organizationId: $org, input: $input) { successful messages { message } } }",
+    variables: {org: $org, input: {key: $key, scope: $scope, values: $values}}
+  }')" | jq -r --arg key "$key" '
+    if .data.createCustomAttribute.successful then "defined \($key)"
+    else "\($key): \([(.data.createCustomAttribute.messages // [])[].message, (.errors // [])[].message] | join("; "))" end' >&2
+}
+
+# Attributes, bundle repositories and who may use each bundle come before
+# anything is published or placed on a canvas.
+cmd_setup() {
+  require_roles
+  log "define custom attributes"
+  define_attribute team PROJECT '["platform", "patient-experience", "clinical", "revenue"]'
+  define_attribute data_classification COMPONENT '["phi", "internal", "public"]'
+
+  log "create bundle repositories and their grants"
+  (cd "$HERE" && tofu init -input=false >/dev/null &&
+    tofu apply -input=false -auto-approve -target=massdriver_oci_repository_grant.bundle)
 }
 
 # Types before the bundles that use them, and runtimes before the apps built on them.
@@ -188,8 +228,7 @@ cmd_role() {
 }
 
 cmd_bootstrap() {
-  [ -f "$HERE/terraform.tfvars.json" ] || [ -f "$HERE/terraform.tfvars" ] || [ -n "${TF_VAR_aws_accounts:-}" ] ||
-    die "no AWS roles; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
+  require_roles
 
   log "apply bootstrap.tf"
   (cd "$HERE" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve)
@@ -318,6 +357,7 @@ cmd_ship() {
 
 case "${1:-}" in
   role) cmd_role ;;
+  setup) cmd_setup ;;
   publish) cmd_publish ;;
   bootstrap) cmd_bootstrap ;;
   provision) cmd_provision "${2:-}" ;;
@@ -327,18 +367,20 @@ case "${1:-}" in
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
     confirm "$(role_plan)
 
-In your Massdriver organization: publishes the catalog and the Tendwell apps, then creates the
-platform, apps, visits, care and billing projects, their environments, four groups with their
-policies, and the AWS credentials.
+In your Massdriver organization: defines the team and data_classification attributes, creates a
+repository and access grant for every bundle, publishes the catalog and the Tendwell apps, then
+creates the platform, apps, visits, care and billing projects, their environments, five groups
+with their policies, and the AWS credentials.
 
 $(stage_plan "$stage")
 
 Then builds the three app images with Docker, pushes them to ECR and deploys them."
     cmd_role
+    cmd_setup
     cmd_publish
     cmd_bootstrap
     cmd_provision "$stage"
     for app in "${APPS[@]}"; do cmd_ship "$app" "$stage"; done
     ;;
-  *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
