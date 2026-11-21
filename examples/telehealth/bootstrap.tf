@@ -19,6 +19,12 @@ variable "aws_accounts" {
   })
 }
 
+variable "existing_bundle_repositories" {
+  description = "Bundle repositories already in the organization, e.g. from the catalog's publish workflow. They're adopted instead of created."
+  type        = list(string)
+  default     = []
+}
+
 variable "protect_prod" {
   description = "Prod environments need a second person to approve deploys and can't be decommissioned by accident."
   type        = bool
@@ -202,6 +208,12 @@ resource "massdriver_project" "this" {
   name        = each.value.name
   description = each.value.description
   attributes  = { team = each.value.team }
+}
+
+import {
+  for_each = toset([for name in var.existing_bundle_repositories : name if contains(keys(local.bundle_access), name)])
+  to       = massdriver_oci_repository.bundle[each.key]
+  id       = each.key
 }
 
 resource "massdriver_oci_repository" "bundle" {

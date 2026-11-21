@@ -142,8 +142,16 @@ require_roles() {
     die "no AWS roles; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
 }
 
+profile_value() {
+  python3 - "$1" "${MASSDRIVER_PROFILE:-default}" <<'PY'
+import os, sys, yaml
+config = yaml.safe_load(open(os.path.expanduser("~/.config/massdriver/config.yaml")))
+print(config["profiles"][sys.argv[2]][sys.argv[1]])
+PY
+}
+
 graphql() {
-  local key=${MASSDRIVER_API_KEY:?set MASSDRIVER_API_KEY} org=${MASSDRIVER_ORG_ID:?set MASSDRIVER_ORG_ID} auth
+  local key=${MASSDRIVER_API_KEY:-$(profile_value api_key)} org=${MASSDRIVER_ORG_ID:-$(profile_value organization_id)} auth
   case "$key" in
     md_*) auth="Bearer $key" ;;
     *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
@@ -156,7 +164,7 @@ graphql() {
 # already exists fails harmlessly, so reruns just report it.
 define_attribute() {
   local key=$1 scope=$2 values=$3
-  graphql "$(jq -n --arg org "$MASSDRIVER_ORG_ID" --arg key "$key" --arg scope "$scope" --argjson values "$values" '{
+  graphql "$(jq -n --arg org "${MASSDRIVER_ORG_ID:-$(profile_value organization_id)}" --arg key "$key" --arg scope "$scope" --argjson values "$values" '{
     query: "mutation($org: ID!, $input: CreateCustomAttributeInput!) { createCustomAttribute(organizationId: $org, input: $input) { successful messages { message } } }",
     variables: {org: $org, input: {key: $key, scope: $scope, values: $values}}
   }')" | jq -r --arg key "$key" '
@@ -173,6 +181,8 @@ cmd_setup() {
   define_attribute data_classification COMPONENT '["phi", "internal", "public"]'
 
   log "create bundle repositories and their grants"
+  mass repository list -t bundle -o json | jq '{existing_bundle_repositories: [(. // [])[].name]}' \
+    >"$HERE/existing.auto.tfvars.json"
   (cd "$HERE" && tofu init -input=false >/dev/null &&
     tofu apply -input=false -auto-approve -target=massdriver_oci_repository_grant.bundle)
 }
