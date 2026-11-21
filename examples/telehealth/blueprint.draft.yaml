@@ -9,3 +9,18 @@ components:
 links:
   - network.network -> cluster.network
   - dns.zone        -> cluster.dns
+---
+version: 1
+project: apps
+name: Apps
+components:
+  registry: { bundle: ecr-repository, name: Image Repository }
+  project:  { bundle: massdriver-project, name: Massdriver Project }
+  repo:     { bundle: github-repo, name: Source Repository }
+  codebase: { bundle: codebase, name: Codebase }
+links:
+  - registry.repository -> repo.registry
+  - project.project     -> repo.project
+  - registry.repository -> codebase.registry
+  - repo.repository     -> codebase.repository
+  - project.project     -> codebase.project
