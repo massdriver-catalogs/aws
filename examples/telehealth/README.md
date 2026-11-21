@@ -1,5 +1,7 @@
 # Tendwell Health
 
+<img src="logo.svg" alt="Tendwell Health" width="96">
+
 A telehealth company built on this catalog. Patients book video visits, clinicians chart them, and a billing team files the insurance claims.
 
 | Project | Team | What runs there |
