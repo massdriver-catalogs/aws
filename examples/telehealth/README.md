@@ -12,7 +12,7 @@ A telehealth company built on this catalog. Patients book video visits, clinicia
 | `care` | Clinical | The clinician portal on ECS: `postgres`, `valkey`, `s3-bucket`, `tendwell-care` |
 | `billing` | Revenue | Claims on ECS: `mariadb`, `s3-bucket`, `tendwell-billing` |
 
-`platform`, `visits`, `care` and `billing` each have `dev`, `staging` and `prod`. Prod deploys need a second person's approval.
+Every project has `dev` and `prod`, and `platform`, `visits`, `care` and `billing` also have `staging`. Prod deploys need a second person's approval.
 
 ```mermaid
 flowchart LR

@@ -58,9 +58,9 @@ locals {
 
     apps = {
       name        = "Apps"
-      description = "Onboards a new app: its GitHub repository, image registry and Massdriver project. One environment per app."
+      description = "Onboards a new app: its GitHub repository, image registry and Massdriver project."
       team        = "platform"
-      stages      = []
+      stages      = ["dev", "prod"]
       components = {
         registry = { bundle = "ecr-repository", name = "Image Repository" }
         project  = { bundle = "massdriver-project", name = "Massdriver Project" }
@@ -267,6 +267,12 @@ resource "massdriver_imported_resource" "aws" {
   name          = "AWS ${each.key}"
   resource_type = "aws-iam-role"
   resource      = jsonencode(each.value)
+
+  # The API reads the type back with its version (aws-iam-role@0.0.0), which
+  # would otherwise replace the credential, and unset every default, on each apply.
+  lifecycle {
+    ignore_changes = [resource_type]
+  }
 }
 
 resource "massdriver_resource_grant" "aws_nonprod" {
