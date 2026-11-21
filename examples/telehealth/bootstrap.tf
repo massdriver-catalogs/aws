@@ -56,26 +56,6 @@ locals {
       ]
     }
 
-    apps = {
-      name        = "Apps"
-      description = "Onboards a new app: its GitHub repository, image registry and Massdriver project."
-      team        = "platform"
-      stages      = ["dev", "prod"]
-      components = {
-        registry = { bundle = "ecr-repository", name = "Image Repository" }
-        project  = { bundle = "massdriver-project", name = "Massdriver Project" }
-        repo     = { bundle = "github-repo", name = "Source Repository" }
-        codebase = { bundle = "codebase", name = "Codebase" }
-      }
-      links = [
-        "registry.repository -> repo.registry",
-        "project.project -> repo.project",
-        "registry.repository -> codebase.registry",
-        "repo.repository -> codebase.repository",
-        "project.project -> codebase.project",
-      ]
-    }
-
     visits = {
       name        = "Visits"
       description = "Patients find an open slot and book a video visit."

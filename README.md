@@ -94,51 +94,17 @@ Link a data store to a runtime and the runtime gets the same variables on Lambda
 
 ECS reads passwords from Secrets Manager when a task starts, so it never holds a URL with the password in it. Build the URL in your app from the variables, or let your PostgreSQL client read `PG*` directly.
 
-## Getting started
+## Use it
 
-1. **Publish the catalog.** In Massdriver, turn on **Settings → General → Grant new bundle repositories to all projects**. Create a service account with a **1 year** token in a group allowed to publish. In this repository's **Settings → Secrets and variables → Actions**, add its key as the secret `MASSDRIVER_API_KEY` and your organization ID as the variable `MASSDRIVER_ORG_ID`. Run **Actions → Publish → Run workflow** with *all* ticked. After that, every push to `main` publishes what changed: credentials and resource types first, then bundles.
-2. **Add credentials.** Create an AWS IAM Role credential, following the instructions on its form. Add the GitHub App and Massdriver Service Account credentials too if you'll onboard apps from here.
-3. **Set up an environment.** Make a `platform` project with an environment per stage (`dev`, `prod`). In each, deploy `vpc`, then `dns-zone`, then `ecs-cluster` if you'll run containers. Deploy `github-actions-oidc` once per AWS account. A new DNS zone must be delegated from its parent domain before its certificate is issued; the `dns-zone` operator guide shows how.
-4. **Make the app's project.** Either by hand, or with the onboarding bundles (below). Set the platform's VPC, DNS zone and cluster, the AWS credential, and the codebase as defaults on each of its environments.
-5. **Ship the app.** Put `http-api` and `lambda-function`, or `ecs-service`, on the app's canvas, link any data stores, and deploy. Each runtime's operator guide has a **Ship your app** walkthrough: build the image, push it, deploy it, connect a database, add a subdomain.
+**Stand up the example.** [examples/telehealth](examples/telehealth/) is Tendwell Health, a telehealth company built on this catalog: a platform project, three apps on Lambda and ECS that connect to each other, and teams with their own access. Its `deploy.sh` publishes the catalog to your organization and builds the company in it.
 
-## Onboarding apps
+**Sync it to your organization and build your own.** Fork this repository and connect its publish workflow:
 
-The onboarding bundles make everything a new app needs outside its own code, in one place: an ECR repository, a GitHub repository with a working pipeline, and a Massdriver project the pipeline can deploy into.
+1. In Massdriver, turn on **Settings → General → Grant new bundle repositories to all projects**. Create a service account with a **1 year** token in a group allowed to publish.
+2. In the fork's **Settings → Secrets and variables → Actions**, add its key as the secret `MASSDRIVER_API_KEY` and your organization ID as the variable `MASSDRIVER_ORG_ID`.
+3. Run **Actions → Publish → Run workflow** with *all* ticked. After that, every push to `main` publishes what changed: credentials and resource types first, then bundles.
 
-Put `ecr-repository`, `massdriver-project`, `github-repo` and `codebase` on one project's canvas, linked, with an environment per app. [bootstrap/](bootstrap/) does this with one `terraform apply`. Deploying an environment there creates that app's repository, registry and project. The environment list is then the list of apps.
-
-```mermaid
-flowchart LR
-  ECR[ecr-repository] --> REPO[github-repo]
-  MDP[massdriver-project] --> REPO
-  ECR --> CB[codebase]
-  REPO --> CB
-  MDP --> CB
-  CB -. default .-> App[the app's project]
-  MDP -. creates .-> App
-```
-
-- **The pipeline** pushes images to ECR through GitHub's OIDC tokens, on a role only the repository's default branch can assume, so no AWS keys are stored in GitHub. It deploys with its own Massdriver service account, in a group that can only deploy in the environments you list. Set **Release to environment** and **Release component** and it deploys every merge, setting that component's **Image param** (`image_uri` by default).
-- **The codebase** is the repository and registry as one resource. Set as the default on the app's environments, it gives every runtime there the registry's pull policy without a link across projects. Environment defaults are a step per environment for now, because Massdriver's Terraform provider can't set them:
-
-  ```bash
-  mass environment default <project>-<environment> <resource-id>
-  ```
-
-### Attributes
-
-Each attribute key must be defined in the organization before a project can carry it.
-
-| Attribute | On | Example values | For |
-|---|---|---|---|
-| `project-type` | Projects | `platform`, `ci`, `app-hosting` | Filtering, and policies by kind of project |
-| `team` | Projects, environments | `payments` | Who owns it; policies that give a team's group deploy rights |
-| `application` | Onboarding environments, app projects | `billing` | Ties an onboarding environment to the project it made |
-
-## Examples
-
-[examples/telehealth](examples/telehealth/) is Tendwell Health, a telehealth company: a platform project, three apps on Lambda and ECS that connect to each other, teams with their own access, and a script that stands it all up.
+Then add an AWS IAM Role credential, following the instructions on its form, and deploy `vpc`, `dns-zone` and `ecs-cluster` in each environment. A new DNS zone must be delegated from its parent domain before its certificate is issued; the `dns-zone` operator guide shows how. Each runtime's operator guide has a **Ship your app** walkthrough.
 
 ## Repository layout
 
@@ -146,8 +112,7 @@ Each attribute key must be defined in the organization before a project can carr
 platforms/        Credentials
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
-bootstrap/        The onboarding project and its canvas
-examples/         Example companies built on the catalog, with their apps
+examples/         Tendwell Health, a telehealth company built on the catalog
 .github/workflows Publishing
 ```
 

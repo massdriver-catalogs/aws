@@ -7,12 +7,11 @@ A telehealth company built on this catalog. Patients book video visits, clinicia
 | Project | Team | What runs there |
 |---|---|---|
 | `platform` | Platform Engineering | `vpc`, `dns-zone`, `ecs-cluster`, `github-actions-oidc` |
-| `apps` | Platform Engineering | App onboarding: `ecr-repository`, `massdriver-project`, `github-repo`, `codebase` |
 | `visits` | Patient Experience | The booking API on Lambda: `ecr-repository`, `http-api`, `dynamodb-table`, `sqs-queue`, `tendwell-visits` twice (the API, and the reminder sender) |
 | `care` | Clinical | The clinician portal on ECS: `ecr-repository`, `postgres`, `valkey`, `s3-bucket`, `tendwell-care` |
 | `billing` | Revenue | Claims on ECS: `ecr-repository`, `mariadb`, `s3-bucket`, `tendwell-billing` |
 
-Every project has `dev` and `prod`, and `platform`, `visits`, `care` and `billing` also have `staging`. Prod deploys need a second person's approval.
+Every project has `dev`, `staging` and `prod`. Prod deploys need a second person's approval.
 
 Each team's group can change only its own project and read the rest. Platform Engineering can change everything, and Security & Compliance can read everything and change nothing.
 
