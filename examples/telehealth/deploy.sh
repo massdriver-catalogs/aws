@@ -379,7 +379,7 @@ case "${1:-}" in
 
 In your Massdriver organization: defines the team and data_classification attributes, creates a
 repository and access grant for every bundle, publishes the catalog and the Tendwell apps, then
-creates the platform, visits, care and billing projects, their environments, five groups
+creates the platform, apps, visits, care and billing projects, their environments, five groups
 with their policies, and the AWS credentials.
 
 $(stage_plan "$stage")

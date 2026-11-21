@@ -38,6 +38,9 @@ locals {
     prod    = { name = "Production", prod = true }
   }
 
+  # The onboarding project's environments are apps, not stages.
+  stage = { for s in distinct(flatten([for p in local.projects : p.stages])) : s => lookup(local.stages, s, { name = title(s), prod = false }) }
+
   projects = {
     platform = {
       name        = "Platform"
@@ -53,6 +56,26 @@ locals {
       links = [
         "network.network -> cluster.network",
         "dns.zone -> cluster.dns",
+      ]
+    }
+
+    apps = {
+      name        = "Apps"
+      description = "Onboards a new app: its GitHub repository, image registry and Massdriver project. One environment per app."
+      team        = "platform"
+      stages      = ["visits", "care", "billing"]
+      components = {
+        registry = { bundle = "ecr-repository", name = "Image Repository" }
+        project  = { bundle = "massdriver-project", name = "Massdriver Project" }
+        repo     = { bundle = "github-repo", name = "Source Repository" }
+        codebase = { bundle = "codebase", name = "Codebase" }
+      }
+      links = [
+        "registry.repository -> repo.registry",
+        "project.project -> repo.project",
+        "registry.repository -> codebase.registry",
+        "repo.repository -> codebase.repository",
+        "project.project -> codebase.project",
       ]
     }
 
@@ -215,9 +238,9 @@ resource "massdriver_environment" "this" {
 
   project_id              = massdriver_project.this[each.value.project].id
   identifier              = each.value.stage
-  name                    = local.stages[each.value.stage].name
-  separation_of_duty      = var.protect_prod && local.stages[each.value.stage].prod
-  decommission_protection = var.protect_prod && local.stages[each.value.stage].prod
+  name                    = local.stage[each.value.stage].name
+  separation_of_duty      = var.protect_prod && local.stage[each.value.stage].prod
+  decommission_protection = var.protect_prod && local.stage[each.value.stage].prod
 }
 
 resource "massdriver_component" "this" {
@@ -320,7 +343,7 @@ output "environments" {
     for k, e in local.environments : k => {
       project    = e.project
       stage      = e.stage
-      credential = massdriver_imported_resource.aws[local.stages[e.stage].prod ? "prod" : "nonprod"].id
+      credential = massdriver_imported_resource.aws[local.stage[e.stage].prod ? "prod" : "nonprod"].id
     }
   }
 }
