@@ -1,6 +1,6 @@
 # Bootstrap
 
-The factory project, an environment per application, and the factory's canvas, linked, from one `terraform apply`.
+The onboarding project, an environment per app, and its canvas, linked, from one `terraform apply`.
 
 ## Before you start
 
@@ -12,7 +12,7 @@ The factory project, an environment per application, and the factory's canvas, l
 
 ```bash
 export MASSDRIVER_API_KEY=...
-export MASSDRIVER_ORGANIZATION_ID=...
+export MASSDRIVER_ORG_ID=...
 cp terraform.tfvars.example terraform.tfvars
 terraform init
 terraform apply
@@ -22,17 +22,17 @@ terraform apply
 
 | What | Default |
 |---|---|
-| The factory project | Application Factory (`factory`) |
+| The onboarding project | Apps (`apps`) |
 | One environment per entry in `applications` | none |
 | Image Repository, Massdriver Project, Source Repository and Codebase on the canvas, linked | |
 | *Optional:* group that publishes the catalog, and its service account | set `catalog_publishers` |
 
 ## What it leaves to you
 
-Environment defaults, because the Terraform provider can't set them. On each factory environment, set the **AWS IAM Role**, **GitHub App**, **Massdriver Service Account** and the platform's **GitHub Actions OIDC** resource as defaults:
+Environment defaults, because the Terraform provider can't set them. On each environment of the onboarding project, set the **AWS IAM Role**, **GitHub App**, **Massdriver Service Account** and the platform's **GitHub Actions OIDC** resource as defaults:
 
 ```bash
-mass environment default factory-<application> <resource-id>
+mass environment default apps-<app> <resource-id>
 ```
 
 Then fill each instance's form and deploy the environment: the Massdriver Project first, then the Image Repository, the Source Repository and the Codebase.

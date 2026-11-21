@@ -1,0 +1,17 @@
+skip-check:
+  # The load balancer is internet-facing: accepting HTTP and HTTPS from any
+  # address is its job. With a DNS zone, port 80 only redirects to HTTPS.
+  - CKV_AWS_260
+
+  # The log bucket holds access logs. Logging access to it would need a second
+  # bucket that logs nothing, and replicating it doubles cost for records that
+  # expire on their own.
+  - CKV_AWS_18
+  - CKV_AWS_144
+
+  # Load balancers can only write access logs to buckets encrypted with
+  # S3-managed keys; a KMS key makes delivery fail.
+  - CKV_AWS_145
+
+  # Nothing reacts to a new log file, so there is nothing to notify.
+  - CKV2_AWS_62

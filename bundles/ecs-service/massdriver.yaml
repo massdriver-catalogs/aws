@@ -1,0 +1,294 @@
+name: ecs-service
+description: >-
+  A container service on Fargate in a shared ECS cluster, with an HTTPS address on the cluster's
+  load balancer or none for a background worker. Connects to databases, caches, tables, buckets and
+  queues with their credentials injected.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/ecs-service
+version: 0.0.0
+provides: [runtime]
+
+params:
+  examples:
+    - __name: Development
+      image_uri: ""
+      port: 8080
+      size: 256/512
+      architecture: arm64
+      spot: false
+      desired_count: 1
+      max_count: 1
+      cpu_target: 70
+      health_check_path: /
+      subdomain: ""
+      environment: []
+      log_retention_days: 1
+    - __name: Production
+      image_uri: ""
+      port: 8080
+      size: 1024/2048
+      architecture: arm64
+      spot: false
+      desired_count: 2
+      max_count: 6
+      cpu_target: 60
+      health_check_path: /
+      subdomain: ""
+      environment: []
+      log_retention_days: 30
+  required:
+    - image_uri
+    - port
+    - size
+    - architecture
+    - spot
+    - desired_count
+    - max_count
+    - cpu_target
+    - health_check_path
+    - subdomain
+    - environment
+    - log_retention_days
+  properties:
+    image_uri:
+      title: Container image
+      description: >-
+        An image by tag or digest, built for the **Architecture** below. Leave empty to run
+        `public.ecr.aws/nginx/nginx:stable-alpine`, which answers 200 on port 80, so the address
+        works before your app exists.
+      type: string
+      default: ""
+      pattern: ^(|[a-z0-9][a-z0-9.-]*(:[0-9]+)?(/[a-z0-9][a-z0-9._-]*)*(:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}|@sha256:[a-f0-9]{64}))$
+      message:
+        pattern: "An image with a tag or digest, like 123456789012.dkr.ecr.us-east-1.amazonaws.com/app:abc123, or empty."
+    port:
+      title: Container port
+      description: The port your app listens on. Ignored while the image is empty; the placeholder uses 80.
+      type: integer
+      default: 8080
+      minimum: 1
+      maximum: 65535
+    size:
+      title: Task size
+      description: >-
+        CPU and memory for each task. ***Per task per month on arm64; x86_64 is ~25% more, Spot ~70%
+        less.***
+      type: string
+      default: 256/512
+      oneOf:
+        - const: 256/512
+          title: 0.25 vCPU, 0.5 GB (~$7)
+        - const: 256/1024
+          title: 0.25 vCPU, 1 GB (~$9)
+        - const: 512/1024
+          title: 0.5 vCPU, 1 GB (~$14)
+        - const: 512/2048
+          title: 0.5 vCPU, 2 GB (~$17)
+        - const: 1024/2048
+          title: 1 vCPU, 2 GB (~$29)
+        - const: 1024/4096
+          title: 1 vCPU, 4 GB (~$34)
+        - const: 2048/4096
+          title: 2 vCPU, 4 GB (~$58)
+        - const: 2048/8192
+          title: 2 vCPU, 8 GB (~$68)
+        - const: 4096/8192
+          title: 4 vCPU, 8 GB (~$115)
+        - const: 4096/16384
+          title: 4 vCPU, 16 GB (~$136)
+    architecture:
+      title: Architecture
+      description: >-
+        The CPU type your image is built for. A mismatch fails with `exec format error`.
+        ***arm64 is ~20% cheaper.***
+      type: string
+      default: arm64
+      oneOf:
+        - const: arm64
+          title: arm64 (Graviton)
+        - const: x86_64
+          title: x86_64 (Intel/AMD)
+    spot:
+      title: Run on Spot
+      description: >-
+        Spare capacity that AWS can take back with two minutes' notice; the service starts a
+        replacement. Fine for workers and staging. Needs x86_64. ***~70% cheaper.***
+      type: boolean
+      default: false
+    desired_count:
+      title: Tasks
+      description: How many tasks always run. With more than one, a failing task doesn't take the service down.
+      type: integer
+      default: 1
+      minimum: 1
+      maximum: 50
+    max_count:
+      title: Most tasks when busy
+      description: >-
+        Above **Tasks**, more are added when average CPU passes the target. Set it equal to
+        **Tasks** for a fixed count. ***Each extra task costs the same as one above.***
+      type: integer
+      default: 1
+      minimum: 1
+      maximum: 100
+    cpu_target:
+      title: CPU target (%)
+      description: Average CPU across tasks that triggers adding a task.
+      type: integer
+      default: 70
+      minimum: 20
+      maximum: 90
+    health_check_path:
+      title: Health check path
+      description: >-
+        The load balancer sends traffic only to tasks that answer this path with 2xx or 3xx. Ignored
+        while the image is empty.
+      type: string
+      default: /
+      pattern: ^/[A-Za-z0-9._~/-]*$
+      message:
+        pattern: "A path starting with /, like /healthz."
+    subdomain:
+      title: Subdomain
+      description: >-
+        The service answers at `<subdomain>.<DNS zone>`, e.g. `api`. One label only. Leave empty for a
+        worker with no address. Needs a DNS zone connected.
+      type: string
+      default: ""
+      pattern: ^(|[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)$
+      message:
+        pattern: "Lowercase letters, digits and hyphens, like api, or empty."
+    environment:
+      title: Environment variables
+      description: >-
+        Plain configuration only; values are visible to anyone who can view this service. Connected
+        databases, caches, tables, buckets and queues set their own variables.
+      type: array
+      default: []
+      items:
+        type: object
+        required:
+          - name
+          - value
+        properties:
+          name:
+            title: Name
+            type: string
+            pattern: ^[A-Za-z_][A-Za-z0-9_]*$
+            message:
+              pattern: "Letters, digits and underscores, not starting with a digit."
+          value:
+            title: Value
+            type: string
+    table_access:
+      title: Table access
+      description: Which of the connected table's policies the service gets. Empty gives all of them.
+      type: string
+      $md.enum:
+        connection: table
+        options: .policies
+        value: .arn
+        label: .name
+    bucket_access:
+      title: Bucket access
+      description: Which of the connected bucket's policies the service gets. Empty gives all of them.
+      type: string
+      $md.enum:
+        connection: bucket
+        options: .policies
+        value: .arn
+        label: .name
+    queue_access:
+      title: Queue access
+      description: Which of the connected queue's policies the service gets. Empty gives all of them.
+      type: string
+      $md.enum:
+        connection: queue
+        options: .policies
+        value: .arn
+        label: .name
+    log_retention_days:
+      title: Log retention (days)
+      description: "***Billed per GB ingested and stored.***"
+      type: integer
+      default: 1
+      enum:
+        - 1
+        - 7
+        - 30
+        - 90
+        - 365
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  cluster:
+    resource_type: aws-ecs-cluster@0.0.0
+    required: true
+  network:
+    resource_type: aws-vpc@0.0.0
+    required: true
+  dns:
+    resource_type: aws-dns-zone@0.0.0
+    required: false
+  codebase:
+    resource_type: aws-codebase@0.0.0
+    required: false
+  registry:
+    resource_type: aws-ecr-repository@0.0.0
+    required: false
+  postgres:
+    resource_type: aws-postgres@0.0.0
+    required: false
+  mariadb:
+    resource_type: aws-mariadb@0.0.0
+    required: false
+  cache:
+    resource_type: aws-valkey@0.0.0
+    required: false
+  table:
+    resource_type: aws-dynamodb-table@0.0.0
+    required: false
+  bucket:
+    resource_type: aws-s3-bucket@0.0.0
+    required: false
+  queue:
+    resource_type: aws-sqs-queue@0.0.0
+    required: false
+
+resources: {}
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+    config:
+      checkov:
+        halt_on_failure: '.params.md_metadata.default_tags["md-target"] == "production"'
+
+ui:
+  ui:order:
+    - image_uri
+    - port
+    - subdomain
+    - health_check_path
+    - size
+    - architecture
+    - spot
+    - desired_count
+    - max_count
+    - cpu_target
+    - environment
+    - table_access
+    - bucket_access
+    - queue_access
+    - log_retention_days
+    - "*"
+  desired_count:
+    ui:widget: updown
+  max_count:
+    ui:widget: updown
+  environment:
+    items:
+      ui:order:
+        - name
+        - value

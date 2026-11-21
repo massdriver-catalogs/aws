@@ -1,0 +1,46 @@
+name: aws-dns-zone
+version: 0.0.0
+label: AWS DNS Zone
+
+ui:
+  connectionOrientation: environmentDefault
+  environmentDefaultGroup: dns
+
+schema:
+  title: AWS DNS Zone
+  description: >-
+    A Route 53 hosted zone and a certificate for every name directly under it. APIs and services
+    in the environment put their subdomains here.
+  type: object
+  additionalProperties: false
+  required:
+    - zone_id
+    - domain
+    - region
+    - certificate_arn
+  properties:
+    zone_id:
+      title: Hosted Zone ID
+      type: string
+      pattern: ^Z[A-Z0-9]+$
+    domain:
+      title: Domain
+      description: The zone's name, e.g. dev.example.com. Subdomains are made under it.
+      type: string
+      minLength: 1
+    region:
+      title: Region
+      description: Where the certificate lives. Load balancers and APIs using it must be in this region.
+      type: string
+      minLength: 1
+    certificate_arn:
+      title: Certificate ARN
+      description: An ACM certificate for the domain and *.domain.
+      type: string
+      pattern: "^arn:aws(-[a-z]+)*:acm:"
+    name_servers:
+      title: Name Servers
+      description: Delegate the domain to these from its parent zone or registrar.
+      type: array
+      items:
+        type: string

@@ -1,0 +1,60 @@
+name: aws-sqs-queue
+version: 0.0.0
+label: AWS SQS Queue
+
+ui:
+  connectionOrientation: link
+
+schema:
+  title: AWS SQS Queue
+  description: >-
+    An SQS queue, its dead-letter queue, and the IAM policies for sending to and consuming from
+    it.
+  type: object
+  additionalProperties: false
+  required:
+    - name
+    - arn
+    - url
+    - region
+    - policies
+  properties:
+    name:
+      title: Queue Name
+      type: string
+      minLength: 1
+    arn:
+      title: Queue ARN
+      type: string
+      minLength: 1
+    url:
+      title: Queue URL
+      type: string
+      pattern: ^https://
+    region:
+      title: Region
+      type: string
+      minLength: 1
+    dead_letter_arn:
+      title: Dead-Letter Queue ARN
+      description: Messages that fail too many times end up here.
+      type: string
+    policies:
+      title: Access Policies
+      description: IAM managed policies a consumer attaches to its role.
+      type: array
+      minItems: 1
+      items:
+        type: object
+        additionalProperties: false
+        required:
+          - name
+          - arn
+        properties:
+          name:
+            title: Name
+            description: What the policy allows, e.g. read or read-write.
+            type: string
+          arn:
+            title: Policy ARN
+            type: string

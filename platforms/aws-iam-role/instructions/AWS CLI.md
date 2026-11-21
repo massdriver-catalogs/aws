@@ -1,17 +1,35 @@
 # Connect your AWS account with the AWS CLI
 
-Massdriver deploys into your account by assuming a role you create. The role trusts Massdriver's account only when it presents an External ID: a secret value you choose.
+Massdriver signs an identity token for every deployment. Your AWS account trusts those tokens through an OIDC provider, and lets them assume a role. There are no keys to store or rotate.
 
-## 1. Choose an External ID
+You need the AWS CLI, signed in to the account you'll deploy into, and the [mass CLI](https://docs.massdriver.cloud/reference/cli/overview), signed in to your Massdriver organization.
+
+## 1. Get your organization ID
 
 ```bash
-EXTERNAL_ID=$(uuidgen)
-echo "$EXTERNAL_ID"
+ORG_ID=$(mass whoami -o json | jq -r .organization.id)
+echo "$ORG_ID"
 ```
 
-Keep the value; it goes into the Massdriver form at the end.
+## 2. Trust Massdriver's identity tokens
 
-## 2. Create the role
+An AWS account has one OIDC provider per issuer. Create it, or add your organization to it if another organization already uses this account:
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+PROVIDER_ARN=arn:aws:iam::$ACCOUNT_ID:oidc-provider/api.massdriver.cloud
+
+aws iam create-open-id-connect-provider \
+  --url https://api.massdriver.cloud \
+  --client-id-list "massdriver:$ORG_ID" \
+|| aws iam add-client-id-to-open-id-connect-provider \
+  --open-id-connect-provider-arn "$PROVIDER_ARN" \
+  --client-id "massdriver:$ORG_ID"
+```
+
+## 3. Create the role
+
+The role accepts organization tokens from your organization only:
 
 ```bash
 aws iam create-role \
@@ -21,16 +39,23 @@ aws iam create-role \
     \"Version\": \"2012-10-17\",
     \"Statement\": [{
       \"Effect\": \"Allow\",
-      \"Principal\": { \"AWS\": \"308878630280\" },
-      \"Action\": \"sts:AssumeRole\",
-      \"Condition\": { \"StringEquals\": { \"sts:ExternalId\": \"$EXTERNAL_ID\" } }
+      \"Principal\": { \"Federated\": \"$PROVIDER_ARN\" },
+      \"Action\": \"sts:AssumeRoleWithWebIdentity\",
+      \"Condition\": {
+        \"StringEquals\": {
+          \"api.massdriver.cloud:aud\": \"massdriver:$ORG_ID\",
+          \"api.massdriver.cloud:sub\": \"org:$ORG_ID\"
+        }
+      }
     }]
   }"
 ```
 
-## 3. Give it permission to build
+To give one project its own role instead, use the subject `org:$ORG_ID:project:<project>` and the token level `project` in step 5.
 
-The same role deploys the factory and the applications it mints, whose bundles create whatever those applications run on, so it needs administrator access.
+## 4. Give it permission to build
+
+Bundles create networks, databases, IAM roles and everything else apps run on, so the role needs administrator access.
 
 ```bash
 aws iam attach-role-policy \
@@ -38,10 +63,20 @@ aws iam attach-role-policy \
   --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
-## 4. Copy the ARN
+## 5. Add it to Massdriver
 
 ```bash
-aws iam get-role --role-name massdriver --query Role.Arn --output text
+ROLE_ARN=$(aws iam get-role --role-name massdriver --query Role.Arn --output text)
+
+cat > aws-credential.json <<EOF
+{ "arn": "$ROLE_ARN", "token_level": "organization" }
+EOF
+
+mass resource create -n "AWS $ACCOUNT_ID" -t aws-iam-role -f aws-credential.json
 ```
 
-Paste it into **Role ARN**, and your External ID into **External ID**.
+It prints the new resource's ID. Make it the default in each environment that deploys into this account:
+
+```bash
+mass environment default <project>-<environment> <resource-id>
+```

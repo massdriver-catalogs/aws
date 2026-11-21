@@ -1,8 +1,8 @@
 name: massdriver-project
 description: >-
   A Massdriver project for one application, with its environments and a group that can deploy
-  into them. The factory makes one per environment, so each factory environment is an application.
-source_url: https://github.com/massdriver-catalogs/project-factory-aws-github/tree/main/bundles/massdriver-project
+  into them. The onboarding project makes one per environment, so each of its environments is an app.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/massdriver-project
 version: 0.0.0
 
 params:
@@ -98,8 +98,8 @@ params:
     tag_application:
       title: Tag with the application
       description: >-
-        Sets the project's application attribute to its identifier, so the project and the factory
-        environment that made it filter together. The organization must define the attribute first.
+        Sets the project's application attribute to its identifier, so the project and the
+        onboarding environment that made it filter together. The organization must define the attribute first.
       type: boolean
       default: false
     environments:
@@ -155,7 +155,7 @@ dependencies:
 
 resources:
   project:
-    resource_type: massdriver-project@0.0.0
+    resource_type: app-project@0.0.0
     required: true
 
 steps:

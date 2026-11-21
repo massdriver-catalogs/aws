@@ -1,10 +1,10 @@
 # ECR Repository
 
-One container image repository for one app. A pipeline pushes images to it, and functions in the same account and region run them.
+One container image repository for one app. Its pipeline pushes images here, and Lambda functions and ECS services in the same account and region run them.
 
 ## Access
 
-The repository publishes two IAM policies, **push** and **pull**. A pipeline or function attaches one to its own role, so permissions to the repository are defined in one place. Both include `ecr:GetAuthorizationToken`, which every `docker login` needs.
+The repository publishes two IAM policies, **push** and **pull**. A pipeline, function or service attaches one to its own role, so permissions to the repository are defined in one place. Both include `ecr:GetAuthorizationToken`, which every `docker login` needs.
 
 Lambda functions in this account can pull without either policy: the repository's own policy allows Lambda to fetch images for functions here.
 

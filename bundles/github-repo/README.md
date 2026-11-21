@@ -1,6 +1,6 @@
 # GitHub Repository
 
-An application's repository in the connected GitHub organization, created through the GitHub App, with a pipeline that can push to the application's ECR repository and deploy into its Massdriver project.
+An app's repository in the connected GitHub organization, created through the GitHub App, with a pipeline that builds the image, pushes it to the app's ECR repository and deploys it into the app's Massdriver project.
 
 ```mermaid
 flowchart LR
@@ -15,9 +15,9 @@ flowchart LR
 
 ## How it connects
 
-It depends on the factory's other two components:
+It depends on two other onboarding bundles:
 
-- **ECR repository:** the pipeline pushes there. This bundle makes an IAM role only the default branch of this repository can assume, through GitHub's OIDC tokens, with the ECR repository's push policy attached. No AWS keys are stored in GitHub. The role trusts the account's GitHub Actions OIDC provider, which the factory gets as an environment default from the platform.
+- **ECR repository:** the pipeline pushes there. This bundle makes an IAM role only the default branch of this repository can assume, through GitHub's OIDC tokens, with the ECR repository's push policy attached. No AWS keys are stored in GitHub. The role trusts the account's GitHub Actions OIDC provider, from `github-actions-oidc`, set as an environment default.
 - **Massdriver project:** the pipeline deploys there. This bundle makes a Massdriver service account for the repository and puts it in the project's deploy group, so the pipeline can deploy only where that group can. Its token is the `MASSDRIVER_API_KEY` Actions secret, valid for a year. The first deploy after eleven months replaces the service account and the secret with fresh ones, so redeploy at least that often.
 
 The repository resource it produces describes the repository the same way any Git host would, so the codebase bundle can merge it with the registry and project.

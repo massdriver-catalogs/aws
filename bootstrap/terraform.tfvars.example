@@ -1,6 +1,6 @@
-factory = {
-  identifier = "factory"
-  name       = "Application Factory"
+onboarding = {
+  identifier = "apps"
+  name       = "Apps"
   attributes = { project-type = "ci" }
 }
 

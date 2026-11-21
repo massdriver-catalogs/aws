@@ -1,0 +1,108 @@
+name: valkey
+description: >-
+  A serverless Valkey cache (Redis compatible) inside the VPC, with spending caps and a client
+  security group that apps attach to reach it.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/valkey
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Development
+      major_engine_version: "8"
+      max_data_storage_gb: 1
+      max_ecpu_per_second: 1000
+      snapshot_retention_days: 1
+    - __name: Production
+      major_engine_version: "8"
+      max_data_storage_gb: 10
+      max_ecpu_per_second: 100000
+      snapshot_retention_days: 7
+  required:
+    - major_engine_version
+    - max_data_storage_gb
+    - max_ecpu_per_second
+    - snapshot_retention_days
+  properties:
+    major_engine_version:
+      title: Valkey version
+      description: Can be upgraded in place to a newer version, never downgraded.
+      type: string
+      default: "8"
+      oneOf:
+        - const: "8"
+          title: Valkey 8
+        - const: "7"
+          title: Valkey 7
+    max_data_storage_gb:
+      title: Data storage limit (GB)
+      description: >-
+        When the cache reaches this size, it evicts the least recently used keys, or writes fail.
+        ***~$0.084/GB-hour stored (~$61/GB-month), at least 100 MB.***
+      type: integer
+      default: 1
+      oneOf:
+        - const: 1
+          title: 1 GB
+        - const: 5
+          title: 5 GB
+        - const: 10
+          title: 10 GB
+        - const: 25
+          title: 25 GB
+        - const: 50
+          title: 50 GB
+        - const: 100
+          title: 100 GB
+    max_ecpu_per_second:
+      title: Request limit (ECPUs per second)
+      description: >-
+        A simple GET or SET of a small value uses about one ECPU. Requests above the limit are
+        throttled. ***~$0.0023 per million ECPUs used.***
+      type: integer
+      default: 1000
+      oneOf:
+        - const: 1000
+          title: 1,000 per second
+        - const: 10000
+          title: 10,000 per second
+        - const: 100000
+          title: 100,000 per second
+        - const: 1000000
+          title: 1,000,000 per second
+    snapshot_retention_days:
+      title: Keep daily snapshots for (days)
+      description: >-
+        0 turns snapshots off. A cache can be rebuilt from its source, so snapshots matter only when
+        a cold cache is too slow or the cache holds data kept nowhere else.
+        ***Snapshots ~$0.085/GB-month.***
+      type: integer
+      default: 1
+      minimum: 0
+      maximum: 35
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  network:
+    resource_type: aws-vpc@0.0.0
+    required: true
+
+resources:
+  cache:
+    resource_type: aws-valkey@0.0.0
+    required: true
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+
+ui:
+  ui:order:
+    - major_engine_version
+    - max_data_storage_gb
+    - max_ecpu_per_second
+    - snapshot_retention_days
+    - "*"
+  snapshot_retention_days:
+    ui:widget: updown

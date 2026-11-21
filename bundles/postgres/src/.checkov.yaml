@@ -1,0 +1,12 @@
+skip-check:
+  # The secret, Performance Insights and log groups use AWS-managed keys so
+  # consumers need only secretsmanager:GetSecretValue, with no key policy to grant.
+  - CKV_AWS_149
+  - CKV_AWS_354
+  - CKV_AWS_158
+  # The password is published on the resource and read by consumers at deploy
+  # time; an out-of-band rotation would leave them holding a stale password.
+  # It is rotated by raising the password version instead.
+  - CKV2_AWS_57
+  # The client security group is attached by consuming bundles, not here.
+  - CKV2_AWS_5

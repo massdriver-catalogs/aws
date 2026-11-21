@@ -1,18 +1,18 @@
 # Codebase
 
-Where an application's code lives and where its images go, as one resource: the Git repository and the ECR repository the factory made for it.
+Where an app's code lives and where its images go, as one resource: its GitHub repository and its ECR repository.
 
 ## Why one resource
 
-The application's project needs both, in every environment, in every bundle that builds or runs the application. Two separate links across projects would be set per instance, and a new environment would start without them. One resource, set once as each environment's default, reaches every bundle there, and a bundle that only needs the registry takes the codebase and ignores the rest.
+Every runtime in the app's project needs the registry, in every environment. Links across projects would be set per instance, and a new environment would start without them. One resource, set once as each environment's default, reaches every bundle there.
 
-Bundles in the application's project read it as `aws-codebase`. A function or service attaches the registry's **pull** policy to its own role and runs `registry.url:<git-sha>`; a bundle that opens issues or reads the code uses `repository`.
+Bundles read it as `aws-codebase`. `lambda-function` and `ecs-service` attach the registry's **pull** policy to their roles, so they can run any image in it, such as the `<registry url>:<git-sha>` tags the pipeline pushes.
 
 ## How it connects
 
-It takes the factory's three other components: the repository, the ECR repository and the Massdriver project. It needs no cloud access of its own.
+It takes the other onboarding bundles: the repository, the ECR repository and the Massdriver project. It needs no AWS access, only the Massdriver Service Account credential, to share itself.
 
-With **Share with the project** on, the codebase is shared with every environment whose `md-project` is the application's project, so people working there can pick it as a default without access to the factory. Setting it as the default is still a step per environment, because Massdriver's Terraform provider can't set environment defaults yet:
+With **Share with the project** on, the codebase is shared with every environment whose `md-project` is the app's project, so people working there can pick it as a default without access to the onboarding project. Setting it as the default is still a step per environment, because Massdriver's Terraform provider can't set environment defaults yet:
 
 ```bash
 mass environment default <project>-<environment> <codebase resource ID>

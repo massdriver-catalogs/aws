@@ -1,0 +1,4 @@
+skip-check:
+  # Event notifications are how an app reacts to new files, not a security
+  # control. Apps that need them subscribe to the bucket themselves.
+  - CKV2_AWS_62

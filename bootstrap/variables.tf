@@ -1,5 +1,5 @@
-variable "factory" {
-  description = "The factory project."
+variable "onboarding" {
+  description = "The project that onboards apps."
   type = object({
     identifier  = string
     name        = string
@@ -7,14 +7,14 @@ variable "factory" {
     attributes  = optional(map(string), {})
   })
   default = {
-    identifier  = "factory"
-    name        = "Application Factory"
+    identifier  = "apps"
+    name        = "Apps"
     description = "Mints each application's Massdriver project, GitHub repository and ECR repository. One environment per application."
   }
 }
 
 variable "applications" {
-  description = "Factory environments, one per application, keyed by identifier. Attributes are environment attributes, e.g. application and team."
+  description = "Environments, one per app, keyed by identifier. Attributes are environment attributes, e.g. application and team."
   type = map(object({
     name       = string
     attributes = optional(map(string), {})

@@ -11,16 +11,18 @@ ui:
     - label: AWS Console
       path: ./instructions/AWS Console.md
   schema:
-    ui:order: [external_id, arn, "*"]
+    ui:order: [arn, token_level, "*"]
 
 schema:
   title: AWS IAM Role
-  description: A role in your AWS account that Massdriver assumes to build and run what you deploy.
+  description: >-
+    A role in your AWS account that Massdriver assumes with its identity token to build and run what
+    you deploy. No keys are stored.
   type: object
   additionalProperties: false
   required:
     - arn
-    - external_id
+    - token_level
   properties:
     arn:
       title: Role ARN
@@ -31,11 +33,20 @@ schema:
         pattern: "Must be an IAM role ARN, for example arn:aws:iam::123456789012:role/massdriver."
       examples:
         - arn:aws:iam::123456789012:role/massdriver
-    external_id:
-      title: External ID
+    token_level:
+      title: Token level
       description: >-
-        The secret value you chose and put in the role's trust policy. Massdriver presents it when
-        assuming the role; it must match exactly.
+        Which Massdriver identity the role's trust policy accepts. Organization lets every deployment
+        in your organization use the role; the narrower levels limit it to one project, environment
+        or instance.
       type: string
-      minLength: 2
-      $md.sensitive: true
+      default: organization
+      oneOf:
+        - const: organization
+          title: Organization
+        - const: project
+          title: Project
+        - const: environment
+          title: Environment
+        - const: instance
+          title: Instance

@@ -15,7 +15,7 @@ schema:
   title: Massdriver Service Account
   description: >-
     A service account that can create projects, environments, groups and service accounts, and
-    share resources. Factory bundles use it to mint each application's Massdriver project and give
+    share resources. The onboarding bundles use it to create each app's Massdriver project and give
     its pipeline a token scoped to that project. It holds organization admin power, so set it as
     the default only in environments that admins deploy.
   type: object

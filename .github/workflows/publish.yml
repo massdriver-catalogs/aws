@@ -7,6 +7,7 @@ on:
       - "platforms/**"
       - "resource-types/**"
       - "bundles/**"
+      - "examples/*/applications/**"
       - ".github/workflows/publish.yml"
   workflow_dispatch:
     inputs:
@@ -65,7 +66,9 @@ jobs:
           for kind in platforms resource-types bundles; do
             awk -F/ -v k="$kind" '$1 == k && NF > 2 { print $1 "/" $2 }' changed.txt | sort -u > "$kind.txt"
           done
-          for kind in platforms resource-types bundles; do
+          awk -F/ '$1 == "examples" && $3 == "applications" && $5 == "resource-type" { print $1 "/" $2 "/" $3 "/" $4 "/" $5 }' changed.txt | sort -u > app-resource-types.txt
+          awk -F/ '$1 == "examples" && $3 == "applications" && $5 == "bundle" { print $1 "/" $2 "/" $3 "/" $4 "/" $5 }' changed.txt | sort -u > apps.txt
+          for kind in platforms resource-types bundles app-resource-types apps; do
             echo "$kind:"; sed 's/^/  /' "$kind.txt"
           done
 
@@ -73,17 +76,18 @@ jobs:
       - name: Publish platforms and resource types
         run: |
           set -euo pipefail
-          for dir in $(cat platforms.txt resource-types.txt); do
+          for dir in $(cat platforms.txt resource-types.txt app-resource-types.txt); do
             [ -f "$dir/massdriver.yaml" ] || continue
             name=$(awk '/^name:/ { print $2; exit }' "$dir/massdriver.yaml")
             mass repository create "$name" -t resource-type >/dev/null 2>&1 || true
             mass resource-type publish "$dir"
           done
 
+      # Example apps build on the runtimes among the bundles, so they publish after them.
       - name: Publish bundles
         run: |
           set -euo pipefail
-          for dir in $(cat bundles.txt); do
+          for dir in $(cat bundles.txt apps.txt); do
             [ -f "$dir/massdriver.yaml" ] || continue
             name=$(awk '/^name:/ { print $2; exit }' "$dir/massdriver.yaml")
             mass repository create "$name" -t bundle >/dev/null 2>&1 || true

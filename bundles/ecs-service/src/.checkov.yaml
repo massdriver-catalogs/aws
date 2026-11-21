@@ -1,0 +1,18 @@
+skip-check:
+  # Apps and the placeholder write to temporary and cache directories. A
+  # read-only root filesystem breaks most images unless they are built for it.
+  - CKV_AWS_336
+
+  # Tasks reach images, AWS APIs and the app's own dependencies through the
+  # VPC's egress; those destinations aren't known to this bundle.
+  - CKV_AWS_382
+
+  # The log group holds the app's output. It is encrypted with a key AWS owns;
+  # a customer managed key adds one to rotate, pay for and keep available, or
+  # logs stop being written.
+  - CKV_AWS_158
+
+  # TLS ends at the load balancer. Inside the VPC it forwards plain HTTP to
+  # the task, which is what app images serve; HTTPS here would need every app
+  # to carry its own certificate.
+  - CKV_AWS_378

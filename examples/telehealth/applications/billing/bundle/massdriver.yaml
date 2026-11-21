@@ -1,0 +1,31 @@
+name: tendwell-billing
+description: >-
+  Tendwell's claims service, from the Clearpath acquisition. Pulls closed encounters from the Care
+  API, keeps claims in MariaDB and writes claim files to S3. Runs on the ECS service runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/telehealth/applications/billing
+version: 0.0.0
+
+dependencies:
+  care:
+    resource_type: tendwell-care-api@0.0.0
+    required: true
+
+resources:
+  billing:
+    resource_type: tendwell-billing-api@0.0.0
+    required: true
+
+steps:
+  - path: src
+    resources:
+      billing:
+        template: |
+          {
+            url: .outputs.url,
+            hostname: .outputs.hostname
+          }
+
+app:
+  runtime: ecs-service
+  envs:
+    CARE_URL: .dependencies.care.url

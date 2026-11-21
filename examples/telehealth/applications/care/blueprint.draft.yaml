@@ -1,0 +1,19 @@
+version: 1
+project: care
+name: Care
+components:
+  registry:  { bundle: ecr-repository, name: Image Repository }
+  charts:    { bundle: postgres, name: Charts }
+  sessions:  { bundle: valkey, name: Sessions }
+  documents: { bundle: s3-bucket, name: Documents }
+  app:       { bundle: tendwell-care, name: Care }
+defaults:
+  - platform/network.network
+  - platform/dns.zone
+  - platform/cluster.cluster
+links:
+  - registry.repository -> app.registry
+  - charts.database     -> app.postgres
+  - sessions.cache      -> app.cache
+  - documents.bucket    -> app.bucket
+  - visits/app.visits   -> app.visits
