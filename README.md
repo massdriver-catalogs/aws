@@ -96,9 +96,7 @@ ECS reads passwords from Secrets Manager when a task starts, so it never holds a
 
 ## Use it
 
-Two ways in.
-
-**Stand up an example.** Each folder in [examples/](examples/) is a whole company built on this catalog, with its own apps and a `deploy.sh` that publishes the catalog to your organization and builds the company in it. [examples/telehealth](examples/telehealth/) is Tendwell Health: a platform project, three apps on Lambda and ECS that connect to each other, and teams with their own access.
+**Stand up the example.** [examples/telehealth](examples/telehealth/) is Tendwell Health, a telehealth company built on this catalog: a platform project, three apps on Lambda and ECS that connect to each other, and teams with their own access. Its `deploy.sh` publishes the catalog to your organization and builds the company in it.
 
 **Sync it to your organization and build your own.** Fork this repository and connect its publish workflow:
 
@@ -114,7 +112,7 @@ Then add an AWS IAM Role credential, following the instructions on its form, and
 platforms/        Credentials
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
-examples/         Example companies built on the catalog, with their apps
+examples/         Tendwell Health, a telehealth company built on the catalog
 .github/workflows Publishing
 ```
 
