@@ -146,7 +146,7 @@ dependencies:
     resource_type: aws-ecr-repository@0.0.0
     required: true
   project:
-    resource_type: massdriver-project@0.0.0
+    resource_type: app-project@0.0.0
     required: true
 
 resources:

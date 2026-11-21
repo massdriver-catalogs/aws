@@ -166,7 +166,7 @@ define_attribute() {
   local key=$1 scope=$2 values=$3
   graphql "$(jq -n --arg org "${MASSDRIVER_ORG_ID:-$(profile_value organization_id)}" --arg key "$key" --arg scope "$scope" --argjson values "$values" '{
     query: "mutation($org: ID!, $input: CreateCustomAttributeInput!) { createCustomAttribute(organizationId: $org, input: $input) { successful messages { message } } }",
-    variables: {org: $org, input: {key: $key, scope: $scope, values: $values}}
+    variables: {org: $org, input: {key: $key, scope: $scope, values: $values, required: false}}
   }')" | jq -r --arg key "$key" '
     if .data.createCustomAttribute.successful then "defined \($key)"
     else "\($key): \([(.data.createCustomAttribute.messages // [])[].message, (.errors // [])[].message] | join("; "))" end' >&2

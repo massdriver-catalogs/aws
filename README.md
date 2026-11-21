@@ -40,7 +40,7 @@ Deploy these once per environment (dev, staging, production) and set each as an 
 |---|---|---|
 | `ecr-repository` | The app's image repository, with push and pull policies | `aws-ecr-repository` |
 | `github-repo` | The app's GitHub repository, with a pipeline that builds, pushes and deploys | `source-repository` |
-| `massdriver-project` | The app's Massdriver project, its environments, and a group its pipeline deploys with | `massdriver-project` |
+| `massdriver-project` | The app's Massdriver project, its environments, and a group its pipeline deploys with | `app-project` |
 | `codebase` | The repository and registry as one resource, shared with the app's project | `aws-codebase` |
 
 ### Credentials
