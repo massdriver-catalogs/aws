@@ -3,7 +3,7 @@ version: 0.0.0
 label: AWS Codebase
 
 ui:
-  connectionOrientation: environmentDefault
+  connectionOrientation: link
 
 schema:
   title: AWS Codebase
