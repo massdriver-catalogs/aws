@@ -19,6 +19,7 @@ params:
       max_count: 1
       cpu_target: 70
       health_check_path: /
+      slow_response_ms: 1000
       subdomain: ""
       environment: []
       log_retention_days: 1
@@ -32,6 +33,7 @@ params:
       max_count: 6
       cpu_target: 60
       health_check_path: /
+      slow_response_ms: 1000
       subdomain: ""
       environment: []
       log_retention_days: 30
@@ -45,6 +47,7 @@ params:
     - max_count
     - cpu_target
     - health_check_path
+    - slow_response_ms
     - subdomain
     - environment
     - log_retention_days
@@ -137,6 +140,15 @@ params:
       default: 70
       minimum: 20
       maximum: 90
+    slow_response_ms:
+      title: Alarm when responses are slower than (ms)
+      description: >-
+        Alarms when 5% of requests take longer than this for 15 minutes. Ignored without a
+        subdomain.
+      type: integer
+      default: 1000
+      minimum: 50
+      maximum: 60000
     health_check_path:
       title: Health check path
       description: >-
@@ -271,6 +283,7 @@ ui:
     - port
     - subdomain
     - health_check_path
+    - slow_response_ms
     - size
     - architecture
     - spot

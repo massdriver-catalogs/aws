@@ -14,6 +14,7 @@ One Amazon RDS for PostgreSQL database for one app, inside the environment's VPC
 - A Secrets Manager secret with the connection details as JSON: `username`, `password`, `engine`, `host`, `port`, `dbname`.
 - An IAM policy, **read-secret**, that an app attaches to its role to read that secret.
 - CloudWatch log groups for the PostgreSQL and upgrade logs. Statements slower than one second and all schema changes are logged.
+- Alarms when CPU stays over 80% and when less than 10% of storage is free.
 
 ## Connecting
 

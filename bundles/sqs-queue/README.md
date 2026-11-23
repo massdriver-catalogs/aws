@@ -11,6 +11,7 @@ An AWS account to deploy into.
 - The queue, encrypted at rest with an SQS-managed key. Receives wait up to 20 seconds for a message, which cuts the number of empty, billed requests.
 - A dead-letter queue. A message that fails **Attempts before dead-letter** times moves there, so one bad message can't block the rest. It keeps messages for 14 days.
 - Two IAM policies, **send** and **consume**. An app attaches one to its own role. Consume covers receive, delete, change visibility and reading queue attributes, which is what a Lambda event source needs.
+- Alarms when the oldest message has waited longer than **Alarm when a message waits longer than**, and when any message reaches the dead-letter queue.
 
 ## Processing time limit
 
