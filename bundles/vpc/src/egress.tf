@@ -108,6 +108,8 @@ resource "aws_instance" "nat" {
   user_data                   = <<-EOF
     #!/bin/bash
     set -euo pipefail
+    # dnf needs more memory than a nano has, and the kernel kills it otherwise.
+    fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
     for _ in $(seq 1 30); do dnf install -y iptables-services && break; sleep 10; done
     rpm -q iptables-services
     echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.d/90-nat.conf
