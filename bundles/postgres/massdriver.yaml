@@ -18,7 +18,7 @@ params:
       skip_final_snapshot: true
       performance_insights: false
       enhanced_monitoring: false
-      log_retention_days: 7
+      log_retention_days: 1
       database_name: app
       username: app_admin
       password_version: 1

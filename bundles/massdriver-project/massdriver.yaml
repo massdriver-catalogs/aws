@@ -7,6 +7,28 @@ version: 0.0.0
 
 params:
   examples:
+    - __name: Development
+      project_type: app-hosting
+      environments:
+        - identifier: dev
+          name: Development
+          separation_of_duty: false
+          decommission_protection: false
+      deploy_environments:
+        - dev
+    - __name: Production
+      project_type: app-hosting
+      environments:
+        - identifier: dev
+          name: Development
+          separation_of_duty: false
+          decommission_protection: false
+        - identifier: prod
+          name: Production
+          separation_of_duty: true
+          decommission_protection: true
+      deploy_environments:
+        - dev
     - __name: Application
       project_type: app-hosting
       environments:

@@ -7,6 +7,10 @@ version: 0.0.0
 
 params:
   examples:
+    - __name: Development
+      adopt_existing_provider: false
+    - __name: Production
+      adopt_existing_provider: false
     - __name: New account
       adopt_existing_provider: false
     - __name: Provider already exists

@@ -11,7 +11,7 @@ params:
       major_engine_version: "8"
       max_data_storage_gb: 1
       max_ecpu_per_second: 1000
-      snapshot_retention_days: 1
+      snapshot_retention_days: 0
     - __name: Production
       major_engine_version: "8"
       max_data_storage_gb: 10

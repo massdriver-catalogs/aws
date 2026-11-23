@@ -7,6 +7,10 @@ version: 0.0.0
 
 params:
   examples:
+    - __name: Development
+      share_with_project: true
+    - __name: Production
+      share_with_project: true
     - __name: Shared with the project
       share_with_project: true
     - __name: Not shared
