@@ -2,7 +2,7 @@
 # Stands up Tendwell Health in a Massdriver organization without GitHub Actions.
 #
 #   ./deploy.sh role                    make the IAM role Massdriver deploys with, in the current AWS account
-#   ./deploy.sh setup                   define custom attributes; create bundle repositories and grants
+#   ./deploy.sh setup                   custom attributes, organization settings, bundle repositories and grants
 #   ./deploy.sh publish                 publish the catalog, then the example apps
 #   ./deploy.sh bootstrap               apply bootstrap.tf and set each environment's AWS credential
 #   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev, staging or prod
@@ -142,49 +142,21 @@ require_roles() {
     die "no AWS roles; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
 }
 
-profile_value() {
-  python3 - "$1" "${MASSDRIVER_PROFILE:-default}" <<'PY'
-import os, sys, yaml
-config = yaml.safe_load(open(os.path.expanduser("~/.config/massdriver/config.yaml")))
-print(config["profiles"][sys.argv[2]][sys.argv[1]])
-PY
-}
-
-graphql() {
-  local key=${MASSDRIVER_API_KEY:-$(profile_value api_key)} org=${MASSDRIVER_ORG_ID:-$(profile_value organization_id)} auth
-  case "$key" in
-    md_*) auth="Bearer $key" ;;
-    *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
-  esac
-  curl -sS -X POST "${MASSDRIVER_URL:-https://api.massdriver.cloud}/api/v2" \
-    -H "Authorization: $auth" -H 'content-type: application/json' -d "$1"
-}
-
-# The Terraform provider can't declare custom attributes yet. Defining one that
-# already exists fails harmlessly, so reruns just report it.
-define_attribute() {
-  local key=$1 scope=$2 values=$3
-  graphql "$(jq -n --arg org "${MASSDRIVER_ORG_ID:-$(profile_value organization_id)}" --arg key "$key" --arg scope "$scope" --argjson values "$values" '{
-    query: "mutation($org: ID!, $input: CreateCustomAttributeInput!) { createCustomAttribute(organizationId: $org, input: $input) { successful messages { message } } }",
-    variables: {org: $org, input: {key: $key, scope: $scope, values: $values, required: false}}
-  }')" | jq -r --arg key "$key" '
-    if .data.createCustomAttribute.successful then "defined \($key)"
-    else "\($key): \([(.data.createCustomAttribute.messages // [])[].message, (.errors // [])[].message] | join("; "))" end' >&2
-}
-
 # Attributes, bundle repositories and who may use each bundle come before
 # anything is published or placed on a canvas.
 cmd_setup() {
   require_roles
-  log "define custom attributes"
-  define_attribute team PROJECT '["platform", "patient-experience", "clinical", "revenue"]'
-  define_attribute data_classification COMPONENT '["phi", "internal", "public"]'
-
-  log "create bundle repositories and their grants"
+  log "define custom attributes, organization settings, bundle repositories and their grants"
   mass repository list -t bundle -o json | jq '{existing_bundle_repositories: [(. // [])[].name]}' \
     >"$HERE/existing.auto.tfvars.json"
   (cd "$HERE" && tofu init -input=false >/dev/null &&
-    tofu apply -input=false -auto-approve -target=massdriver_oci_repository_grant.bundle)
+    # Adopt attributes an earlier run, or a person, already defined; a missing one just fails to import.
+    for key in team data_classification; do
+      tofu state list "massdriver_custom_attribute.$key" | grep -q . ||
+        tofu import -input=false "massdriver_custom_attribute.$key" "$key" >/dev/null 2>&1 || true
+    done &&
+    tofu apply -input=false -auto-approve \
+      -target=massdriver_organization_settings.this -target=massdriver_oci_repository_grant.bundle)
 }
 
 # Types before the bundles that use them, and runtimes before the apps built on them.
@@ -377,7 +349,8 @@ case "${1:-}" in
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
     confirm "$(role_plan)
 
-In your Massdriver organization: defines the team and data_classification attributes, creates a
+In your Massdriver organization: defines the team and data_classification attributes and sets
+them as default tags, turns off granting new bundles to every project, creates a
 repository and access grant for every bundle, publishes the catalog and the Tendwell apps, then
 creates the platform, apps, visits, care and billing projects, their environments, five groups
 with their policies, and the AWS credentials.
