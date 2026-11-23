@@ -3,7 +3,7 @@ version: 0.0.0
 label: AWS ECS Cluster
 
 ui:
-  connectionOrientation: environmentDefault
+  connectionOrientation: link
   environmentDefaultGroup: compute
 
 schema:

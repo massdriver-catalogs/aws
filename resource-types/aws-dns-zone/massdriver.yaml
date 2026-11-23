@@ -3,7 +3,7 @@ version: 0.0.0
 label: AWS DNS Zone
 
 ui:
-  connectionOrientation: environmentDefault
+  connectionOrientation: link
   environmentDefaultGroup: dns
 
 schema:
