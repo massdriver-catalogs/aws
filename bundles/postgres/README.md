@@ -20,7 +20,7 @@ One Amazon RDS for PostgreSQL database for one app, inside the environment's VPC
 
 Connections must use TLS. Most drivers do this with `sslmode=require`; use `verify-full` with the [RDS certificate bundle](https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem) to also check the server.
 
-An app can read the password from the secret at start-up, or receive it from this database's resource when it is deployed. IAM database authentication is also on, for apps that would rather use short-lived tokens than a password.
+An app can read the password from the secret at start-up, or receive it from this database's resource when it is deployed.
 
 ## Password
 

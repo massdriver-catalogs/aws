@@ -16,7 +16,7 @@ schema:
   properties:
     url:
       title: URL
-      description: Base URL of the API, e.g. https://billing.dev.tendwell.health.
+      description: Base URL of the API, e.g. https://billing.dev.tendwell.example.
       type: string
       pattern: ^https://
     hostname:

@@ -75,8 +75,9 @@ EOF
 mass resource create -n "AWS $ACCOUNT_ID" -t aws-iam-role -f aws-credential.json
 ```
 
-It prints the new resource's ID. Make it the default in each environment that deploys into this account:
+It prints the new resource's ID. Share it with every environment, then make it the default in each environment that deploys into this account:
 
 ```bash
+mass resource grant create <resource-id> --all-environments
 mass environment default <project>-<environment> <resource-id>
 ```

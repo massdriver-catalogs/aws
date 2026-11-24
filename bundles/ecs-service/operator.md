@@ -7,7 +7,7 @@ templating: mustache
 
 ### 1. Add a Dockerfile
 
-Any web server works if it listens on `PORT` (set to **Container port**, now {{params.port}}) and answers **Health check path** (now `{{params.health_check_path}}`) with 2xx. A small Node example:
+Any web server works if it listens on `PORT` (set to **Container port**, now {{params.port}}) and answers **Health check path** (now `{{params.health_check_path}}`) with 2xx or 3xx. A small Node example:
 
 ```js
 // server.js
@@ -31,7 +31,11 @@ CMD ["node", "server.js"]
 
 ### 2. Build and push
 
-The service runs **{{params.architecture}}** tasks. Build with `--platform linux/arm64` for arm64, or `--platform linux/amd64` for x86_64. A mismatch fails with `exec format error`.
+The service runs **{{params.architecture}}** tasks. Build for that platform, or the task fails with `exec format error`:
+
+```bash
+PLATFORM=linux/arm64   # linux/amd64 when Architecture is x86_64
+```
 
 {{#dependencies.codebase}}
 ```bash
@@ -39,17 +43,28 @@ REPO={{dependencies.codebase.registry.url}}
 TAG=$(git rev-parse --short HEAD)
 aws ecr get-login-password --region {{dependencies.codebase.registry.region}} \
   | docker login --username AWS --password-stdin {{dependencies.codebase.registry.registry_id}}.dkr.ecr.{{dependencies.codebase.registry.region}}.amazonaws.com
-docker buildx build --platform linux/arm64 -t $REPO:$TAG --push .
+docker buildx build --platform $PLATFORM -t $REPO:$TAG --push .
 ```
 {{/dependencies.codebase}}
 {{^dependencies.codebase}}
-No codebase is connected, so the service can't pull from ECR. Connect the project's codebase and deploy, then push to its repository:
+{{#dependencies.registry}}
+```bash
+REPO={{dependencies.registry.url}}
+TAG=$(git rev-parse --short HEAD)
+aws ecr get-login-password --region {{dependencies.registry.region}} \
+  | docker login --username AWS --password-stdin {{dependencies.registry.registry_id}}.dkr.ecr.{{dependencies.registry.region}}.amazonaws.com
+docker buildx build --platform $PLATFORM -t $REPO:$TAG --push .
+```
+{{/dependencies.registry}}
+{{^dependencies.registry}}
+No codebase or ECR repository is connected, so the service can't pull from ECR. Connect one and deploy, then push to it:
 
 ```bash
 REPO=<account>.dkr.ecr.{{dependencies.cluster.region}}.amazonaws.com/<repository>
 TAG=$(git rev-parse --short HEAD)
-docker buildx build --platform linux/arm64 -t $REPO:$TAG --push .
+docker buildx build --platform $PLATFORM -t $REPO:$TAG --push .
 ```
+{{/dependencies.registry}}
 {{/dependencies.codebase}}
 
 ### 3. Deploy it
@@ -80,7 +95,7 @@ mass instance deploy {{id}} --patch '.subdomain = "api"' -m "Give it an address"
 
 ### 5. Give it a database
 
-The service has no database of its own. Your app's bundle declares one and names the variables it wants, and the service joins the database's security group and gets its policies:
+The service has no database of its own. Your app's bundle declares one and names the variables it wants, and the service joins the database's security group:
 
 ```yaml
 dependencies:
@@ -134,6 +149,30 @@ aws ecs describe-tasks --region {{dependencies.cluster.region}} --cluster {{depe
 - **`ResourceInitializationError: unable to pull secrets`:** the task can't read a database secret. Check the database is still connected and the VPC has egress.
 - **`OutOfMemoryError`** or exit code 137: raise **Task size**.
 
+## CPU high or Memory high
+
+Average CPU or memory has been over 80% for 15 minutes. Autoscaling adds tasks for CPU up to **Most tasks when busy** (now {{params.max_count}}), so a CPU alarm means it's out of room:
+
+```bash
+mass instance deploy {{id}} --patch '.max_count = {{params.max_count}} + 2' -m "More room to scale" --follow
+```
+
+Memory doesn't scale out. A task that runs out is killed, so raise **Task size** (now {{params.size}}).
+
+## Server errors
+
+More than 5% of requests returned 5xx for 5 minutes. The app is failing them, so the cause is in its logs:
+
+```bash
+aws logs tail /ecs/{{id}} --region {{dependencies.cluster.region}} --since 15m --format short | grep -iE 'error|exception|traceback' | tail -30
+```
+
+A 502 or 503 from the load balancer itself means no task answered; see "Unhealthy targets".
+
+## Slow responses
+
+5% of requests took longer than **Alarm when responses are slower than** (now {{params.slow_response_ms}} ms) for 15 minutes. Check **CPU high** first; a busy task answers slowly. Otherwise the time is usually spent waiting on a database or another service, which the app's logs show.
+
 ## Unhealthy targets
 
 ```bash
@@ -159,7 +198,7 @@ aws elbv2 describe-target-health --region {{dependencies.cluster.region}} --targ
     --query 'sort_by(imageDetails,&imagePushedAt)[-5:].imageTags' --output text
   ```
 {{/dependencies.codebase}}
-- **`AccessDeniedException` / `403`:** the image is in an ECR repository this service has no pull policy for. Connect the codebase that owns it and deploy.
+- **`AccessDeniedException` / `403`:** the image is in an ECR repository this service has no pull policy for. Connect the codebase or ECR repository that owns it and deploy.
 - **`i/o timeout` / `dial tcp`:** the private subnets can't reach the registry. The VPC needs internet egress, or VPC endpoints for ECR and S3.
 - **`toomanyrequests`:** Docker Hub rate limit. Push the image to ECR instead.
 - **`image Manifest does not contain descriptor matching platform`:** the image has no **{{params.architecture}}** build. Rebuild with the right `--platform`.

@@ -91,6 +91,8 @@ app:
   runtime: lambda-function
   envs:
     PGHOST: .dependencies.db.hostname
+    PGPORT: .dependencies.db.port
+    PGDATABASE: .dependencies.db.database
     PGUSER: .dependencies.db.username
     PGPASSWORD: .dependencies.db.password
 ```

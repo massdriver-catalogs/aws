@@ -9,7 +9,9 @@ locals {
   })
 
   task_app_policies = merge([
-    for k, d in local.app_dependencies : { for p in d.value.policies : "${k}-${p.name}" => p.arn } if contains(local.task_policies, d.type)
+    for k, d in local.app_dependencies : {
+      for p in d.value.policies : "${k}-${p.name}" => p.arn if contains(local.task_policies[d.type], p.name)
+    } if contains(keys(local.task_policies), d.type)
   ]...)
 
   execution_app_policies = merge([

@@ -50,6 +50,17 @@ resource "aws_vpc_security_group_ingress_rule" "from_clients" {
   to_port                      = local.port
 }
 
+# A new security group has no outbound rules once Terraform manages it, so
+# something holding only the client group could not reach the database.
+resource "aws_vpc_security_group_egress_rule" "to_database" {
+  security_group_id            = aws_security_group.client.id
+  description                  = "PostgreSQL to ${local.name}"
+  referenced_security_group_id = aws_security_group.database.id
+  ip_protocol                  = "tcp"
+  from_port                    = local.port
+  to_port                      = local.port
+}
+
 resource "aws_db_parameter_group" "main" {
   name_prefix = "${local.name}-${replace(local.family, ".", "-")}-"
   family      = local.family

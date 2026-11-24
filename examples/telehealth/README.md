@@ -26,13 +26,18 @@ flowchart LR
     api[http-api] --> vapp[tendwell-visits]
     slots[(dynamodb-table)] --> vapp
     q[sqs-queue] --> vapp
+    api --> sender[tendwell-visits: reminder sender]
+    slots --> sender
+    q --> sender
   end
   subgraph care
     pg[(postgres)] --> capp[tendwell-care]
     vk[(valkey)] --> capp
+    docs[(s3-bucket)] --> capp
   end
   subgraph billing
     db[(mariadb)] --> bapp[tendwell-billing]
+    claims[(s3-bucket)] --> bapp
   end
   vapp -- tendwell-visits-api --> capp
   capp -- tendwell-care-api --> bapp
@@ -72,7 +77,7 @@ mass resource get visits-dev-app.visits -o json | jq -r .payload.url
 
 | Do this | Alarm | Fires after |
 |---|---|---|
-| In Care, book a visit for **Alex Rivera**. The booking works, but Alex's email bounces, so the reminder fails three times and moves to the dead-letter queue. | **Reminders Queue**: dead letters | About 5–8 minutes |
+| In Care, book a visit for **Alex Rivera**. The booking works, but Alex's email bounces, so the reminder fails every try (three in dev) and moves to the dead-letter queue. | **Reminders Queue**: dead letters | About 5–8 minutes |
 | On Care's instance, set **Alarm when responses are slower than (ms)** to `100`, deploy, and keep clicking around Care. Its pages take about 350 ms. | **Care**: slow responses | 15 minutes of traffic |
 
 A dead-letter message stays for 14 days, so that alarm keeps firing until the message expires or someone clears the queue. Set the response alarm back to `1000` when you're done.
@@ -88,6 +93,15 @@ export DOMAIN=tendwell.example PARENT_ZONE_ID=Z0123456789ABCDEFGHIJ
 ./deploy.sh all dev
 ```
 
-That makes the IAM role Massdriver deploys with, trusting your organization's identity tokens; sets up a daily AWS Cost and Usage Report and connects it to Massdriver, so every instance shows what it costs; defines the `team` and `data_classification` attributes, tags every cloud resource with them, and creates a repository for every bundle; publishes the catalog and the apps; applies [bootstrap.tf](bootstrap.tf) (projects, environments, components, links, groups, policies and the AWS credentials); deploys dev; and builds and ships each app. Before it touches AWS it lists the account, everything it will create and roughly what it costs, and waits for you to type `yes`. For a separate prod account, make a role there from the AWS IAM Role credential's instructions and set `PROD_ROLE_ARN`. The apps then answer at `visits.dev.<domain>`, `care.dev.<domain>` and `billing.dev.<domain>`.
+Before it touches AWS it lists the account, everything it will create and roughly what it costs, and waits for you to type `yes`. Then it:
+
+1. Makes the IAM role Massdriver deploys with, trusting your organization's identity tokens.
+2. Sets up a daily AWS Cost and Usage Report and connects it to Massdriver, so every instance shows what it costs.
+3. Defines the `team` and `data_classification` attributes, tags every cloud resource with them, and creates a repository for every bundle.
+4. Publishes the catalog and the apps.
+5. Applies [bootstrap.tf](bootstrap.tf): projects, environments, components, links, groups, policies and the AWS credentials.
+6. Deploys dev, then builds and ships each app.
+
+For a separate prod account, make a role there from the AWS IAM Role credential's instructions and set `PROD_ROLE_ARN`. The apps then answer at `visits.dev.<domain>`, `care.dev.<domain>` and `billing.dev.<domain>`.
 
 Run `./deploy.sh` alone to see the individual steps.

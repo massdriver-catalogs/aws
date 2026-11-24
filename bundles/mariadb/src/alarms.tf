@@ -26,8 +26,10 @@ module "cpu" {
   dimensions  = { DBInstanceIdentifier = aws_db_instance.main.identifier }
 }
 
-# Storage autoscaling grows the disk at 10% free, so this only fires once it
-# can't: autoscaling is off or the maximum is reached.
+# Storage autoscaling also acts at 10% free, after 5 minutes. Fifteen minutes
+# rides out a growth, so this fires when autoscaling is off or at its maximum.
+# The threshold is set from Storage, so after autoscaling grows the disk it
+# fires later than 10%.
 module "free_storage" {
   source  = "massdriver-cloud/aws-metric-alarm/massdriver"
   version = "~> 1.0"
@@ -40,7 +42,7 @@ module "free_storage" {
   message      = "${local.name} MariaDB has under 10% of its storage free. Writes stop when it's full; raise Storage or Grow storage up to."
 
   comparison_operator = "LessThanThreshold"
-  evaluation_periods  = 1
+  evaluation_periods  = 3
   threshold           = var.storage_gb * 1024 * 1024 * 1024 * 0.1
 
   metric_name = "FreeStorageSpace"

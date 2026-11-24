@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stands up Tendwell Health in a Massdriver organization without GitHub Actions.
+# Stands up Tendwell Health in a Massdriver organization.
 #
 #   ./deploy.sh role                    make the IAM role Massdriver deploys with, in the current AWS account
 #   ./deploy.sh costs                   send the AWS account's costs to Massdriver, per instance
@@ -20,6 +20,8 @@
 #   PROD_ROLE_ARN     a role in a separate prod account; prod uses the role from `role` otherwise
 #   ISSUER            Massdriver's token issuer host; api.massdriver.cloud unless self-hosted
 #   YES=1             skip the confirmation before anything changes in AWS
+#   REDEPLOY=1        provision redeploys instances that are already up, from the preset;
+#                     apps go back to the placeholder until shipped again
 
 set -euo pipefail
 
@@ -117,8 +119,10 @@ deploy() {
   local instance=$1 bundle=$2 stage=$3 filter=${4:-.}
   provisioned "$instance" && return
   log "deploy $instance"
+  local before
+  before=$(latest_deployment "$instance")
   preset "$bundle" "$stage" | jq "$filter" | mass instance deploy "$instance" --params - -m "deploy.sh provision $stage" --follow || true
-  wait_for "$instance"
+  wait_for "$instance" "$before"
 }
 
 # Reruns pick up where a failed run stopped instead of redeploying everything.
@@ -129,16 +133,27 @@ provisioned() {
 
 # The log stream can end, or the API can blip, while a deployment is still
 # running. Later steps read this instance's outputs, so wait for the result.
+latest_deployment() {
+  mass deployment list "$1" -o json 2>/dev/null | jq -r '.[0].id // empty'
+}
+
+# wait_for <instance> <deployment id from before the deploy>
 wait_for() {
-  local status
-  while :; do
-    status=$(mass deployment list "$1" -o json 2>/dev/null | jq -r '.[0].status // empty')
+  local latest status
+  for _ in $(seq 1 240); do
+    latest=$(mass deployment list "$1" -o json 2>/dev/null | jq -c '.[0] // empty')
+    if [ -z "$latest" ] || [ "$(jq -r .id <<<"$latest")" = "${2:-}" ]; then
+      die "$1: the deploy didn't start; see the error above"
+    fi
+    status=$(jq -r .status <<<"$latest")
     case "$status" in
       COMPLETED) return ;;
+      PROPOSED) die "$1: the deployment waits for a second person's approval; approve it in Massdriver, then rerun" ;;
       FAILED | ABORTED | REJECTED) die "$1: deployment $status; see mass deployment logs" ;;
       *) sleep 15 ;;
     esac
   done
+  die "$1: still $status after an hour; see mass deployment logs"
 }
 
 # Grants are immutable and creating one twice fails, so reruns skip existing ones.
@@ -242,11 +257,14 @@ cmd_role() {
   echo "$arn" >&2
 }
 
+# Reads the same profile mass does, so every step talks to the same organization.
 profile_value() {
-  python3 - "$1" "${MASSDRIVER_PROFILE:-default}" <<'PY'
+  python3 - "$1" <<'PY'
 import os, sys, yaml
-config = yaml.safe_load(open(os.path.expanduser("~/.config/massdriver/config.yaml")))
-print(config["profiles"][sys.argv[2]][sys.argv[1]])
+home = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+config = yaml.safe_load(open(os.path.join(home, "massdriver", "config.yaml")))
+name = os.environ.get("MASSDRIVER_PROFILE") or config.get("current_profile") or "default"
+print(config["profiles"][name].get(sys.argv[1], ""))
 PY
 }
 
@@ -257,7 +275,8 @@ graphql() {
     md_*) auth="Bearer $key" ;;
     *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
   esac
-  curl -sS -X POST "${MASSDRIVER_URL:-https://api.massdriver.cloud}/api/v2" \
+  local url=${MASSDRIVER_URL:-$(profile_value url)}
+  curl -sS -X POST "${url:-https://api.massdriver.cloud}/api/v2" \
     -H "Authorization: $auth" -H 'content-type: application/json' -d "$1"
 }
 
@@ -330,13 +349,15 @@ delegate() {
       sleep 10
     done
     echo "gave up waiting for the $domain zone to delegate it" >&2
+    exit 1
   ) &
+  DELEGATING=$!
 }
 
 cmd_provision() {
   local stage
   stage=$(stage_arg "${1:-}")
-  [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
+  [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.example"
   local zone="$stage.$DOMAIN"
   confirm "$(stage_plan "$stage")"
 
@@ -344,17 +365,20 @@ cmd_provision() {
   deploy "platform-$stage-network" vpc "$stage"
   delegate "$zone"
   deploy "platform-$stage-dns" dns-zone "$stage" ".domain = \"$zone\""
-  wait
+  [ -z "${DELEGATING:-}" ] || wait "$DELEGATING" || die "couldn't delegate $zone from $PARENT_ZONE_ID; see the error above"
   deploy "platform-$stage-cluster" ecs-cluster "$stage"
   # An account has one GitHub OIDC provider. Dev creates it in the nonprod
-  # account, and prod creates its own unless everything runs in one account.
+  # account unless one is already there, and prod creates its own unless
+  # everything runs in one account.
   case "$stage" in
-    dev) echo '{"adopt_existing_provider": false}' ;;
+    dev) aws iam list-open-id-connect-providers --output json |
+      jq '{adopt_existing_provider: any(.OpenIDConnectProviderList[]; .Arn | endswith("/token.actions.githubusercontent.com"))}' ;;
     prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
   esac | if ! provisioned "platform-$stage-oidc"; then
     log "deploy platform-$stage-oidc"
+    before=$(latest_deployment "platform-$stage-oidc")
     mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
-    wait_for "platform-$stage-oidc"
+    wait_for "platform-$stage-oidc" "$before"
   fi
 
   for field in network.network dns.zone cluster.cluster; do
@@ -401,10 +425,10 @@ cmd_ship() {
   [[ " ${APPS[*]} " == *" $app "* ]] || die "app must be one of: ${APPS[*]}"
   stage=$(stage_arg "${2:-}")
 
-  local registry url region tag image
+  local registry url region tag image before
   registry=$(mass resource get "$app-$stage-registry.repository" -o json)
-  url=$(jq -r '(.payload // .data).url' <<<"$registry")
-  region=$(jq -r '(.payload // .data).region' <<<"$registry")
+  url=$(jq -r '.payload.url' <<<"$registry")
+  region=$(jq -r '.payload.region' <<<"$registry")
   tag="$(git -C "$HERE" rev-parse --short HEAD)-$(date +%s)"
   image="$url:$tag"
 
@@ -417,8 +441,9 @@ cmd_ship() {
   [ "$app" = visits ] && instances+=("$app-$stage-notifier")
   for instance in "${instances[@]}"; do
     log "deploy $instance"
+    before=$(latest_deployment "$instance")
     mass instance deploy "$instance" --patch ".image_uri = \"$image\"" -m "Ship $tag" --follow || true
-    wait_for "$instance"
+    wait_for "$instance" "$before"
   done
 }
 
@@ -432,7 +457,7 @@ case "${1:-}" in
   ship) cmd_ship "${2:-}" "${3:-}" ;;
   all)
     stage=$(stage_arg "${2:-}")
-    [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
+    [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.example"
     confirm "$(role_plan)
 
 $(costs_plan)

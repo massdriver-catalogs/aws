@@ -26,7 +26,11 @@ locals {
   # What the service gets from each standard type. Other types pass through
   # only as the app's environment variables.
   joins_security_group = ["aws-postgres", "aws-mariadb", "aws-valkey"]
-  task_policies        = ["aws-dynamodb-table", "aws-s3-bucket", "aws-sqs-queue"]
+  task_policies = {
+    "aws-dynamodb-table" = ["read-write"]
+    "aws-s3-bucket"      = ["read-write"]
+    "aws-sqs-queue"      = ["send", "consume"]
+  }
   # A database's policy reads its secret, which ECS does before the container starts.
   execution_policies = ["aws-postgres", "aws-mariadb"]
 
@@ -211,10 +215,6 @@ resource "aws_ecs_service" "main" {
     precondition {
       condition     = var.cluster.region == var.network.region
       error_message = "The cluster is in ${var.cluster.region} but the VPC is in ${var.network.region}. Connect the VPC the cluster uses."
-    }
-    precondition {
-      condition     = !var.spot || var.architecture == "x86_64"
-      error_message = "Fargate Spot doesn't run arm64 tasks. Set Architecture to x86_64, or turn Spot off."
     }
     precondition {
       condition     = var.max_count >= var.desired_count

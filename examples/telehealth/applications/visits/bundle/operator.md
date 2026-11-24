@@ -17,13 +17,16 @@ The slot is taken or doesn't exist. Slot IDs are their start times exactly as `G
 
 ## Reminders aren't going out
 
-The reminders instance consumes the queue; this one only sends to it. Check the reminders function's logs for `"reminder": "sent"`, and the queue's dead-letter queue for messages that failed three times:
+The reminders instance consumes the queue; this one only sends to it. Check the reminders function's logs for `"reminder": "sent"` or `"bounced"`, and how many messages failed every try and moved to the dead-letter queue:
 
 ```bash
 aws sqs get-queue-attributes --region {{dependencies.queue.region}} \
-  --queue-url {{dependencies.queue.url}} \
-  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible
+  --queue-url $(aws sqs get-queue-url --region {{dependencies.queue.region}} \
+    --queue-name $(echo {{dependencies.queue.dead_letter_arn}} | cut -d: -f6) --query QueueUrl --output text) \
+  --attribute-names ApproximateNumberOfMessages
 ```
+
+A reminder for Alex Rivera always lands there; their email bounces on purpose.
 
 ## Ship a new version
 

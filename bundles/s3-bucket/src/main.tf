@@ -6,7 +6,12 @@ locals {
   kms     = var.encryption == "KMS"
   has_ttl = var.object_expiration_days > 0
 
-  kms_statements = local.kms ? [{
+  kms_read_statements = local.kms ? [{
+    Effect   = "Allow"
+    Action   = ["kms:Decrypt", "kms:DescribeKey"]
+    Resource = aws_kms_key.bucket[0].arn
+  }] : []
+  kms_write_statements = local.kms ? [{
     Effect   = "Allow"
     Action   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey*", "kms:DescribeKey"]
     Resource = aws_kms_key.bucket[0].arn
@@ -34,6 +39,13 @@ resource "aws_kms_key" "bucket" {
 
 resource "aws_s3_bucket" "main" {
   bucket = local.name
+
+  lifecycle {
+    precondition {
+      condition     = length(local.name) <= 63
+      error_message = "The bucket name ${local.name} is over S3's 63-character limit. Use shorter project, environment or instance names."
+    }
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "main" {
@@ -141,7 +153,7 @@ resource "aws_iam_policy" "read" {
         Action   = ["s3:GetObject", "s3:GetObjectVersion", "s3:GetObjectAttributes"]
         Resource = "${aws_s3_bucket.main.arn}/*"
       },
-    ], local.kms_statements)
+    ], local.kms_read_statements)
   })
 }
 
@@ -169,6 +181,6 @@ resource "aws_iam_policy" "read_write" {
         ]
         Resource = "${aws_s3_bucket.main.arn}/*"
       },
-    ], local.kms_statements)
+    ], local.kms_write_statements)
   })
 }

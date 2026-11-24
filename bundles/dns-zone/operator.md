@@ -8,8 +8,8 @@ templating: mustache
 A new zone answers nothing until its parent points to it. Get its name servers:
 
 ```bash
-aws route53 list-hosted-zones-by-name --dns-name {{params.domain}} --max-items 1 \
-  --query 'HostedZones[0].Id' --output text \
+aws route53 list-hosted-zones-by-name --dns-name {{params.domain}} \
+  --query "HostedZones[?Name=='{{params.domain}}.'] | [0].Id" --output text \
   | xargs -I{} aws route53 get-hosted-zone --id {} --query 'DelegationSet.NameServers' --output text
 ```
 

@@ -15,3 +15,8 @@ skip-check:
 
   # Nothing reacts to a new log file, so there is nothing to notify.
   - CKV2_AWS_62
+
+  # The firewall's log of blocked requests is encrypted with a key AWS owns; a
+  # customer managed key adds one to rotate, pay for and keep available, or
+  # logs stop being written.
+  - CKV_AWS_158

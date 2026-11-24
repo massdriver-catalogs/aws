@@ -114,7 +114,7 @@ params:
       title: Run on Spot
       description: >-
         Spare capacity that AWS can take back with two minutes' notice; the service starts a
-        replacement. Fine for workers and staging. Needs x86_64. ***~70% cheaper.***
+        replacement. Fine for workers and dev. ***~70% cheaper.***
       type: boolean
       default: false
     desired_count:

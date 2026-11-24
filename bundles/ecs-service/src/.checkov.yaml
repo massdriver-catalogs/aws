@@ -1,4 +1,14 @@
 skip-check:
+  # The alarm modules come from the Terraform registry, which pins by version.
+  # Commit hashes only exist for git sources.
+  - CKV_TF_1
+
+  # An app's secrets are set in Massdriver and copied here on deploy, so they
+  # rotate there. An AWS-managed key means the execution role needs only
+  # secretsmanager:GetSecretValue, with no key policy to grant.
+  - CKV2_AWS_57
+  - CKV_AWS_149
+
   # Apps and the placeholder write to temporary and cache directories. A
   # read-only root filesystem breaks most images unless they are built for it.
   - CKV_AWS_336

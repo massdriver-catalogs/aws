@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.6"
+  required_version = ">= 1.7"
 
   required_providers {
     massdriver = {
@@ -12,7 +12,7 @@ terraform {
 provider "massdriver" {}
 
 variable "aws_accounts" {
-  description = "IAM roles Massdriver deploys with, from the aws-iam-role credential's instructions. nonprod serves dev and previews; prod serves prod. Use the same role for both to run everything in one account."
+  description = "IAM roles Massdriver deploys with, from the aws-iam-role credential's instructions. nonprod serves dev and the apps project's environments; prod serves prod. Use the same role for both to run everything in one account."
   type = object({
     nonprod = object({ arn = string, token_level = optional(string, "organization") })
     prod    = object({ arn = string, token_level = optional(string, "organization") })
@@ -98,6 +98,7 @@ locals {
         "reminders.queue -> app.queue",
         "registry.repository -> notifier.registry",
         "api.api -> notifier.api",
+        "slots.table -> notifier.table",
         "reminders.queue -> notifier.queue",
       ]
     }

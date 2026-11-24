@@ -6,7 +6,7 @@ templating: mustache
 ## Run claims now
 
 ```bash
-curl -s -X POST https://{{params.subdomain}}.{{dependencies.dns.domain}}/claims/run | jq '.filed'
+curl -H 'accept: application/json' -s -X POST https://{{params.subdomain}}.{{dependencies.dns.domain}}/claims/run | jq '.filed'
 ```
 
 ## A run files nothing

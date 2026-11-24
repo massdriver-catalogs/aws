@@ -70,7 +70,7 @@ for m in ElastiCacheProcessingUnits ThrottledCmds; do
 done
 ```
 
-`ElastiCacheProcessingUnits` near {{params.max_ecpu_per_second}} per second, or any `ThrottledCmds`, means the request limit is reached. Raise **Request limit** and redeploy. Before that, look for expensive commands: `KEYS *`, large `HGETALL` or `SMEMBERS`, and big values each cost many ECPUs. Find them with:
+`ElastiCacheProcessingUnits` near {{params.max_ecpu_per_second}} × 60 (each row is a minute), or any `ThrottledCmds`, means the request limit is reached. Raise **Request limit** and redeploy. Before that, look for expensive commands: `KEYS *`, large `HGETALL` or `SMEMBERS`, and big values each cost many ECPUs. Find them with:
 
 ```bash
 redis-cli -h {{resources.cache.hostname}} -p {{resources.cache.port}} --tls --bigkeys

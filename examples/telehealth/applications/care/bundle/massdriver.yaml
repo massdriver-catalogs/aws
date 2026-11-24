@@ -37,6 +37,7 @@ steps:
 app:
   runtime: ecs-service
   envs:
+    MD_ENVIRONMENT: '.params.md_metadata.default_tags["md-instance"] | split("-")[1]'
     PGHOST: .dependencies.postgres.hostname
     PGPORT: .dependencies.postgres.port
     PGDATABASE: .dependencies.postgres.database

@@ -20,7 +20,7 @@ One Amazon RDS for MariaDB database for one app, inside the environment's VPC.
 
 Connections must use TLS; the server refuses plain connections. The `mysql` and `mariadb` command-line clients use TLS on their own. Some drivers need it turned on, for example `ssl: {}` in Node's `mysql2`. Use the [RDS certificate bundle](https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem) to also check the server.
 
-An app can read the password from the secret at start-up, or receive it from this database's resource when it is deployed. IAM database authentication is also on, for apps that would rather use short-lived tokens than a password.
+An app can read the password from the secret at start-up, or receive it from this database's resource when it is deployed.
 
 ## Password
 

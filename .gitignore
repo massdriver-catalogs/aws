@@ -2,9 +2,6 @@
 _massdriver_variables.tf
 schema-*.json
 
-# Copied in from modules/ before build and publish
-bundles/*/src/modules/
-
 # OpenTofu
 .terraform/
 *.tfstate

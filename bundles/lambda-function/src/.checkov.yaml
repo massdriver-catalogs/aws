@@ -17,6 +17,6 @@ skip-check:
   # own dead-letter queue.
   - CKV_AWS_116
 
-  # Lambda code signing only applies to zip packages; app code ships as
-  # container images.
+  # Lambda code signing only applies to zip packages. The only zip is the
+  # built-in placeholder; app code ships as container images.
   - CKV_AWS_272

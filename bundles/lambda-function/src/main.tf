@@ -15,13 +15,25 @@ locals {
 
   # What the function gets from each standard type. Other types pass through
   # only as the app's environment variables.
+  # Databases hand the function their password directly, so their policies,
+  # which read the secret, aren't needed.
   joins_security_group = ["aws-postgres", "aws-mariadb", "aws-valkey"]
-  gets_policies        = ["aws-postgres", "aws-mariadb", "aws-dynamodb-table", "aws-s3-bucket", "aws-sqs-queue"]
+  gets_policies = {
+    "aws-dynamodb-table" = ["read-write"]
+    "aws-s3-bucket"      = ["read-write"]
+    "aws-sqs-queue"      = ["send", "consume"]
+  }
 
   client_security_groups = [for d in values(local.app_dependencies) : d.value.client_security_group_id if contains(local.joins_security_group, d.type)]
   app_policies = merge([
-    for k, d in local.app_dependencies : { for p in d.value.policies : "${k}-${p.name}" => p.arn } if contains(local.gets_policies, d.type)
+    for k, d in local.app_dependencies : {
+      for p in d.value.policies : "${k}-${p.name}" => p.arn if contains(local.gets_policies[d.type], p.name)
+    } if contains(keys(local.gets_policies), d.type)
   ]...)
+
+  # Lambda keeps configuration in plain environment variables, with nowhere to
+  # hide a secret, so an app that declares secrets belongs on ecs-service.
+  app_secrets = try(jsondecode(file("/massdriver/secrets.json")), {})
 
   # Databases and caches only listen inside the VPC. Functions that don't use
   # them stay out of it and keep reaching AWS APIs without the VPC's egress.
@@ -40,8 +52,8 @@ locals {
   }
   wrong_region = [for k, v in local.connected_regions : "${k} (${v})" if v != local.region]
 
-  codebase_policy = var.codebase == null ? null : concat([for p in var.codebase.registry.policies : p if p.name == "pull"], var.codebase.registry.policies)[0]
-  registry_policy = var.registry == null ? null : concat([for p in var.registry.policies : p if p.name == "pull"], var.registry.policies)[0]
+  codebase_policy = var.codebase == null ? null : one([for p in var.codebase.registry.policies : p if p.name == "pull"])
+  registry_policy = var.registry == null ? null : one([for p in var.registry.policies : p if p.name == "pull"])
 
   queue_arns    = [for d in values(local.app_dependencies) : d.value.arn if d.type == "aws-sqs-queue"]
   consume_queue = var.consume_queue && length(local.queue_arns) == 1
@@ -71,6 +83,9 @@ resource "aws_cloudwatch_log_group" "function" {
 
 resource "aws_iam_role" "function" {
   name = local.name
+  # Policies attached before the app declared its own dependencies are no
+  # longer tracked here, and would otherwise block deleting the role.
+  force_detach_policies = true
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -106,13 +121,13 @@ resource "aws_iam_role_policy_attachment" "vpc" {
 }
 
 resource "aws_iam_role_policy_attachment" "codebase" {
-  count      = var.codebase != null ? 1 : 0
+  count      = local.codebase_policy != null ? 1 : 0
   role       = aws_iam_role.function.name
   policy_arn = local.codebase_policy.arn
 }
 
 resource "aws_iam_role_policy_attachment" "registry" {
-  count      = var.registry != null ? 1 : 0
+  count      = local.registry_policy != null ? 1 : 0
   role       = aws_iam_role.function.name
   policy_arn = local.registry_policy.arn
 }
@@ -196,6 +211,10 @@ resource "aws_lambda_function" "main" {
       condition     = !var.consume_queue || length(local.queue_arns) == 1
       error_message = "Consume from the queue is on, so the app needs exactly one SQS queue connected; it has ${length(local.queue_arns)}."
     }
+    precondition {
+      condition     = length(local.app_secrets) == 0
+      error_message = "The app declares secrets (${join(", ", keys(local.app_secrets))}), and Lambda would keep them in plain environment variables. Run it on ecs-service, which injects them from Secrets Manager."
+    }
   }
 
   depends_on = [
@@ -208,8 +227,8 @@ resource "aws_lambda_function" "main" {
 
 check "vpc_egress" {
   assert {
-    condition     = !local.in_vpc || var.network == null || var.network.internet_egress || alltrue([for d in values(local.app_dependencies) : contains(local.joins_security_group, d.type)])
-    error_message = "The function runs in the VPC to reach its database or cache, but the VPC has no internet egress, so calls to DynamoDB, S3 or SQS will time out unless the VPC has endpoints for them."
+    condition     = !local.in_vpc || var.network == null || var.network.internet_egress || length(local.queue_arns) == 0
+    error_message = "The function runs in the VPC to reach its database or cache, but the VPC has no internet egress, so calls to SQS will time out unless the VPC has an endpoint for it. S3 and DynamoDB go through the VPC's gateway endpoints."
   }
 }
 
@@ -238,7 +257,7 @@ resource "aws_lambda_permission" "api" {
   # Swapping the placeholder for an image replaces the function, and AWS drops
   # its permissions with it.
   lifecycle {
-    replace_triggered_by = [aws_lambda_function.main]
+    replace_triggered_by = [aws_lambda_function.main.package_type]
   }
 }
 

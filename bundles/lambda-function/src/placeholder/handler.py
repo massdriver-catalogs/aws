@@ -21,9 +21,9 @@ def handler(event, context):
 
     connected = {}
     if os.environ.get("PGHOST"):
-        connected["postgres"] = reachable(os.environ["PGHOST"], os.environ["PGPORT"])
+        connected["postgres"] = reachable(os.environ["PGHOST"], os.environ.get("PGPORT", "5432"))
     if os.environ.get("MYSQL_HOST"):
-        connected["mariadb"] = reachable(os.environ["MYSQL_HOST"], os.environ["MYSQL_PORT"])
+        connected["mariadb"] = reachable(os.environ["MYSQL_HOST"], os.environ.get("MYSQL_PORT", "3306"))
     if os.environ.get("REDIS_URL"):
         cache = urlparse(os.environ["REDIS_URL"])
         connected["cache"] = reachable(cache.hostname, cache.port)

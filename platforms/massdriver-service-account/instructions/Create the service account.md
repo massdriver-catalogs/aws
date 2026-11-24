@@ -11,6 +11,6 @@ The onboarding bundles use this service account to create each app's Massdriver 
 
 Add the service account to the **Organization Admin** group.
 
-It creates projects, groups and group policies, adds service accounts to groups, and shares resources with the projects it creates. Writing group policies is already admin-equal, since a group that can write policies can grant itself anything, so a narrower group buys nothing.
+It creates projects, groups and group policies, adds service accounts to groups, and shares resources with the projects it creates, which only an organization admin can do.
 
 Paste your organization ID into **Organization ID** and the token into **Token**.

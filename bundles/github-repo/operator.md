@@ -21,7 +21,7 @@ gh run view -R {{resources.repository.full_name}} --log-failed
 
 ## "Not authorized to perform sts:AssumeRoleWithWebIdentity"
 
-The role only trusts `{{params.default_branch}}` of this repository. Builds from forks, tags or other branches can't assume it. If the repository was renamed or transferred, the trust no longer matches: redeploy this instance. If the job never got a token at all, the workflow is missing `permissions: id-token: write`.
+The role only trusts `{{params.default_branch}}` of this repository. Builds from forks, tags or other branches can't assume it. If the repository was renamed or transferred, the trust no longer matches. Redeploying this instance renames it back to **Repository name**. If the job never got a token at all, the workflow is missing `permissions: id-token: write`.
 
 ## Push denied by ECR
 

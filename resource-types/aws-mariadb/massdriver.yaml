@@ -76,7 +76,7 @@ schema:
         properties:
           name:
             title: Name
-            description: What the policy allows, e.g. read or read-write.
+            description: What the policy allows, e.g. read-secret.
             type: string
           arn:
             title: Policy ARN

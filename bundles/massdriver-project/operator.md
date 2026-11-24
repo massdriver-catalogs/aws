@@ -10,6 +10,9 @@ A new environment has no defaults, so its first deploy fails on missing credenti
 
 ```bash
 mass resource list --type aws-iam-role
+mass resource list --type aws-vpc
+mass resource list --type aws-dns-zone
+mass resource list --type aws-ecs-cluster
 mass resource list --type aws-codebase
 {{#resources.project.environments}}
 mass environment default {{id}} <resource-id>
