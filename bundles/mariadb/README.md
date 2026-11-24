@@ -14,6 +14,7 @@ One Amazon RDS for MariaDB database for one app, inside the environment's VPC.
 - A Secrets Manager secret with the connection details as JSON: `username`, `password`, `engine`, `host`, `port`, `dbname`.
 - An IAM policy, **read-secret**, that an app attaches to its role to read that secret.
 - CloudWatch log groups for the error log and the slow query log. Queries slower than one second are logged.
+- Alarms when CPU stays over 80% and when less than 10% of storage is free.
 
 ## Connecting
 

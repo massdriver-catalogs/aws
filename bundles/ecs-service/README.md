@@ -8,6 +8,10 @@ A containerized app on Fargate, in a shared ECS cluster. It runs in the VPC's pr
 - **A DNS zone** for a subdomain. A subdomain without a zone fails the deploy.
 - **A codebase** or an **ECR repository** (optional) lets tasks pull images from it.
 
+## Alarms
+
+Alarms fire when CPU or memory averages over 80% for 15 minutes. With a subdomain, they also fire when a task fails its health check, when more than 5% of requests return 5xx, and when 5% of requests are slower than **Alarm when responses are slower than**.
+
 ## Before your app exists
 
 Leave **Container image** empty and the service runs `public.ecr.aws/nginx/nginx:stable-alpine` on port 80. It answers 200, so the address, the DNS record and the load balancer work from the first deploy. Pulling it needs internet egress on the VPC.

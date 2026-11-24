@@ -11,6 +11,7 @@ A serverless Valkey cache for one app. Valkey is an open-source fork of Redis, a
 
 - The cache. It grows and shrinks with use; there are no nodes to size. It is billed for the data stored and the requests served, up to the two limits you set.
 - Two security groups. The cache's own group allows connections only from the **client** group. Attach the client group to anything that connects, such as an ECS service or Lambda function.
+- Alarms when data or requests pass 80% of their limits.
 
 ## Connecting
 

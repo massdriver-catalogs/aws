@@ -10,7 +10,7 @@ An API Gateway HTTP API with one stage, `$default`, that deploys every change ri
 ## What it makes
 
 - The API, its `$default` stage, and an access log group.
-- An alarm when more than 5% of requests fail with a 5xx error.
+- Alarms when more than 5% of requests fail with a 5xx error, and when traffic runs above 80% of **Steady requests per second**.
 - With a DNS zone and a **Subdomain**: a custom domain such as `api.dev.example.com`, using the zone's certificate, and the DNS record that points it at the API.
 
 The API's address goes to connected functions. With a custom domain, the address is `https://<subdomain>.<zone domain>`; without one, it's the AWS address (`https://<id>.execute-api.<region>.amazonaws.com`).

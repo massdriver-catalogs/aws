@@ -13,7 +13,7 @@ A function on arm64 that answers routes on a connected HTTP API. Connect a datab
 
 - The function, its IAM role, and a log group.
 - An API route for each entry in **Routes**.
-- An alarm when the function throws errors or times out more than 5 times in 5 minutes.
+- Alarms when the function throws errors or times out more than 5 times in 5 minutes, is throttled, or takes over 80% of its timeout.
 
 ## Code
 

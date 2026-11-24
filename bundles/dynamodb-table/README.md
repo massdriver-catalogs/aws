@@ -10,6 +10,7 @@ An AWS account to deploy into.
 
 - The table, encrypted at rest with an AWS-owned key or, if chosen, its own KMS key. The access policies include use of that key.
 - Two IAM policies, **read** and **read-write**. An app attaches one to its own role, so access to the table is defined in one place and every consumer gets the same set. Read covers get, batch get, query and scan. Read-write adds put, update, delete and batch write.
+- An alarm when reads or writes are throttled, usually from a hot partition key.
 
 ## Keys
 

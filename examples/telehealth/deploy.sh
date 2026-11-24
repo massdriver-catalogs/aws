@@ -2,12 +2,13 @@
 # Stands up Tendwell Health in a Massdriver organization without GitHub Actions.
 #
 #   ./deploy.sh role                    make the IAM role Massdriver deploys with, in the current AWS account
+#   ./deploy.sh costs                   send the AWS account's costs to Massdriver, per instance
 #   ./deploy.sh setup                   custom attributes, organization settings, bundle repositories and grants
 #   ./deploy.sh publish                 publish the catalog, then the example apps
 #   ./deploy.sh bootstrap               apply bootstrap.tf and set each environment's AWS credential
-#   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev, staging or prod
+#   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev or prod
 #   ./deploy.sh ship <app> <stage>      build an app's image, push it and deploy it
-#   ./deploy.sh all <stage>             role, setup, publish, bootstrap, provision and ship every app
+#   ./deploy.sh all <stage>             role, costs, setup, publish, bootstrap, provision and ship every app
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
 # PyYAML, docker, and AWS CLI credentials for the account the apps deploy into.
@@ -59,6 +60,16 @@ In $(aws_target):
 PLAN
 }
 
+costs_plan() {
+  cat <<PLAN
+In $(aws_target):
+  - A daily Cost and Usage Report, written to a new S3 bucket in us-east-1.
+  - An IAM user, massdriver-costs-<org>, that can only read that bucket and resource tags, and its access key.
+Then connects the AWS Cost and Usage Reports integration in your Massdriver organization with that key.
+Massdriver shows costs on every instance once AWS writes the first report, within 24 hours.
+PLAN
+}
+
 stage_plan() {
   local stage=$1 cost='roughly $80/month while it runs (Development presets)'
   [ "$stage" = prod ] && cost="several hundred dollars a month or more (Production presets: Multi-AZ databases, a NAT gateway per zone)"
@@ -78,13 +89,13 @@ PLAN
 
 stage_arg() {
   case "${1:-}" in
-    dev | staging | prod) echo "$1" ;;
-    *) die "stage must be dev, staging or prod" ;;
+    dev | prod) echo "$1" ;;
+    *) die "stage must be dev or prod" ;;
   esac
 }
 
 # Params come from the bundle's own presets, so this script never drifts from
-# what the catalog recommends: Development for dev and staging, Production for prod.
+# what the catalog recommends: Development for dev, Production for prod.
 preset() {
   local bundle=$1 stage=$2 name=Development
   [ "$stage" = prod ] && name=Production
@@ -231,6 +242,57 @@ cmd_role() {
   echo "$arn" >&2
 }
 
+profile_value() {
+  python3 - "$1" "${MASSDRIVER_PROFILE:-default}" <<'PY'
+import os, sys, yaml
+config = yaml.safe_load(open(os.path.expanduser("~/.config/massdriver/config.yaml")))
+print(config["profiles"][sys.argv[2]][sys.argv[1]])
+PY
+}
+
+graphql() {
+  local key=${MASSDRIVER_API_KEY:-$(profile_value api_key)} org auth
+  org=${MASSDRIVER_ORG_ID:-${MASSDRIVER_ORGANIZATION_ID:-$(profile_value organization_id)}}
+  case "$key" in
+    md_*) auth="Bearer $key" ;;
+    *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
+  esac
+  curl -sS -X POST "${MASSDRIVER_URL:-https://api.massdriver.cloud}/api/v2" \
+    -H "Authorization: $auth" -H 'content-type: application/json' -d "$1"
+}
+
+# The Terraform provider can't manage integrations, so the key goes over the API.
+# An organization has one integration per type; a rerun leaves a connected one alone.
+cmd_costs() {
+  local org status values
+  confirm "$(costs_plan)"
+  org=$(mass whoami -o json | jq -r .organization.id)
+
+  log "cost and usage report and read-only user"
+  (cd "$HERE/costs" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve -var "organization=$org")
+
+  status=$(graphql "$(jq -n --arg org "$org" '{
+    query: "query($org: ID!) { integration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { status } }",
+    variables: {org: $org}
+  }')" | jq -r '.data.integration.status // empty')
+  if [ -n "$status" ]; then
+    log "AWS Cost and Usage Reports integration is already $status"
+    return
+  fi
+
+  log "connect the AWS Cost and Usage Reports integration"
+  values=$(cd "$HERE/costs" && tofu output -json massdriver_integration_config)
+  graphql "$(jq -n --arg org "$org" --argjson v "$values" '{
+    query: "mutation($org: ID!, $input: CreateIntegrationInput!) { createIntegration(organizationId: $org, id: \"aws-cost-and-usage-reports\", input: $input) { successful messages { message } } }",
+    variables: {org: $org, input: {
+      config: ({bucket_name: $v.bucket_name, region: $v.bucket_region} | tojson),
+      auth: ({access_key_id: $v.access_key_id, secret_access_key: $v.secret_access_key} | tojson)
+    }}
+  }')" | jq -e -r 'if .data.createIntegration.successful then "connected"
+    else error([(.data.createIntegration.messages // [])[].message, (.errors // [])[].message] | join("; ")) end' >&2 ||
+    die "couldn't connect the integration"
+}
+
 cmd_bootstrap() {
   require_roles
 
@@ -285,12 +347,11 @@ cmd_provision() {
   wait
   deploy "platform-$stage-cluster" ecs-cluster "$stage"
   # An account has one GitHub OIDC provider. Dev creates it in the nonprod
-  # account, staging shares that account, and prod creates its own unless
-  # everything runs in one account.
+  # account, and prod creates its own unless everything runs in one account.
   case "$stage" in
     dev) echo '{"adopt_existing_provider": false}' ;;
     prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
-  esac | if [ "$stage" != staging ] && ! provisioned "platform-$stage-oidc"; then
+  esac | if ! provisioned "platform-$stage-oidc"; then
     log "deploy platform-$stage-oidc"
     mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
     wait_for "platform-$stage-oidc"
@@ -363,6 +424,7 @@ cmd_ship() {
 
 case "${1:-}" in
   role) cmd_role ;;
+  costs) cmd_costs ;;
   setup) cmd_setup ;;
   publish) cmd_publish ;;
   bootstrap) cmd_bootstrap ;;
@@ -372,6 +434,8 @@ case "${1:-}" in
     stage=$(stage_arg "${2:-}")
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
     confirm "$(role_plan)
+
+$(costs_plan)
 
 In your Massdriver organization: defines the team and data_classification attributes and sets
 them as default tags, turns off granting new bundles to every project, creates a
@@ -383,11 +447,12 @@ $(stage_plan "$stage")
 
 Then builds the three app images with Docker, pushes them to ECR and deploys them."
     cmd_role
+    cmd_costs
     cmd_setup
     cmd_publish
     cmd_bootstrap
     cmd_provision "$stage"
     for app in "${APPS[@]}"; do cmd_ship "$app" "$stage"; done
     ;;
-  *) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

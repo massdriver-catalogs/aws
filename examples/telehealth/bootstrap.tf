@@ -12,7 +12,7 @@ terraform {
 provider "massdriver" {}
 
 variable "aws_accounts" {
-  description = "IAM roles Massdriver deploys with, from the aws-iam-role credential's instructions. nonprod serves dev, staging and previews; prod serves prod. Use the same role for both to run everything in one account."
+  description = "IAM roles Massdriver deploys with, from the aws-iam-role credential's instructions. nonprod serves dev and previews; prod serves prod. Use the same role for both to run everything in one account."
   type = object({
     nonprod = object({ arn = string, token_level = optional(string, "organization") })
     prod    = object({ arn = string, token_level = optional(string, "organization") })
@@ -33,9 +33,8 @@ variable "protect_prod" {
 
 locals {
   stages = {
-    dev     = { name = "Development", prod = false }
-    staging = { name = "Staging", prod = false }
-    prod    = { name = "Production", prod = true }
+    dev  = { name = "Development", prod = false }
+    prod = { name = "Production", prod = true }
   }
 
   # The onboarding project's environments are apps, not stages.
