@@ -78,25 +78,24 @@ mass instance deploy {{id}} --patch '.routes = ["GET /items", "GET /items/{id}",
 
 Your code reads the matched route from `event["routeKey"]` and the captured values from `event["pathParameters"]`.
 
-### 5. Connect a database
+### 5. Give it a database
 
-1. On the canvas, link a PostgreSQL database to this function. Link the VPC too: the database only listens inside it.
-2. Redeploy this function: `mass instance deploy {{id}} -m "Connect database"`.
-3. Your code reads `DATABASE_URL` (or `PGHOST`, `PGUSER`, …). Most libraries take the URL directly:
+The function has no database of its own. Your app's bundle declares one and names the variables it wants:
 
-   ```python
-   import os, psycopg
-   conn = psycopg.connect(os.environ["DATABASE_URL"])
-   ```
-
-While the placeholder runs, `curl {{dependencies.api.endpoint}}/` shows whether the database is reachable. To see the value the function got:
-
-```bash
-aws lambda get-function-configuration --region {{dependencies.api.region}} --function-name {{id}} \
-  --query 'Environment.Variables.DATABASE_URL' --output text
+```yaml
+dependencies:
+  db:
+    resource_type: aws-postgres@0.0.0
+    required: true
+app:
+  runtime: lambda-function
+  envs:
+    PGHOST: .dependencies.db.hostname
+    PGUSER: .dependencies.db.username
+    PGPASSWORD: .dependencies.db.password
 ```
 
-MariaDB works the same way with `MYSQL_URL`, and a Valkey cache with `REDIS_URL`.
+Publish the app, link the database and the VPC to it on the canvas (the database only listens inside the VPC) and deploy. The function joins the database's security group and gets its policies. Caches, tables, buckets and queues work the same way.
 
 ### 6. Use your own domain
 
@@ -125,7 +124,7 @@ aws logs filter-log-events --region {{dependencies.api.region}} --log-group-name
 
 - **`Task timed out after N seconds`:** raise **Timeout (seconds)**, or make the work smaller. Requests through the API can't run past 30 seconds; send long work to a queue.
 - **`Runtime exited` or `out of memory`:** raise **Memory (MB)**.
-- **`AccessDeniedException` on DynamoDB, S3 or SQS:** the function has the read or send policy and needs another one. Change **Table access**, **Bucket access** or **Queue access**.
+- **`AccessDeniedException` on DynamoDB, S3 or SQS:** the resource isn't linked to this function, or was linked after the last deploy. Link it and redeploy.
 - **`502` with no error in the function's log:** the response isn't in the API's format. Return `statusCode`, `headers` and `body`, with `body` as a string.
 - **A stack trace from your code:** fix it and ship a new image.
 
@@ -195,7 +194,7 @@ aws lambda list-event-source-mappings --region {{dependencies.api.region}} --fun
   --query 'EventSourceMappings[].[State,StateTransitionReason,LastProcessingResult]'
 ```
 
-- **`Disabled` or `PROBLEM: ...`:** the reason says what's wrong; usually a missing permission. Check **Queue access** is `consume`, then redeploy.
+- **`Disabled` or `PROBLEM: ...`:** the reason says what's wrong; usually a missing permission. Redeploy to reattach the queue's policies.
 - **Messages go to the dead-letter queue:** the function fails on them. Read the logs above.
 - **Deploy fails with `visibility timeout ... less than function timeout`:** lower **Timeout (seconds)** or raise the queue's visibility timeout.
 {{/params.consume_queue}}

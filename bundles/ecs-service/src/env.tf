@@ -6,35 +6,19 @@ locals {
   # appear in the task definition.
   app_secrets = try(jsondecode(file("/massdriver/secrets.json")), {})
 
-  # Passwords are injected from Secrets Manager, so connection URLs that would
-  # embed them (DATABASE_URL, MYSQL_URL) aren't built.
+  # An app points a variable at a Secrets Manager value, like a database's
+  # secret_arn + ":password::", and ECS injects it at start instead of the
+  # value landing in the task definition.
+  secret_ref = "^arn:aws[a-z-]*:secretsmanager:"
+
   environment = merge(
-    local.app_envs,
+    { for k, v in local.app_envs : k => v if !can(regex(local.secret_ref, v)) },
     { for e in var.environment : e.name => e.value },
     { PORT = tostring(local.port) },
-    var.postgres == null ? {} : {
-      PGHOST     = var.postgres.hostname
-      PGPORT     = tostring(var.postgres.port)
-      PGDATABASE = var.postgres.database
-      PGUSER     = var.postgres.username
-    },
-    var.mariadb == null ? {} : {
-      MYSQL_HOST     = var.mariadb.hostname
-      MYSQL_PORT     = tostring(var.mariadb.port)
-      MYSQL_DATABASE = var.mariadb.database
-      MYSQL_USER     = var.mariadb.username
-    },
-    var.cache == null ? {} : {
-      REDIS_URL = "rediss://${var.cache.hostname}:${var.cache.port}"
-    },
-    var.table == null ? {} : { TABLE_NAME = var.table.name },
-    var.bucket == null ? {} : { BUCKET_NAME = var.bucket.name },
-    var.queue == null ? {} : { QUEUE_URL = var.queue.url },
   )
 
   secrets = concat(
-    var.postgres == null ? [] : [{ name = "PGPASSWORD", valueFrom = "${var.postgres.secret_arn}:password::" }],
-    var.mariadb == null ? [] : [{ name = "MYSQL_PASSWORD", valueFrom = "${var.mariadb.secret_arn}:password::" }],
+    [for k, v in local.app_envs : { name = k, valueFrom = v } if can(regex(local.secret_ref, v))],
     # Through the version, so tasks don't start before the values exist.
     [for k in keys(local.app_secrets) : { name = k, valueFrom = "${aws_secretsmanager_secret_version.app[0].secret_id}:${k}::" }],
   )

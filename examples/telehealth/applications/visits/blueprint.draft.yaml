@@ -17,4 +17,5 @@ links:
   - reminders.queue     -> app.queue
   - registry.repository -> notifier.registry
   - api.api             -> notifier.api
+  - slots.table         -> notifier.table
   - reminders.queue     -> notifier.queue

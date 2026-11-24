@@ -8,20 +8,18 @@ locals {
     }]
   })
 
-  # Each store publishes its own policies; an unset access choice gets them all.
-  store_policies = merge(
-    var.table == null ? {} : (try(length(var.table_access) > 0, false) ? { table = var.table_access } : { for p in var.table.policies : "table-${p.name}" => p.arn }),
-    var.bucket == null ? {} : (try(length(var.bucket_access) > 0, false) ? { bucket = var.bucket_access } : { for p in var.bucket.policies : "bucket-${p.name}" => p.arn }),
-    var.queue == null ? {} : (try(length(var.queue_access) > 0, false) ? { queue = var.queue_access } : { for p in var.queue.policies : "queue-${p.name}" => p.arn }),
-  )
+  task_app_policies = merge([
+    for k, d in local.app_dependencies : { for p in d.value.policies : "${k}-${p.name}" => p.arn } if contains(local.task_policies, d.type)
+  ]...)
 
-  # The databases' policies grant reading their secrets, which ECS does on the
-  # task's behalf before the container starts.
+  execution_app_policies = merge([
+    for k, d in local.app_dependencies : { for p in d.value.policies : "${k}-${p.name}" => p.arn } if contains(local.execution_policies, d.type)
+  ]...)
+
   pull_policies = merge(
     var.codebase == null ? {} : { for p in var.codebase.registry.policies : "codebase-${p.name}" => p.arn if p.name == "pull" },
     var.registry == null ? {} : { for p in var.registry.policies : "registry-${p.name}" => p.arn if p.name == "pull" },
-    var.postgres == null ? {} : { for p in var.postgres.policies : "postgres-${p.name}" => p.arn },
-    var.mariadb == null ? {} : { for p in var.mariadb.policies : "mariadb-${p.name}" => p.arn },
+    local.execution_app_policies,
   )
 }
 
@@ -73,7 +71,7 @@ resource "aws_iam_role_policy" "exec" {
 }
 
 resource "aws_iam_role_policy_attachment" "task" {
-  for_each   = local.store_policies
+  for_each   = local.task_app_policies
   role       = aws_iam_role.task.name
   policy_arn = each.value
 }

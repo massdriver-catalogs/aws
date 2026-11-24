@@ -78,31 +78,26 @@ mass instance deploy {{id}} --patch '.subdomain = "api"' -m "Give it an address"
 ```
 {{/dependencies.dns}}
 
-### 5. Connect a database
+### 5. Give it a database
 
-Connect a PostgreSQL or MariaDB database to this service on the canvas and deploy. The service joins the database's security group and gets:
+The service has no database of its own. Your app's bundle declares one and names the variables it wants, and the service joins the database's security group and gets its policies:
 
-- PostgreSQL: `PGHOST` `PGPORT` `PGDATABASE` `PGUSER` `PGPASSWORD`
-- MariaDB: `MYSQL_HOST` `MYSQL_PORT` `MYSQL_DATABASE` `MYSQL_USER` `MYSQL_PASSWORD`
-
-The password comes from Secrets Manager when the task starts. There is no `DATABASE_URL`; build one in code if your library needs it. The Node `pg` client reads the `PG*` variables on its own:
-
-```js
-const { Client } = require("pg");
-const db = new Client(); // PGHOST, PGUSER, PGPASSWORD, ... from the environment
-await db.connect();
+```yaml
+dependencies:
+  db:
+    resource_type: aws-postgres@0.0.0
+    required: true
+app:
+  runtime: ecs-service
+  envs:
+    PGHOST: .dependencies.db.hostname
+    PGPORT: .dependencies.db.port
+    PGDATABASE: .dependencies.db.database
+    PGUSER: .dependencies.db.username
+    PGPASSWORD: '.dependencies.db.secret_arn + ":password::"'
 ```
 
-```js
-// MariaDB with mysql2
-const mysql = require("mysql2/promise");
-const db = await mysql.createConnection({
-  host: process.env.MYSQL_HOST, port: process.env.MYSQL_PORT, database: process.env.MYSQL_DATABASE,
-  user: process.env.MYSQL_USER, password: process.env.MYSQL_PASSWORD,
-});
-```
-
-A cache sets `REDIS_URL` (TLS, `rediss://`); a table `TABLE_NAME`; a bucket `BUCKET_NAME`; a queue `QUEUE_URL`. AWS SDKs pick up the task's role on their own; no keys needed.
+ECS reads the password from Secrets Manager when the task starts, so it never appears in the task definition. Publish the app, link the database to it on the canvas and deploy. Caches, tables, buckets and queues work the same way. AWS SDKs pick up the task's role on their own; no keys needed.
 
 ### 6. Scale
 

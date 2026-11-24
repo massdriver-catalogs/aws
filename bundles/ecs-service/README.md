@@ -16,22 +16,9 @@ Alarms fire when CPU or memory averages over 80% for 15 minutes. With a subdomai
 
 Leave **Container image** empty and the service runs `public.ecr.aws/nginx/nginx:stable-alpine` on port 80. It answers 200, so the address, the DNS record and the load balancer work from the first deploy. Pulling it needs internet egress on the VPC.
 
-## Connected resources
+## Environment variables
 
-Connect a resource and the service gets the access and the environment variables for it:
-
-| Connect | Variables | Access |
-|---|---|---|
-| PostgreSQL | `PGHOST` `PGPORT` `PGDATABASE` `PGUSER` `PGPASSWORD` | The database's client security group; the password comes from Secrets Manager |
-| MariaDB | `MYSQL_HOST` `MYSQL_PORT` `MYSQL_DATABASE` `MYSQL_USER` `MYSQL_PASSWORD` | Same as PostgreSQL |
-| Valkey cache | `REDIS_URL` (`rediss://host:port`) | The cache's client security group |
-| DynamoDB table | `TABLE_NAME` | **Table access**, or all of the table's policies |
-| S3 bucket | `BUCKET_NAME` | **Bucket access**, or all of the bucket's policies |
-| SQS queue | `QUEUE_URL` | **Queue access**, or all of the queue's policies |
-
-`PORT` is always set to the container port.
-
-Passwords are never written into the task definition. ECS reads them from Secrets Manager when a task starts. For the same reason there is no `DATABASE_URL` or `MYSQL_URL`: build one in your app from the variables above if your library needs it. Most PostgreSQL clients read the `PG*` variables on their own.
+`PORT` is always set to the container port. Add plain configuration in **Environment variables**.
 
 ## Deploys
 
@@ -47,4 +34,20 @@ ECS Exec is on, so you can open a shell in a running task. See the operator guid
 
 ## Running an app on it
 
-This bundle is a runtime. An app's own bundle can set `app.runtime: ecs-service` and add its dependencies, environment variables and resources without any infrastructure code; Massdriver builds the two into one bundle when the app is published. The app's variables reach the process alongside the ones above. See [examples/telehealth](../../examples/telehealth/) for three apps built this way.
+This bundle is a runtime. An app's own bundle sets `app.runtime: ecs-service`, declares the databases, caches, tables, buckets and queues it uses, and maps their fields to environment variables. Massdriver builds the two into one bundle when the app is published.
+
+The service gets access to the standard types the app connects: it joins the client security group of a PostgreSQL, MariaDB or Valkey, and attaches the IAM policies of a database, DynamoDB table, S3 bucket or SQS queue. Other types reach the app only through its environment variables. A variable that points at a Secrets Manager value, such as `.dependencies.db.secret_arn + ":password::"`, is read by ECS when a task starts and never written into the task definition.
+
+```yaml
+dependencies:
+  db:
+    resource_type: aws-postgres@0.0.0
+    required: true
+app:
+  runtime: ecs-service
+  envs:
+    PGHOST: .dependencies.db.hostname
+    PGPASSWORD: '.dependencies.db.secret_arn + ":password::"'
+```
+
+See [examples/telehealth](../../examples/telehealth/) for three apps built this way.
