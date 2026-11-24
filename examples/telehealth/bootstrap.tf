@@ -85,6 +85,7 @@ locals {
       stages      = keys(local.stages)
       components = {
         registry  = { bundle = "ecr-repository", name = "Image Repository" }
+        codebase  = { bundle = "codebase", name = "Codebase" }
         api       = { bundle = "http-api", name = "Booking API" }
         slots     = { bundle = "dynamodb-table", name = "Slots" }
         reminders = { bundle = "sqs-queue", name = "Reminders Queue" }
@@ -92,11 +93,12 @@ locals {
         notifier  = { bundle = "tendwell-visits", name = "Reminder Sender" }
       }
       links = [
-        "registry.repository -> app.registry",
+        "registry.repository -> codebase.registry",
+        "codebase.codebase -> app.codebase",
         "api.api -> app.api",
         "slots.table -> app.table",
         "reminders.queue -> app.queue",
-        "registry.repository -> notifier.registry",
+        "codebase.codebase -> notifier.codebase",
         "api.api -> notifier.api",
         "slots.table -> notifier.table",
         "reminders.queue -> notifier.queue",
@@ -110,13 +112,15 @@ locals {
       stages      = keys(local.stages)
       components = {
         registry  = { bundle = "ecr-repository", name = "Image Repository" }
+        codebase  = { bundle = "codebase", name = "Codebase" }
         charts    = { bundle = "postgres", name = "Charts" }
         sessions  = { bundle = "valkey", name = "Sessions" }
         documents = { bundle = "s3-bucket", name = "Documents" }
         app       = { bundle = "tendwell-care", name = "Care" }
       }
       links = [
-        "registry.repository -> app.registry",
+        "registry.repository -> codebase.registry",
+        "codebase.codebase -> app.codebase",
         "charts.database -> app.postgres",
         "sessions.cache -> app.cache",
         "documents.bucket -> app.bucket",
@@ -130,12 +134,14 @@ locals {
       stages      = keys(local.stages)
       components = {
         registry = { bundle = "ecr-repository", name = "Image Repository" }
+        codebase = { bundle = "codebase", name = "Codebase" }
         ledger   = { bundle = "mariadb", name = "Claims Ledger" }
         claims   = { bundle = "s3-bucket", name = "Claim Files" }
         app      = { bundle = "tendwell-billing", name = "Billing" }
       }
       links = [
-        "registry.repository -> app.registry",
+        "registry.repository -> codebase.registry",
+        "codebase.codebase -> app.codebase",
         "ledger.database -> app.mariadb",
         "claims.bucket -> app.bucket",
       ]

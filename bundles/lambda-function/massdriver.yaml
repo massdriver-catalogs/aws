@@ -41,7 +41,7 @@ params:
     image_uri:
       title: Container image
       description: >-
-        An arm64 image in the connected ECR repository, by tag or digest. Leave empty to run the
+        An arm64 image in the codebase's ECR repository, by tag or digest. Leave empty to run the
         built-in placeholder, which echoes the request and checks what's connected.
       type: string
       default: ""
@@ -133,9 +133,6 @@ dependencies:
     required: true
   codebase:
     resource_type: aws-codebase@0.0.0
-    required: false
-  registry:
-    resource_type: aws-ecr-repository@0.0.0
     required: false
   network:
     resource_type: aws-vpc@0.0.0

@@ -163,7 +163,7 @@ params:
       title: Subdomain
       description: >-
         The service answers at `<subdomain>.<DNS zone>`, e.g. `api`. One label only. Leave empty for a
-        worker with no address. Needs a DNS zone connected.
+        worker with no address. Needs a cluster with a DNS zone.
       type: string
       default: ""
       pattern: ^(|[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)$
@@ -209,17 +209,8 @@ dependencies:
   cluster:
     resource_type: aws-ecs-cluster@0.0.0
     required: true
-  network:
-    resource_type: aws-vpc@0.0.0
-    required: true
-  dns:
-    resource_type: aws-dns-zone@0.0.0
-    required: false
   codebase:
     resource_type: aws-codebase@0.0.0
-    required: false
-  registry:
-    resource_type: aws-ecr-repository@0.0.0
     required: false
 
 resources: {}

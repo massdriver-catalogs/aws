@@ -378,14 +378,14 @@ cmd_provision() {
   # An account has one GitHub OIDC provider. Dev creates it in the nonprod
   # account unless one is already there, and prod creates its own unless
   # everything runs in one account.
-  case "$stage" in
-    dev) aws iam list-open-id-connect-providers --output json |
-      jq '{adopt_existing_provider: any(.OpenIDConnectProviderList[]; .Arn | endswith("/token.actions.githubusercontent.com"))}' ;;
-    prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
-  esac | if ! provisioned "platform-$stage-oidc"; then
+  if ! provisioned "platform-$stage-oidc"; then
     log "deploy platform-$stage-oidc"
     before=$(latest_deployment "platform-$stage-oidc")
-    mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
+    case "$stage" in
+      dev) aws iam list-open-id-connect-providers --output json |
+        jq '{adopt_existing_provider: any(.OpenIDConnectProviderList[]; .Arn | endswith("/token.actions.githubusercontent.com"))}' ;;
+      prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
+    esac | mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
     wait_for "platform-$stage-oidc" "$before"
   fi
 
@@ -400,6 +400,7 @@ cmd_provision() {
 
   log "visits-$stage"
   deploy "visits-$stage-registry" ecr-repository "$stage"
+  deploy "visits-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "visits-$stage-api" http-api "$stage" '.subdomain = "visits"'
   deploy "visits-$stage-slots" dynamodb-table "$stage"
   deploy "visits-$stage-reminders" sqs-queue "$stage"
@@ -411,6 +412,7 @@ cmd_provision() {
 
   log "care-$stage"
   deploy "care-$stage-registry" ecr-repository "$stage"
+  deploy "care-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "care-$stage-charts" postgres "$stage" '.database_name = "care"'
   deploy "care-$stage-sessions" valkey "$stage"
   deploy "care-$stage-documents" s3-bucket "$stage"
@@ -420,6 +422,7 @@ cmd_provision() {
 
   log "billing-$stage"
   deploy "billing-$stage-registry" ecr-repository "$stage"
+  deploy "billing-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "billing-$stage-ledger" mariadb "$stage" '.database_name = "billing"'
   deploy "billing-$stage-claims" s3-bucket "$stage"
   connect "billing-$stage-app" care "care-$stage-app.care"
