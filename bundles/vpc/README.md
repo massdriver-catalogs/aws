@@ -29,6 +29,8 @@ S3 and DynamoDB gateway endpoints are attached to every subnet, so that traffic 
 | NAT gateway | ~$33/month + $0.045/GB | Managed, but in one zone |
 | NAT gateway per zone | ~$33/month each + $0.045/GB | Survives a zone outage |
 
+Changing egress replaces the default route in each private subnet, so private subnets lose internet access for a minute or two during the deploy. If the deploy fails with `RouteAlreadyExists`, deploy again; the old route is gone by then.
+
 ## Logs and alarms
 
 Flow logs for every connection go to CloudWatch Logs, encrypted with a key made for this VPC. Alarms fire when a NAT gateway runs out of ports or the NAT instance fails its status checks.

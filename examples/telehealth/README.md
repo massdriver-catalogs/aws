@@ -104,4 +104,4 @@ Before it touches AWS it lists the account, everything it will create and roughl
 
 For a separate prod account, make a role there from the AWS IAM Role credential's instructions and set `PROD_ROLE_ARN`. The apps then answer at `visits.dev.<domain>`, `care.dev.<domain>` and `billing.dev.<domain>`.
 
-Run `./deploy.sh` alone to see the individual steps.
+Run `./deploy.sh` alone to see the individual steps. `./deploy.sh teardown` removes all of it again: it decommissions every instance, then undoes bootstrap, the cost report and the IAM role. Published bundles stay.

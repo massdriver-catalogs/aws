@@ -126,7 +126,7 @@ mass instance deploy {{id}} --patch '.desired_count = 2' --patch '.max_count = 6
 ## Read the logs
 
 ```bash
-aws logs tail /ecs/{{id}} --region {{dependencies.cluster.region}} --since 15m --follow
+aws logs tail /ecs/{{params.md_metadata.name_prefix}} --region {{dependencies.cluster.region}} --since 15m --follow
 ```
 
 ## Deployment rolled back
@@ -134,11 +134,11 @@ aws logs tail /ecs/{{id}} --region {{dependencies.cluster.region}} --since 15m -
 The circuit breaker stopped the deploy because new tasks kept failing, and the service went back to the last working task definition. Find out why the tasks stopped:
 
 ```bash
-aws ecs describe-services --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --services {{id}} \
+aws ecs describe-services --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --services {{params.md_metadata.name_prefix}} \
   --query 'services[0].events[:10].[createdAt,message]' --output text
 
 aws ecs describe-tasks --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} \
-  --tasks $(aws ecs list-tasks --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --service-name {{id}} --desired-status STOPPED --query 'taskArns[:5]' --output text) \
+  --tasks $(aws ecs list-tasks --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --service-name {{params.md_metadata.name_prefix}} --desired-status STOPPED --query 'taskArns[:5]' --output text) \
   --query 'tasks[].[stoppedAt,stoppedReason,containers[0].exitCode,containers[0].reason]' --output text
 ```
 
@@ -164,7 +164,7 @@ Memory doesn't scale out. A task that runs out is killed, so raise **Task size**
 More than 5% of requests returned 5xx for 5 minutes. The app is failing them, so the cause is in its logs:
 
 ```bash
-aws logs tail /ecs/{{id}} --region {{dependencies.cluster.region}} --since 15m --format short | grep -iE 'error|exception|traceback' | tail -30
+aws logs tail /ecs/{{params.md_metadata.name_prefix}} --region {{dependencies.cluster.region}} --since 15m --format short | grep -iE 'error|exception|traceback' | tail -30
 ```
 
 A 502 or 503 from the load balancer itself means no task answered; see "Unhealthy targets".
@@ -176,7 +176,7 @@ A 502 or 503 from the load balancer itself means no task answered; see "Unhealth
 ## Unhealthy targets
 
 ```bash
-TG=$(aws ecs describe-services --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --services {{id}} \
+TG=$(aws ecs describe-services --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --services {{params.md_metadata.name_prefix}} \
   --query 'services[0].loadBalancers[0].targetGroupArn' --output text)
 aws elbv2 describe-target-health --region {{dependencies.cluster.region}} --target-group-arn $TG \
   --query 'TargetHealthDescriptions[].[Target.Id,TargetHealth.State,TargetHealth.Reason,TargetHealth.Description]' --output text
@@ -208,7 +208,7 @@ aws elbv2 describe-target-health --region {{dependencies.cluster.region}} --targ
 Needs the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) on your machine.
 
 ```bash
-TASK=$(aws ecs list-tasks --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --service-name {{id}} --query 'taskArns[0]' --output text)
+TASK=$(aws ecs list-tasks --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --service-name {{params.md_metadata.name_prefix}} --query 'taskArns[0]' --output text)
 aws ecs execute-command --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} \
   --task $TASK --container app --interactive --command "/bin/sh"
 ```
@@ -228,7 +228,7 @@ aws ecs execute-command --region {{dependencies.cluster.region}} --cluster {{dep
 A 503 means the rule for `{{params.subdomain}}` matched but no task is healthy. Check the count and the targets:
 
 ```bash
-aws ecs describe-services --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --services {{id}} \
+aws ecs describe-services --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} --services {{params.md_metadata.name_prefix}} \
   --query 'services[0].[desiredCount,runningCount,pendingCount]'
 ```
 

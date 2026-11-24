@@ -111,7 +111,7 @@ On the HTTP API, set **Subdomain** (for example `api`) and make sure the environ
 ## Read the logs
 
 ```bash
-aws logs tail /aws/lambda/{{id}} --region {{dependencies.api.region}} --since 15m --follow
+aws logs tail /aws/lambda/{{params.md_metadata.name_prefix}} --region {{dependencies.api.region}} --since 15m --follow
 ```
 
 ## 5xx from the API, or the errors alarm
@@ -119,7 +119,7 @@ aws logs tail /aws/lambda/{{id}} --region {{dependencies.api.region}} --since 15
 Find the failing invocations:
 
 ```bash
-aws logs filter-log-events --region {{dependencies.api.region}} --log-group-name /aws/lambda/{{id}} \
+aws logs filter-log-events --region {{dependencies.api.region}} --log-group-name /aws/lambda/{{params.md_metadata.name_prefix}} \
   --start-time $(( ($(date +%s) - 3600) * 1000 )) --filter-pattern '?ERROR ?"Task timed out"' \
   --query 'events[].message' --output text | tail -20
 ```
@@ -133,7 +133,7 @@ aws logs filter-log-events --region {{dependencies.api.region}} --log-group-name
 Call the function directly, without the API:
 
 ```bash
-aws lambda invoke --region {{dependencies.api.region}} --function-name {{id}} \
+aws lambda invoke --region {{dependencies.api.region}} --function-name {{params.md_metadata.name_prefix}} \
   --payload '{"version":"2.0","routeKey":"GET /","rawPath":"/","requestContext":{"http":{"method":"GET","path":"/"}}}' \
   --cli-binary-format raw-in-base64-out /dev/stdout
 ```
@@ -143,7 +143,7 @@ aws lambda invoke --region {{dependencies.api.region}} --function-name {{id}} \
 The first request after a quiet period, or after a deploy, starts a new copy of the function. Find how long the start took:
 
 ```bash
-aws logs filter-log-events --region {{dependencies.api.region}} --log-group-name /aws/lambda/{{id}} \
+aws logs filter-log-events --region {{dependencies.api.region}} --log-group-name /aws/lambda/{{params.md_metadata.name_prefix}} \
   --start-time $(( ($(date +%s) - 3600) * 1000 )) --filter-pattern '"initDurationMs"' \
   --query 'events[].message' --output text | tail -5
 ```
@@ -160,7 +160,7 @@ The request hangs until the timeout, or the placeholder says `unreachable`.
 Check the function is in the VPC with the right security groups:
 
 ```bash
-aws lambda get-function-configuration --region {{dependencies.api.region}} --function-name {{id}} \
+aws lambda get-function-configuration --region {{dependencies.api.region}} --function-name {{params.md_metadata.name_prefix}} \
   --query 'VpcConfig.[VpcId,SecurityGroupIds,SubnetIds]'
 ```
 
@@ -192,7 +192,7 @@ The deploy fails while updating the function.
 ## Queue messages pile up
 
 ```bash
-aws lambda list-event-source-mappings --region {{dependencies.api.region}} --function-name {{id}} \
+aws lambda list-event-source-mappings --region {{dependencies.api.region}} --function-name {{params.md_metadata.name_prefix}} \
   --query 'EventSourceMappings[].[State,StateTransitionReason,LastProcessingResult]'
 ```
 

@@ -135,14 +135,14 @@ provisioned() {
 # The log stream can end, or the API can blip, while a deployment is still
 # running. Later steps read this instance's outputs, so wait for the result.
 latest_deployment() {
-  mass deployment list "$1" -o json 2>/dev/null | jq -r '.[0].id // empty'
+  mass deployment list "$1" -o json 2>/dev/null | jq -r '.[0].id // empty' || true
 }
 
 # wait_for <instance> <deployment id from before the deploy>
 wait_for() {
   local latest status
   for _ in $(seq 1 240); do
-    latest=$(mass deployment list "$1" -o json 2>/dev/null | jq -c '.[0] // empty')
+    latest=$(mass deployment list "$1" -o json 2>/dev/null | jq -c '.[0] // empty') || { sleep 15; continue; }
     if [ -z "$latest" ] || [ "$(jq -r .id <<<"$latest")" = "${2:-}" ]; then
       die "$1: the deploy didn't start; see the error above"
     fi
@@ -477,14 +477,14 @@ empty_bucket() {
 
 # decommission <environment>: waits until nothing in it is deployed.
 decommission() {
-  local env=$1 instances live
+  local env=$1 instances live bucket
   instances=$(mass instance list "$env" -o json 2>/dev/null || echo '[]')
   live=$(jq -r '[.[] | select(.status == "PROVISIONED" or .status == "FAILED")] | length' <<<"$instances")
   [ "$live" -gt 0 ] || { log "skip $env, nothing deployed"; return; }
 
   # S3 won't delete a bucket that still holds files.
   for id in $(jq -r '.[] | select(.status != "INITIALIZED" and .status != "DECOMMISSIONED") | .id' <<<"$instances"); do
-    bucket=$(mass resource get "$id.bucket" -o json 2>/dev/null | jq -r '.payload.name // empty')
+    bucket=$(mass resource get "$id.bucket" -o json 2>/dev/null | jq -r '.payload.name // empty' || true)
     [ -z "$bucket" ] || empty_bucket "$bucket"
   done
 

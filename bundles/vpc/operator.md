@@ -9,7 +9,7 @@ Check which egress is in use, then follow that section.
 
 ```bash
 aws ec2 describe-route-tables --region {{params.region}} \
-  --filters Name=tag:Name,Values='{{id}}-private-*' \
+  --filters Name=tag:Name,Values='{{params.md_metadata.name_prefix}}-private-*' \
   --query 'RouteTables[].Routes[?DestinationCidrBlock==`0.0.0.0/0`]'
 ```
 
@@ -19,7 +19,7 @@ No `0.0.0.0/0` route means egress is set to **None**. Workloads then reach only 
 
 ```bash
 aws ec2 describe-instance-status --region {{params.region}} --include-all-instances \
-  --filters Name=tag:Name,Values='{{id}}-nat' \
+  --filters Name=tag:Name,Values='{{params.md_metadata.name_prefix}}-nat' \
   --query 'InstanceStatuses[].[InstanceId,InstanceState.Name,SystemStatus.Status,InstanceStatus.Status]'
 ```
 
@@ -41,7 +41,7 @@ The "out of ports" alarm means one destination is getting more than ~55,000 conn
 
 ```bash
 aws logs start-query --region {{params.region}} \
-  --log-group-name /vpc/{{id}}/flow-logs \
+  --log-group-name /vpc/{{params.md_metadata.name_prefix}}/flow-logs \
   --start-time $(( $(date +%s) - 3600 )) --end-time $(date +%s) \
   --query-string 'stats count(*) as flows by srcAddr, dstAddr | sort flows desc | limit 20'
 ```
@@ -80,7 +80,7 @@ Flow logs record every rejected connection. Filter by the address that can't con
 
 ```bash
 aws logs start-query --region {{params.region}} \
-  --log-group-name /vpc/{{id}}/flow-logs \
+  --log-group-name /vpc/{{params.md_metadata.name_prefix}}/flow-logs \
   --start-time $(( $(date +%s) - 3600 )) --end-time $(date +%s) \
   --query-string 'filter action="REJECT" and (srcAddr="<ip>" or dstAddr="<ip>") | fields @timestamp, srcAddr, dstAddr, dstPort, protocol | sort @timestamp desc | limit 50'
 ```

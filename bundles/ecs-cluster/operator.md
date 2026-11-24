@@ -62,7 +62,7 @@ aws elbv2 describe-rules --region {{resources.cluster.region}} --listener-arn {{
 The firewall blocked them. See which rule and what the request looked like:
 
 ```bash
-aws logs filter-log-events --log-group-name aws-waf-logs-{{id}} --region {{dependencies.network.region}} \
+aws logs filter-log-events --log-group-name aws-waf-logs-{{params.md_metadata.name_prefix}} --region {{dependencies.network.region}} \
   --start-time $(( ($(date +%s) - 3600) * 1000 )) --query 'events[].message' --output json \
   | jq -r '.[] | fromjson | .terminatingRuleId + "  " + .httpRequest.httpMethod + " " + .httpRequest.uri'
 ```
