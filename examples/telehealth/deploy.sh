@@ -201,7 +201,7 @@ cmd_setup() {
   (cd "$HERE" && tofu init -input=false >/dev/null &&
     # Adopt attributes an earlier run, or a person, already defined; a missing one just fails to import.
     for key in team data_classification; do
-      tofu state list "massdriver_custom_attribute.$key" | grep -q . ||
+      tofu state list "massdriver_custom_attribute.$key" 2>/dev/null | grep -q . ||
         tofu import -input=false "massdriver_custom_attribute.$key" "$key" >/dev/null 2>&1 || true
     done &&
     tofu apply -input=false -auto-approve \
@@ -297,6 +297,8 @@ cmd_costs() {
   }')" | jq -r '.data.integration.status // empty')
   if [ -n "$status" ]; then
     log "AWS Cost and Usage Reports integration is already $status"
+    [ "$status" != DISABLED ] ||
+      echo "warning: an organization admin can turn it back on under Integrations > AWS Cost and Usage Reports" >&2
     return
   fi
 
@@ -440,6 +442,9 @@ cmd_ship() {
 
   log "build and push $image"
   aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}"
+  # The base images are public, but Docker sends any saved public.ecr.aws login
+  # and an expired one gets a 403, so refresh it.
+  aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
   docker build --platform linux/arm64 --provenance=false -t "$image" "$HERE/applications/$app/src"
   docker push "$image"
 
