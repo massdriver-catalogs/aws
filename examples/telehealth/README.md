@@ -12,7 +12,7 @@ A telehealth company built on this catalog. Patients book video visits, clinicia
 | `care` | Clinical | The clinician portal on ECS: `ecr-repository`, `postgres`, `valkey`, `s3-bucket`, `tendwell-care` |
 | `billing` | Revenue | Claims on ECS: `ecr-repository`, `mariadb`, `s3-bucket`, `tendwell-billing` |
 
-`platform`, `visits`, `care` and `billing` have `dev`, `staging` and `prod`. `apps` has one environment per app: deploying `apps-visits` creates Visits' GitHub repository, pipeline and Massdriver project. Prod deploys need a second person's approval.
+`platform`, `visits`, `care` and `billing` have `dev` and `prod`. `apps` has one environment per app: deploying `apps-visits` creates Visits' GitHub repository, pipeline and Massdriver project. Prod deploys need a second person's approval.
 
 Each team's group can change only its own project and read the rest. Platform Engineering can change everything, and Security & Compliance can read everything and change nothing.
 

@@ -6,7 +6,7 @@
 #   ./deploy.sh setup                   custom attributes, organization settings, bundle repositories and grants
 #   ./deploy.sh publish                 publish the catalog, then the example apps
 #   ./deploy.sh bootstrap               apply bootstrap.tf and set each environment's AWS credential
-#   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev, staging or prod
+#   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev or prod
 #   ./deploy.sh ship <app> <stage>      build an app's image, push it and deploy it
 #   ./deploy.sh all <stage>             role, costs, setup, publish, bootstrap, provision and ship every app
 #
@@ -89,13 +89,13 @@ PLAN
 
 stage_arg() {
   case "${1:-}" in
-    dev | staging | prod) echo "$1" ;;
-    *) die "stage must be dev, staging or prod" ;;
+    dev | prod) echo "$1" ;;
+    *) die "stage must be dev or prod" ;;
   esac
 }
 
 # Params come from the bundle's own presets, so this script never drifts from
-# what the catalog recommends: Development for dev and staging, Production for prod.
+# what the catalog recommends: Development for dev, Production for prod.
 preset() {
   local bundle=$1 stage=$2 name=Development
   [ "$stage" = prod ] && name=Production
@@ -347,12 +347,11 @@ cmd_provision() {
   wait
   deploy "platform-$stage-cluster" ecs-cluster "$stage"
   # An account has one GitHub OIDC provider. Dev creates it in the nonprod
-  # account, staging shares that account, and prod creates its own unless
-  # everything runs in one account.
+  # account, and prod creates its own unless everything runs in one account.
   case "$stage" in
     dev) echo '{"adopt_existing_provider": false}' ;;
     prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
-  esac | if [ "$stage" != staging ] && ! provisioned "platform-$stage-oidc"; then
+  esac | if ! provisioned "platform-$stage-oidc"; then
     log "deploy platform-$stage-oidc"
     mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
     wait_for "platform-$stage-oidc"
