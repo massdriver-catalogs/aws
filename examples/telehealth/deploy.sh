@@ -502,6 +502,20 @@ decommission() {
   die "$env: still decommissioning after an hour"
 }
 
+# Massdriver won't decommission a resource another environment uses by default.
+release_platform() {
+  local org=$1 stage=$2 app id
+  for app in "${APPS[@]}"; do
+    for id in $(mass environment get "$app-$stage" -o json 2>/dev/null |
+      jq -r --arg p "platform-$stage-" '.defaults[]? | select(.resource.id | startswith($p)) | .id'); do
+      graphql "$(jq -n --arg org "$org" --arg id "$id" '{
+        query: "mutation($org: ID!, $id: UUID!) { removeEnvironmentDefault(organizationId: $org, id: $id) { successful } }",
+        variables: {org: $org, id: $id}
+      }')" | jq -e '.data.removeEnvironmentDefault.successful' >/dev/null || die "couldn't unset $app-$stage's platform defaults"
+    done
+  done
+}
+
 cmd_teardown() {
   local org account provider stage project status
   confirm "$(teardown_plan)"
@@ -510,7 +524,9 @@ cmd_teardown() {
 
   # Apps first: the platform's zone and cluster hold their records and rules.
   for stage in dev prod; do
-    for project in billing care visits platform; do decommission "$project-$stage"; done
+    for project in billing care visits; do decommission "$project-$stage"; done
+    release_platform "$org" "$stage"
+    decommission "platform-$stage"
   done
 
   log "destroy bootstrap.tf"
