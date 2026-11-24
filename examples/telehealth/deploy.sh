@@ -442,9 +442,9 @@ cmd_ship() {
 
   log "build and push $image"
   aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}"
-  # The base images are public, but Docker sends any saved public.ecr.aws login
-  # and an expired one gets a 403, so refresh it.
-  aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+  # The base images are public. Docker sends any saved public.ecr.aws login with
+  # the pull, and a stale one, or one from an account that can't pull, gets a 403.
+  docker logout public.ecr.aws >/dev/null 2>&1 || true
   docker build --platform linux/arm64 --provenance=false -t "$image" "$HERE/applications/$app/src"
   docker push "$image"
 
