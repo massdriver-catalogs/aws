@@ -5,6 +5,8 @@ pulls closed encounters from Care, prices them, and writes a claim file for
 the clearinghouse to S3.
 """
 
+import hashlib
+import hmac
 import json
 import os
 import uuid
@@ -18,6 +20,8 @@ from flask import Flask, jsonify, redirect, render_template_string, request
 app = Flask(__name__)
 s3 = boto3.client("s3")
 CARE_URL = os.environ["CARE_URL"].rstrip("/")
+# The clearinghouse rejects claim files that aren't signed with Tendwell's key.
+CLEARINGHOUSE_KEY = os.environ.get("CLEARINGHOUSE_API_KEY", "")
 
 # Illustrative prices per diagnosis code; a real fee schedule comes from payer contracts.
 FEES = {"Z00.00": 145_00, "J06.9": 95_00, "F41.1": 160_00}
@@ -73,6 +77,7 @@ def summary():
         rows = cur.fetchall()
     return render_template_string(
         LEDGER, totals=totals, claims=rows, care_url=CARE_URL, filed=request.args.get("filed"),
+        key_hint=CLEARINGHOUSE_KEY[-4:] if CLEARINGHOUSE_KEY else None,
         environment=os.environ.get("MD_ENVIRONMENT", "dev"),
     )
 
@@ -98,6 +103,9 @@ def run():
             amount = FEES.get(enc["diagnosis_code"], DEFAULT_FEE)
             key = f"claims/{datetime.now(timezone.utc):%Y/%m/%d}/{claim_id}.json"
             claim = {"claim_id": claim_id, "amount_cents": amount, **enc}
+            if CLEARINGHOUSE_KEY:
+                body = json.dumps(claim, default=str, sort_keys=True).encode()
+                claim["signature"] = hmac.new(CLEARINGHOUSE_KEY.encode(), body, hashlib.sha256).hexdigest()
             s3.put_object(
                 Bucket=os.environ["BUCKET_NAME"],
                 Key=key,
@@ -137,6 +145,7 @@ button{font:inherit;background:var(--teal);color:#fff;border:0;border-radius:8px
 <div class="stats">
 <div class="stat"><b>{{ totals.claims }}</b><span class="muted">claims filed</span></div>
 <div class="stat"><b>${{ "{:,.2f}".format(totals.cents / 100) }}</b><span class="muted">billed</span></div>
+<div class="stat"><b>{% if key_hint %}Connected{% else %}Not connected{% endif %}</b><span class="muted">{% if key_hint %}Clearinghouse key ending {{ key_hint }}{% else %}Set the Clearinghouse API key secret in Massdriver{% endif %}</span></div>
 <div class="stat"><form method="post" action="/claims/run"><button>Run claims</button></form><span class="muted">Pulls closed encounters from {{ care_url }}</span></div>
 </div>
 <section><table><tr><th>Patient</th><th>Diagnosis</th><th class="r">Amount</th><th>Claim file (S3)</th><th>Filed</th></tr>

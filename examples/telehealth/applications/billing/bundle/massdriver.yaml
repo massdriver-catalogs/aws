@@ -29,3 +29,7 @@ app:
   runtime: ecs-service
   envs:
     CARE_URL: .dependencies.care.url
+  secrets:
+    CLEARINGHOUSE_API_KEY:
+      title: Clearinghouse API key
+      description: Signs claim files so the clearinghouse accepts them. Claims are filed unsigned without it.
