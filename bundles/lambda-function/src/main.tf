@@ -255,3 +255,33 @@ moved {
   from = aws_lambda_event_source_mapping.queue[0]
   to   = aws_lambda_event_source_mapping.queue["queue"]
 }
+
+# These attached the same policies the app attachments now hold. Destroying
+# them would detach those policies out from under the new attachments.
+removed {
+  from = aws_iam_role_policy_attachment.databases
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = aws_iam_role_policy_attachment.table
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = aws_iam_role_policy_attachment.bucket
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = aws_iam_role_policy_attachment.queue
+  lifecycle {
+    destroy = false
+  }
+}
