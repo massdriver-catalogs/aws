@@ -478,7 +478,7 @@ empty_bucket() {
 # decommission <environment>: waits until nothing in it is deployed.
 decommission() {
   local env=$1 instances live bucket
-  instances=$(mass instance list "$env" -o json 2>/dev/null || echo '[]')
+  instances=$(mass instance list "$env" -o json 2>/dev/null | jq '. // []' || echo '[]')
   live=$(jq -r '[.[] | select(.status == "PROVISIONED" or .status == "FAILED")] | length' <<<"$instances")
   [ "$live" -gt 0 ] || { log "skip $env, nothing deployed"; return; }
 
@@ -530,7 +530,14 @@ cmd_teardown() {
   done
 
   log "destroy bootstrap.tf"
-  (cd "$HERE" && tofu init -input=false >/dev/null && tofu destroy -input=false -auto-approve)
+  # Destroying the settings leaves the org's default tags in place, and an
+  # attribute that's still a default tag can't be deleted.
+  (cd "$HERE" && tofu init -input=false >/dev/null &&
+    trap 'rm -f teardown_override.tf' EXIT &&
+    printf 'resource "massdriver_organization_settings" "this" {\n  default_tags = []\n}\n' >teardown_override.tf &&
+    tofu apply -input=false -auto-approve -target=massdriver_organization_settings.this &&
+    rm teardown_override.tf &&
+    tofu destroy -input=false -auto-approve)
 
   status=$(graphql "$(jq -n --arg org "$org" '{
     query: "query($org: ID!) { integration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { status } }",
