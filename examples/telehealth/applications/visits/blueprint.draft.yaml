@@ -9,7 +9,9 @@ components:
   app:       { bundle: tendwell-visits, name: Visits }
   notifier:  { bundle: tendwell-visits, name: Reminder Sender }
 defaults:
+  - platform/network.network
   - platform/dns.zone
+  - platform/cluster.cluster
 links:
   - registry.repository -> app.registry
   - api.api             -> app.api
