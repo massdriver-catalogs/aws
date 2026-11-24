@@ -6,6 +6,12 @@ source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/telehe
 version: 0.0.0
 
 dependencies:
+  mariadb:
+    resource_type: aws-mariadb@0.0.0
+    required: true
+  bucket:
+    resource_type: aws-s3-bucket@0.0.0
+    required: true
   care:
     resource_type: tendwell-care-api@0.0.0
     required: true
@@ -28,6 +34,12 @@ steps:
 app:
   runtime: ecs-service
   envs:
+    MYSQL_HOST: .dependencies.mariadb.hostname
+    MYSQL_PORT: .dependencies.mariadb.port
+    MYSQL_DATABASE: .dependencies.mariadb.database
+    MYSQL_USER: .dependencies.mariadb.username
+    MYSQL_PASSWORD: '.dependencies.mariadb.secret_arn + ":password::"'
+    BUCKET_NAME: .dependencies.bucket.name
     CARE_URL: .dependencies.care.url
   secrets:
     CLEARINGHOUSE_API_KEY:

@@ -13,11 +13,24 @@ locals {
 
   private_subnets = [for s in var.network.subnets : s.id if s.tier == "private"]
 
-  client_security_groups = compact([
-    try(var.postgres.client_security_group_id, null),
-    try(var.mariadb.client_security_group_id, null),
-    try(var.cache.client_security_group_id, null),
-  ])
+  # An app running on this bundle declares its own databases, caches and
+  # stores. The bundle names each one's type; the connection carries its data.
+  runtime_dependencies = ["aws_authentication", "cluster", "network", "dns", "codebase", "registry"]
+  connected            = try(jsondecode(file("/massdriver/dependencies.json")), {})
+  app_dependencies = {
+    for k, d in try(yamldecode(file("/massdriver/bundle/massdriver.yaml")).dependencies, {}) :
+    k => { type = split("@", d.resource_type)[0], value = local.connected[k] }
+    if !contains(local.runtime_dependencies, k) && try(local.connected[k], null) != null
+  }
+
+  # What the service gets from each standard type. Other types pass through
+  # only as the app's environment variables.
+  joins_security_group = ["aws-postgres", "aws-mariadb", "aws-valkey"]
+  task_policies        = ["aws-dynamodb-table", "aws-s3-bucket", "aws-sqs-queue"]
+  # A database's policy reads its secret, which ECS does before the container starts.
+  execution_policies = ["aws-postgres", "aws-mariadb"]
+
+  client_security_groups = [for d in values(local.app_dependencies) : d.value.client_security_group_id if contains(local.joins_security_group, d.type)]
 }
 
 resource "aws_cloudwatch_log_group" "main" {

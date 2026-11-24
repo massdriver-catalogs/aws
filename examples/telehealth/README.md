@@ -46,9 +46,36 @@ flowchart LR
 Each app in [applications/](applications/) has:
 
 - `src/`: the app and its Dockerfile.
-- `bundle/`: the app's bundle. It has no infrastructure code of its own: it runs on the catalog's `lambda-function` or `ecs-service` runtime, and adds the app's connections and the resource it publishes.
+- `bundle/`: the app's bundle. It has no infrastructure code of its own: it runs on the catalog's `lambda-function` or `ecs-service` runtime, declares the databases, caches and queues the app uses, maps their fields to the app's environment variables, and publishes the app's resource.
 - `resource-type/`: that resource, so other apps connect to it by contract. Care reads the Visits API's URL; Billing reads Care's.
 - `blueprint.draft.yaml`: the project's design as a file, in the draft blueprint format.
+
+## Demo
+
+### Find the apps
+
+Each app publishes its address. Open **Care**, **Billing** or **Visits** on its project's canvas and the `url` is in the resource it publishes. From a terminal:
+
+```bash
+mass resource get care-dev-app.care -o json | jq -r .payload.url
+mass resource get billing-dev-app.billing -o json | jq -r .payload.url
+mass resource get visits-dev-app.visits -o json | jq -r .payload.url
+```
+
+### Walk through it
+
+1. **Care** is the clinician portal. **Book visit** takes an open slot from the Visits API, which saves the booking in DynamoDB and queues a reminder that the Reminder Sender picks up. **Close visit** saves the encounter in Postgres and the note in S3.
+2. **Billing** is the claims ledger. **Run claims** pulls Care's closed encounters and files them as claims in MariaDB and S3. With the **Clearinghouse API key** secret set on the Billing instance, each claim is signed and the ledger shows the key as connected.
+3. **Visits** has no screen. `GET /slots` and `GET /appointments` show what Care reads.
+
+### Set off an alarm
+
+| Do this | Alarm | Fires after |
+|---|---|---|
+| In Care, book a visit for **Alex Rivera**. The booking works, but Alex's email bounces, so the reminder fails three times and moves to the dead-letter queue. | **Reminders Queue**: dead letters | About 5–8 minutes |
+| On Care's instance, set **Alarm when responses are slower than (ms)** to `100`, deploy, and keep clicking around Care. Its pages take about 350 ms. | **Care**: slow responses | 15 minutes of traffic |
+
+A dead-letter message stays for 14 days, so that alarm keeps firing until the message expires or someone clears the queue. Set the response alarm back to `1000` when you're done.
 
 ## Stand it up
 

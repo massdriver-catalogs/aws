@@ -1,8 +1,8 @@
 name: lambda-function
 description: >-
-  A Lambda function that answers routes on an HTTP API. Connect databases, a cache, a table, a
-  bucket or a queue and it gets their settings and access. Runs a built-in placeholder until it's
-  given a container image, so the routes answer from the first deploy.
+  A Lambda function that answers routes on an HTTP API. Apps that run on it bring their own
+  databases, caches, tables, buckets and queues. Runs a built-in placeholder until it's given a
+  container image, so the routes answer from the first deploy.
 source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/lambda-function
 version: 0.0.0
 provides: [runtime]
@@ -88,9 +88,7 @@ params:
     environment:
       title: Environment variables
       description: >-
-        Plain configuration only; anyone who can view this function can read the values. Names set
-        from connected resources (`DATABASE_URL`, `PG*`, `MYSQL_*`, `REDIS_URL`, `TABLE_NAME`,
-        `BUCKET_NAME`, `QUEUE_URL`) are reserved and can't be used here.
+        Plain configuration only; anyone who can view this function can read the values.
       type: array
       default: []
       items:
@@ -108,38 +106,10 @@ params:
           value:
             title: Value
             type: string
-    table_access:
-      title: Table access
-      description: Which of the connected table's policies this function gets. Defaults to read-write.
-      type: string
-      $md.enum:
-        connection: table
-        options: .policies
-        value: .name
-        label: .name
-    bucket_access:
-      title: Bucket access
-      description: Which of the connected bucket's policies this function gets. Defaults to read-write.
-      type: string
-      $md.enum:
-        connection: bucket
-        options: .policies
-        value: .name
-        label: .name
-    queue_access:
-      title: Queue access
-      description: Which of the connected queue's policies this function gets. Defaults to send.
-      type: string
-      $md.enum:
-        connection: queue
-        options: .policies
-        value: .name
-        label: .name
     consume_queue:
       title: Consume from the queue
       description: >-
-        Lambda reads the connected queue and calls this function with batches of messages. Needs
-        **Queue access** set to consume.
+        Lambda reads the app's queue and calls this function with batches of messages.
       type: boolean
       default: false
     log_retention_days:
@@ -170,24 +140,6 @@ dependencies:
   network:
     resource_type: aws-vpc@0.0.0
     required: false
-  postgres:
-    resource_type: aws-postgres@0.0.0
-    required: false
-  mariadb:
-    resource_type: aws-mariadb@0.0.0
-    required: false
-  cache:
-    resource_type: aws-valkey@0.0.0
-    required: false
-  table:
-    resource_type: aws-dynamodb-table@0.0.0
-    required: false
-  bucket:
-    resource_type: aws-s3-bucket@0.0.0
-    required: false
-  queue:
-    resource_type: aws-sqs-queue@0.0.0
-    required: false
 
 resources: {}
 
@@ -202,9 +154,6 @@ ui:
     - memory_mb
     - timeout_seconds
     - environment
-    - table_access
-    - bucket_access
-    - queue_access
     - consume_queue
     - log_retention_days
     - "*"
