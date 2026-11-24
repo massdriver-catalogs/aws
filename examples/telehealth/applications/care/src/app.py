@@ -21,7 +21,7 @@ s3 = boto3.client("s3")
 VISITS_URL = os.environ["VISITS_URL"].rstrip("/")
 
 DIAGNOSES = {"Z00.00": "Annual wellness exam", "J06.9": "Upper respiratory infection", "F41.1": "Generalized anxiety"}
-PATIENTS = ["Maya Chen", "Jordan Ellis", "Priya Nair", "Sam Whitaker", "Rosa Delgado", "Theo Brooks"]
+PATIENTS = ["Maya Chen", "Jordan Ellis", "Priya Nair", "Sam Whitaker", "Rosa Delgado", "Theo Brooks", "Alex Rivera"]
 
 
 def db():
