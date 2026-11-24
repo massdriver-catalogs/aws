@@ -27,9 +27,10 @@ resource "github_repository_vulnerability_alerts" "main" {
   enabled    = true
 }
 
-# auto_init creates main; any other default branch is cut from it.
+# auto_init creates main; any other default branch is cut from it. An adopted
+# repository already has its branches.
 resource "github_branch" "default" {
-  count      = var.default_branch == "main" ? 0 : 1
+  count      = var.default_branch == "main" || var.adopt_existing_repository ? 0 : 1
   repository = github_repository.main.name
   branch     = var.default_branch
 }

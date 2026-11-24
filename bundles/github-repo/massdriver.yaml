@@ -72,7 +72,7 @@ params:
       default: ""
     visibility:
       title: Visibility
-      description: "***Private repositories use GitHub Actions minutes, billed beyond the plan's free allowance; public ones build free.*** Anything pushed to a public repository is public for good."
+      description: "***Private repositories use Actions minutes; public ones build free.*** Anything pushed to a public repository is public for good."
       type: string
       default: private
       oneOf:
@@ -100,9 +100,9 @@ params:
     adopt_existing_repository:
       title: Adopt an existing repository
       description: >-
-        Take over a repository that already exists in the organization instead of creating one.
-        Nothing in it is overwritten and the pipeline isn't committed; the variables and secret it
-        reads are still set. Only the first deploy reads this.
+        Take over a repository that already exists in the organization instead of creating one. Its
+        code is untouched and the pipeline isn't committed, but its description, visibility and
+        default branch are set from this form. Only the first deploy reads this.
       type: boolean
       default: false
       $md.immutable: true

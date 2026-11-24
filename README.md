@@ -6,7 +6,7 @@ Ship apps on AWS with Massdriver. This catalog has the network and DNS for each 
 
 ### Environment
 
-Deploy these once per environment (`dev`, `staging`, `prod`) and set each as an environment default. Everything else in the environment finds them on its own.
+Deploy these once per environment (`dev`, `prod`) and set each as an environment default. Everything else in the environment finds them on its own.
 
 | Bundle | Makes | Resource type |
 |---|---|---|
@@ -20,8 +20,8 @@ Deploy these once per environment (`dev`, `staging`, `prod`) and set each as an 
 | Bundle | Makes | Resource type |
 |---|---|---|
 | `http-api` | An API Gateway HTTP API, optionally at `<subdomain>.<zone>` | `aws-http-api` |
-| `lambda-function` | A function that answers routes on an HTTP API, or reads a queue | — |
-| `ecs-service` | A container service on Fargate, at `<subdomain>.<zone>` or as a worker with no address | — |
+| `lambda-function` | A function that answers routes on an HTTP API, or reads a queue. Apps run on it | — |
+| `ecs-service` | A container service on Fargate, at `<subdomain>.<zone>` or as a worker with no address. Apps run on it | — |
 
 ### Data stores
 
@@ -41,7 +41,7 @@ Deploy these once per environment (`dev`, `staging`, `prod`) and set each as an 
 | `ecr-repository` | The app's image repository, with push and pull policies | `aws-ecr-repository` |
 | `github-repo` | The app's GitHub repository, with a pipeline that builds, pushes and deploys | `source-repository` |
 | `massdriver-project` | The app's Massdriver project, its environments, and a group its pipeline deploys with | `app-project` |
-| `codebase` | The repository and registry as one resource, shared with the app's project | `aws-codebase` |
+| `codebase` | Where an app's images come from: its registry and, optionally, its repository. Runtimes connect to it | `aws-codebase` |
 
 ### Credentials
 
@@ -61,11 +61,10 @@ flowchart TB
     cluster[ecs-cluster]
   end
   subgraph app[An app's project]
-    api[http-api] --> fn[lambda-function]
-    svc[ecs-service]
-    pg[(postgres)] --> fn
-    pg --> svc
+    api[http-api] --> fn[app on lambda-function]
+    pg[(postgres)] --> svc[app on ecs-service]
     q[sqs-queue] --> fn
+    b[(s3-bucket)] --> svc
   end
   vpc -. default .-> app
   dns -. default .-> app
@@ -75,24 +74,28 @@ flowchart TB
 
 Dotted lines are environment defaults; solid lines are links on the app's canvas.
 
-- **Subdomains.** The DNS zone's certificate covers every name one level under it. An `http-api` or `ecs-service` with **Subdomain** `api` answers at `https://api.dev.example.com`, with the record and certificate handled for you. The zone, the API and the cluster must be in the same region.
-- **Databases and caches** sit in the VPC's internal subnets and only accept connections from their own client security group. A runtime joins that group when you link the store to it.
-- **Policies.** Tables, buckets, queues and registries publish IAM policies such as `read`, `read-write`, `send` or `pull`. A runtime attaches the one you pick (`ecs-service` attaches all of them if you don't pick); nothing writes its own IAM for a store.
+- **Subdomains.** The DNS zone's certificate covers every name one level under it. An `http-api` or `ecs-service` with **Subdomain** `api` answers at `https://api.dev.example.com`, with the record and certificate handled for you. The zone, the API and the cluster must be in the same region. An `ecs-service` takes its VPC and zone from the cluster, so it always lands in the load balancer's network and under its certificate.
+- **Databases and caches** sit in the VPC's internal subnets and only accept connections from their own client security group.
+- **Policies.** Tables, buckets, queues and registries publish IAM policies such as `read`, `read-write`, `send` or `pull`. Nothing writes its own IAM for a store.
 
-### Environment variables
+### Apps and runtimes
 
-Link a data store to a runtime and the runtime gets the same variables on Lambda and ECS:
+`lambda-function` and `ecs-service` are runtimes: the infrastructure an app runs on. An app is a small bundle of its own, with no infrastructure code. It names its runtime, declares the data stores it uses, and maps their fields to its environment variables:
 
-| Store | Variables |
-|---|---|
-| PostgreSQL | `PGHOST` `PGPORT` `PGDATABASE` `PGUSER` `PGPASSWORD`, plus `DATABASE_URL` on Lambda |
-| MariaDB | `MYSQL_HOST` `MYSQL_PORT` `MYSQL_DATABASE` `MYSQL_USER` `MYSQL_PASSWORD`, plus `MYSQL_URL` on Lambda |
-| Valkey | `REDIS_URL` (`rediss://`, TLS) |
-| DynamoDB | `TABLE_NAME` |
-| S3 | `BUCKET_NAME` |
-| SQS | `QUEUE_URL` |
+```yaml
+name: billing
+dependencies:
+  ledger:
+    resource_type: aws-mariadb@0.0.0
+    required: true
+app:
+  runtime: ecs-service
+  envs:
+    MYSQL_HOST: .dependencies.ledger.hostname
+    MYSQL_PASSWORD: '.dependencies.ledger.secret_arn + ":password::"'
+```
 
-ECS reads passwords from Secrets Manager when a task starts, so it never holds a URL with the password in it. Build the URL in your app from the variables, or let your PostgreSQL client read `PG*` directly.
+Massdriver builds the app and its runtime into one bundle when the app is published. The runtime gives the app access to what it connects: it joins a database's or cache's client security group, and attaches the store's policies. On ECS, a variable that points at a Secrets Manager value is read when a task starts and never written into the task definition. The Tendwell apps in [examples/telehealth](examples/telehealth/) are built this way.
 
 ## Use it
 
@@ -104,7 +107,7 @@ ECS reads passwords from Secrets Manager when a task starts, so it never holds a
 
 **Sync it to your organization and build your own.** Fork this repository and connect its publish workflow:
 
-1. In Massdriver, turn on **Settings → General → Grant new bundle repositories to all projects**. Create a service account with a **1 year** token in a group allowed to publish.
+1. In Massdriver, turn on **Settings → General → Grant new bundle repositories to all projects**. Create a service account with a **1 year** token in a group allowed to publish. The examples' `deploy.sh` turns that setting off and grants each repository itself, so turn it back on after running one.
 2. In the fork's **Settings → Secrets and variables → Actions**, add its key as the secret `MASSDRIVER_API_KEY` and your organization ID as the variable `MASSDRIVER_ORG_ID`.
 3. Run **Actions → Publish → Run workflow** with *all* ticked. After that, every push to `main` publishes what changed: credentials and resource types first, then bundles.
 

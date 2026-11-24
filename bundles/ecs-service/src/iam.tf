@@ -9,7 +9,9 @@ locals {
   })
 
   task_app_policies = merge([
-    for k, d in local.app_dependencies : { for p in d.value.policies : "${k}-${p.name}" => p.arn } if contains(local.task_policies, d.type)
+    for k, d in local.app_dependencies : {
+      for p in d.value.policies : "${k}-${p.name}" => p.arn if contains(local.task_policies[d.type], p.name)
+    } if contains(keys(local.task_policies), d.type)
   ]...)
 
   execution_app_policies = merge([
@@ -18,7 +20,6 @@ locals {
 
   pull_policies = merge(
     var.codebase == null ? {} : { for p in var.codebase.registry.policies : "codebase-${p.name}" => p.arn if p.name == "pull" },
-    var.registry == null ? {} : { for p in var.registry.policies : "registry-${p.name}" => p.arn if p.name == "pull" },
     local.execution_app_policies,
   )
 }
@@ -45,6 +46,13 @@ resource "aws_iam_role_policy_attachment" "execution" {
   for_each   = local.pull_policies
   role       = aws_iam_role.execution.name
   policy_arn = each.value
+}
+
+# Services that pulled through a registry connection now pull through the
+# codebase. Moving keeps the attachment instead of detaching the same policy.
+moved {
+  from = aws_iam_role_policy_attachment.execution["registry-pull"]
+  to   = aws_iam_role_policy_attachment.execution["codebase-pull"]
 }
 
 resource "aws_iam_role" "task" {

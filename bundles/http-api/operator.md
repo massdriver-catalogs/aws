@@ -29,7 +29,7 @@ The limit is working. If the traffic is real, raise **Steady requests per second
 The function failed or timed out. The access log has the reason:
 
 ```bash
-aws logs tail /aws/apigateway/{{id}} --region {{params.region}} --since 15m --format short | grep -v '"status":"2'
+aws logs tail /aws/apigateway/{{params.md_metadata.name_prefix}} --region {{params.region}} --since 15m --format short | grep -v '"status":"2'
 ```
 
 `integrationError` names the problem. A timeout means the function ran past 30 seconds, which the API can't wait for. Then read the function's own logs (see its runbook).

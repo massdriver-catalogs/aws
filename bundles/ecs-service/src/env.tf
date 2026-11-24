@@ -19,8 +19,9 @@ locals {
 
   secrets = concat(
     [for k, v in local.app_envs : { name = k, valueFrom = v } if can(regex(local.secret_ref, v))],
-    # Through the version, so tasks don't start before the values exist.
-    [for k in keys(local.app_secrets) : { name = k, valueFrom = "${aws_secretsmanager_secret_version.app[0].secret_id}:${k}::" }],
+    # Pinned to the version, so a changed value makes a new task definition
+    # and rolls the tasks instead of waiting for them to restart.
+    [for k in keys(local.app_secrets) : { name = k, valueFrom = "${aws_secretsmanager_secret_version.app[0].secret_id}:${k}::${aws_secretsmanager_secret_version.app[0].version_id}" }],
   )
 }
 

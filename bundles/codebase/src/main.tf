@@ -1,15 +1,7 @@
 resource "massdriver_resource" "codebase" {
   field = "codebase"
-  name  = "Codebase ${var.repository.full_name}"
-  resource = jsonencode({
-    repository = {
-      full_name      = var.repository.full_name
-      url            = var.repository.url
-      clone_url      = var.repository.clone_url
-      ssh_url        = var.repository.ssh_url
-      default_branch = var.repository.default_branch
-      visibility     = var.repository.visibility
-    }
+  name  = "Codebase ${var.repository != null ? var.repository.full_name : var.registry.name}"
+  resource = jsonencode(merge({
     registry = {
       name        = var.registry.name
       arn         = var.registry.arn
@@ -26,7 +18,23 @@ resource "massdriver_resource" "codebase" {
     #   name         = var.project.name
     #   environments = [for e in var.project.environments : e.identifier]
     # }
-  })
+    }, var.repository == null ? {} : {
+    repository = {
+      full_name      = var.repository.full_name
+      url            = var.repository.url
+      clone_url      = var.repository.clone_url
+      ssh_url        = var.repository.ssh_url
+      default_branch = var.repository.default_branch
+      visibility     = var.repository.visibility
+    }
+  }))
+
+  lifecycle {
+    precondition {
+      condition     = !var.share_with_project || (var.project != null && var.massdriver != null)
+      error_message = "Share with the project needs the Massdriver project and the Massdriver service account connected. Connect both, or turn sharing off to link the codebase in its own project."
+    }
+  }
 }
 
 resource "massdriver_resource_grant" "project" {

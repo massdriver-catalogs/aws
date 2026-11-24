@@ -19,7 +19,12 @@ locals {
     "dynamodb:DeleteItem",
     "dynamodb:BatchWriteItem",
   ]
-  kms_statements = local.kms ? [{
+  kms_read_statements = local.kms ? [{
+    Effect   = "Allow"
+    Action   = ["kms:Decrypt", "kms:DescribeKey"]
+    Resource = aws_kms_key.table[0].arn
+  }] : []
+  kms_write_statements = local.kms ? [{
     Effect   = "Allow"
     Action   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey*", "kms:DescribeKey"]
     Resource = aws_kms_key.table[0].arn
@@ -93,7 +98,7 @@ resource "aws_iam_policy" "read" {
       Effect   = "Allow"
       Action   = local.read_actions
       Resource = local.table_resources
-    }], local.kms_statements)
+    }], local.kms_read_statements)
   })
 }
 
@@ -106,6 +111,6 @@ resource "aws_iam_policy" "read_write" {
       Effect   = "Allow"
       Action   = concat(local.read_actions, local.write_actions)
       Resource = local.table_resources
-    }], local.kms_statements)
+    }], local.kms_write_statements)
   })
 }

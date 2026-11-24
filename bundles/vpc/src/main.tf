@@ -1,5 +1,6 @@
+# Not filtered on state: a zone that is briefly impaired would drop out of the
+# list, shift the zones picked and replace every subnet.
 data "aws_availability_zones" "available" {
-  state = "available"
   filter {
     name   = "opt-in-status"
     values = ["opt-in-not-required"]

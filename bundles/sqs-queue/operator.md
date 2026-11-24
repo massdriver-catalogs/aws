@@ -32,12 +32,12 @@ The waiting count keeps growing.
 
    ```bash
    aws lambda list-event-source-mappings --region {{params.region}} --event-source-arn {{resources.queue.arn}} \
-     --query 'EventSourceMappings[].[FunctionArn,State,LastProcessingResult]' --output table
+     --query 'EventSourceMappings[].[UUID,FunctionArn,State,LastProcessingResult]' --output table
    ```
 
    - **No mapping:** nothing is connected to consume. Connect the consumer to this queue.
    - **`Disabled`:** turn it back on with `aws lambda update-event-source-mapping --uuid <uuid> --enabled`.
-   - **`PROBLEM: ...` in the last result:** usually missing permissions. The function's role needs the **consume** policy.
+   - **`PROBLEM: ...` in the last result:** usually missing permissions. The function's role needs the **consume** policy; redeploying the function's instance reattaches it.
 
 3. Is the consumer failing? A high `NotVisible` count with a flat waiting count usually means consumers time out and messages come back. Check the consumer's logs for timeouts, and raise **Processing time limit** if work really takes that long.
 

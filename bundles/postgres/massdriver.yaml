@@ -208,7 +208,7 @@ steps:
     provisioner: opentofu:1.10
     config:
       checkov:
-        halt_on_failure: '.params.md_metadata.default_tags["md-target"] == "production"'
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] == "prod"'
 
 ui:
   ui:order:

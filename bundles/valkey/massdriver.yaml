@@ -36,7 +36,7 @@ params:
     max_data_storage_gb:
       title: Data storage limit (GB)
       description: >-
-        When the cache reaches this size, it evicts the least recently used keys, or writes fail.
+        When the cache reaches this size, it evicts the least recently used keys that have an expiry, or writes fail.
         ***~$0.084/GB-hour stored (~$61/GB-month), at least 100 MB.***
       type: integer
       default: 1

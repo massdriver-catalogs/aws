@@ -122,8 +122,8 @@ resource "aws_instance" "nat" {
     systemctl enable --now iptables
   EOF
 
-  # A new AMI would replace the instance and drop egress mid-deploy. Patching
-  # happens through SSM; replace deliberately with `tofu taint`.
+  # A new AMI would replace the instance and drop egress mid-deploy. To move to
+  # a new AMI, terminate the instance and redeploy.
   lifecycle {
     ignore_changes = [ami]
   }

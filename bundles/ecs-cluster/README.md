@@ -17,7 +17,11 @@ Connecting a DNS zone later moves services from the HTTP listener to the HTTPS o
 
 ## Cost
 
-The load balancer costs about **$16/month** plus a charge for traffic (LCUs). The cluster itself is free; services pay for their own tasks.
+The load balancer costs about **$16/month** plus a charge for traffic (LCUs). **Block common attacks** adds about **$7/month** plus $0.60 per million requests. The cluster itself is free; services pay for their own tasks.
+
+## Blocked requests
+
+With **Block common attacks** on, AWS's managed rules for common exploits and known bad inputs run before any service sees a request. A blocked request gets a 403 from the load balancer, and is logged to the `aws-waf-logs-` log group for the cluster.
 
 ## Decommissioning
 

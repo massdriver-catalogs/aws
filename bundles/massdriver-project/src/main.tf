@@ -5,7 +5,9 @@ locals {
     "application"  = var.tag_application ? var.project_identifier : ""
   } : k => v if v != "" }
 
-  environments = { for e in var.environments : e.identifier => e }
+  # Grouped so a duplicate identifier reaches the precondition below instead
+  # of failing on a duplicate map key.
+  environments = { for e in var.environments : e.identifier => e... }
 }
 
 resource "massdriver_project" "main" {
@@ -14,6 +16,13 @@ resource "massdriver_project" "main" {
   name        = var.project_name
   description = var.description
   attributes  = local.attributes
+
+  lifecycle {
+    precondition {
+      condition     = length(local.environments) == length(var.environments)
+      error_message = "Two environments share an identifier."
+    }
+  }
 }
 
 resource "massdriver_environment" "main" {
@@ -22,16 +31,9 @@ resource "massdriver_environment" "main" {
 
   project_id              = massdriver_project.main.id
   identifier              = each.key
-  name                    = each.value.name
-  separation_of_duty      = coalesce(each.value.separation_of_duty, false)
-  decommission_protection = coalesce(each.value.decommission_protection, false)
-
-  lifecycle {
-    precondition {
-      condition     = length(local.environments) == length(var.environments)
-      error_message = "Two environments share an identifier."
-    }
-  }
+  name                    = each.value[0].name
+  separation_of_duty      = coalesce(each.value[0].separation_of_duty, false)
+  decommission_protection = coalesce(each.value[0].decommission_protection, false)
 }
 
 resource "massdriver_group" "deploy" {

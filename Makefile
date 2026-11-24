@@ -27,10 +27,10 @@ publish-platforms: repos
 publish-resource-types: repos
 	@for d in $(RESOURCE_TYPES); do mass resource-type publish resource-types/$$d; done
 
-build
+build:
 	@for d in $(BUNDLES); do mass bundle build --bundle-directory bundles/$$d; done
 
-lint
+lint:
 	@for d in $(BUNDLES); do mass bundle lint --bundle-directory bundles/$$d; done
 
 validate: build

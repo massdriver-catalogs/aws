@@ -1,5 +1,5 @@
 output "url" {
-  value = local.public ? "https://${local.fqdn}" : ""
+  value = local.public ? "${lower(coalesce(var.cluster.load_balancer.protocol, "HTTPS"))}://${local.fqdn}" : ""
 }
 
 output "hostname" {

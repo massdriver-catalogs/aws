@@ -10,7 +10,7 @@ import hmac
 import json
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import boto3
 import pymysql
@@ -94,7 +94,10 @@ def run():
     with db() as conn, conn.cursor() as cur:
         cur.execute("SELECT MAX(created_at) AS last FROM claims")
         last = cur.fetchone()["last"]
-        since = last.replace(tzinfo=timezone.utc).isoformat() if last else "1970-01-01T00:00:00Z"
+        # An encounter can close while a run is in flight, after Care answered
+        # but before the claim is saved. Looking back an hour catches it; the
+        # unique encounter_id keeps the overlap from filing twice.
+        since = (last.replace(tzinfo=timezone.utc) - timedelta(hours=1)).isoformat() if last else "1970-01-01T00:00:00Z"
 
         encounters = requests.get(f"{CARE_URL}/encounters", params={"since": since}, timeout=10).json()
         filed = []
@@ -106,14 +109,16 @@ def run():
             if CLEARINGHOUSE_KEY:
                 body = json.dumps(claim, default=str, sort_keys=True).encode()
                 claim["signature"] = hmac.new(CLEARINGHOUSE_KEY.encode(), body, hashlib.sha256).hexdigest()
+            cur.execute(
+                "INSERT IGNORE INTO claims (id, encounter_id, patient, diagnosis_code, amount_cents, export_key) VALUES (%s, %s, %s, %s, %s, %s)",
+                (claim_id, enc["id"], enc["patient"], enc["diagnosis_code"], amount, key),
+            )
+            if cur.rowcount == 0:
+                continue
             s3.put_object(
                 Bucket=os.environ["BUCKET_NAME"],
                 Key=key,
                 Body=json.dumps(claim, default=str).encode(),
-            )
-            cur.execute(
-                "INSERT IGNORE INTO claims (id, encounter_id, patient, diagnosis_code, amount_cents, export_key) VALUES (%s, %s, %s, %s, %s, %s)",
-                (claim_id, enc["id"], enc["patient"], enc["diagnosis_code"], amount, key),
             )
             filed.append(claim)
     if request.accept_mimetypes.accept_html and not request.is_json:

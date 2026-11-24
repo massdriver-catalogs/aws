@@ -11,8 +11,13 @@ The database has no public address and there is no bastion host. Use one of thes
 **CloudShell in the VPC (no app needed).** In the AWS console, open CloudShell in **{{resources.database.region}}**, choose **Create VPC environment**, and pick:
 
 - VPC: `{{dependencies.network.id}}`
-- A **private** subnet. Internal subnets have no internet access, so the client can't be installed there.
-- Security group: `{{resources.database.client_security_group_id}}`
+- A **private** subnet. Internal subnets have no internet access, so the client can't be installed there. The VPC needs internet egress.
+- Security groups: `{{resources.database.client_security_group_id}}`, which lets you reach the database, and a temporary one for the internet. Make the temporary one first:
+
+  ```bash
+  aws ec2 create-security-group --region {{resources.database.region}} --vpc-id {{dependencies.network.id}} \
+    --group-name {{id}}-cloudshell --description "CloudShell outbound" --query GroupId --output text
+  ```
 
 Then:
 
@@ -23,7 +28,7 @@ export MYSQL_PWD=$(aws secretsmanager get-secret-value --region {{resources.data
 mysql --ssl -h {{resources.database.hostname}} -P {{resources.database.port}} -u {{resources.database.username}} {{resources.database.database}}
 ```
 
-Delete the VPC environment when you're done. While it exists, it can reach the database.
+Delete the VPC environment and the `{{id}}-cloudshell` security group when you're done. While the environment exists, it can reach the database.
 
 **From a running ECS task.** If an app task already has the client group and ECS Exec turned on, open a shell in it. The mysql client is only there if the app image has it.
 

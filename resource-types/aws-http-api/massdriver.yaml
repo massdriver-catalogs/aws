@@ -40,7 +40,3 @@ schema:
       title: Custom Domain
       description: Present when the API answers on a subdomain of the environment's DNS zone, e.g. api.dev.example.com.
       type: string
-    authorizer_id:
-      title: Sign-in Authorizer ID
-      description: Present when the API verifies sign-in tokens. Routes that require sign-in use it.
-      type: string

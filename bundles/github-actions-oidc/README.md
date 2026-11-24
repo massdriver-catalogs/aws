@@ -6,4 +6,4 @@ AWS allows one provider per issuer per account, so this is deployed once and sha
 
 ## Adopting an existing provider
 
-An AWS account can hold only one provider for `token.actions.githubusercontent.com`. If one already exists, turn on **Adopt the existing provider** on the first deploy and this bundle takes it over unchanged instead of failing to create a second.
+An AWS account can hold only one provider for `token.actions.githubusercontent.com`. If one already exists, turn on **Adopt the existing provider** on the first deploy and this bundle takes it over instead of failing to create a second. Its audiences are set to `sts.amazonaws.com` only, and decommissioning this instance deletes it, which breaks any role other tools made on it.

@@ -1,16 +1,17 @@
 # Codebase
 
-Where an app's code lives and where its images go, as one resource: its GitHub repository and its ECR repository.
+Where an app's images go and, when it has one, the Git repository they're built from. Runtimes connect to the codebase, not the ECR repository, so an app has one place its code comes from however much automation is behind it.
 
-## Why one resource
-
-Every runtime in the app's project needs the registry, in every environment. Links across projects would be set per instance, and a new environment would start without them. One resource, set once as each environment's default, reaches every bundle there.
-
-Bundles read it as `aws-codebase`. `lambda-function` and `ecs-service` attach the registry's **pull** policy to their roles, so they can run any image in it, such as the `<registry url>:<git-sha>` tags the pipeline pushes.
+Bundles read it as `aws-codebase`. `lambda-function` and `ecs-service` attach the registry's **pull** policy to their roles, so they can run any image in it, such as the `<registry url>:<git-sha>` tags a pipeline pushes.
 
 ## How it connects
 
-It takes the other onboarding bundles: the repository, the ECR repository and the Massdriver project. It needs no AWS access, only the Massdriver Service Account credential, to share itself.
+It always takes an ECR repository. The rest is optional:
+
+- **Just a registry.** Connect only the ECR repository, turn off **Share with the project**, and link the codebase to the app on the same canvas. You push images yourself.
+- **Governed repository and pipeline.** Connect the `github-repo` and `massdriver-project` bundles too, plus the Massdriver Service Account credential. The codebase then carries the repository, and sharing lets the app's own project use it.
+
+It needs no AWS access. The Massdriver Service Account credential is only for sharing.
 
 With **Share with the project** on, the codebase is shared with every environment whose `md-project` is the app's project, so people working there can pick it as a default without access to the onboarding project. Setting it as the default is still a step per environment, because Massdriver's Terraform provider can't set environment defaults yet:
 

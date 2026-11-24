@@ -56,6 +56,24 @@ aws elbv2 describe-rules --region {{resources.cluster.region}} --listener-arn {{
 - **Name missing:** the service has no **Subdomain**, or its last deploy failed. Redeploy it.
 - **Rule is on the wrong listener:** a DNS zone was connected to the cluster after the service deployed. Redeploy the service.
 
+## Requests get a 403
+{{#params.waf}}
+
+The firewall blocked them. See which rule and what the request looked like:
+
+```bash
+aws logs filter-log-events --log-group-name aws-waf-logs-{{params.md_metadata.name_prefix}} --region {{dependencies.network.region}} \
+  --start-time $(( ($(date +%s) - 3600) * 1000 )) --query 'events[].message' --output json \
+  | jq -r '.[] | fromjson | .terminatingRuleId + "  " + .httpRequest.httpMethod + " " + .httpRequest.uri'
+```
+
+If a rule blocks real traffic, like a large upload tripping the body size rule, turn off **Block common attacks** and deploy while you plan an exception.
+{{/params.waf}}
+{{^params.waf}}
+
+The firewall is off, so a 403 comes from the service itself. Check its logs.
+{{/params.waf}}
+
 ## Certificate or HTTPS errors
 
 {{#dependencies.dns}}

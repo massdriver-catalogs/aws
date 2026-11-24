@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stands up Tendwell Health in a Massdriver organization without GitHub Actions.
+# Stands up Tendwell Health in a Massdriver organization.
 #
 #   ./deploy.sh role                    make the IAM role Massdriver deploys with, in the current AWS account
 #   ./deploy.sh costs                   send the AWS account's costs to Massdriver, per instance
@@ -9,6 +9,7 @@
 #   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev or prod
 #   ./deploy.sh ship <app> <stage>      build an app's image, push it and deploy it
 #   ./deploy.sh all <stage>             role, costs, setup, publish, bootstrap, provision and ship every app
+#   ./deploy.sh teardown                decommission everything, then undo bootstrap, costs and role
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
 # PyYAML, docker, and AWS CLI credentials for the account the apps deploy into.
@@ -20,6 +21,8 @@
 #   PROD_ROLE_ARN     a role in a separate prod account; prod uses the role from `role` otherwise
 #   ISSUER            Massdriver's token issuer host; api.massdriver.cloud unless self-hosted
 #   YES=1             skip the confirmation before anything changes in AWS
+#   REDEPLOY=1        provision redeploys instances that are already up, from the preset;
+#                     apps go back to the placeholder until shipped again
 
 set -euo pipefail
 
@@ -83,7 +86,7 @@ Deploys the $stage stage into $(aws_target), region us-east-1:
   - Two Lambda functions behind API Gateway, and two Fargate services.
   - IAM roles and security groups for all of it.
 Cost: $cost.
-Remove it with: mass environment decommission <project>-$stage, for billing, care, visits, then platform.
+Remove it with: ./deploy.sh teardown
 PLAN
 }
 
@@ -117,8 +120,10 @@ deploy() {
   local instance=$1 bundle=$2 stage=$3 filter=${4:-.}
   provisioned "$instance" && return
   log "deploy $instance"
+  local before
+  before=$(latest_deployment "$instance")
   preset "$bundle" "$stage" | jq "$filter" | mass instance deploy "$instance" --params - -m "deploy.sh provision $stage" --follow || true
-  wait_for "$instance"
+  wait_for "$instance" "$before"
 }
 
 # Reruns pick up where a failed run stopped instead of redeploying everything.
@@ -129,16 +134,27 @@ provisioned() {
 
 # The log stream can end, or the API can blip, while a deployment is still
 # running. Later steps read this instance's outputs, so wait for the result.
+latest_deployment() {
+  mass deployment list "$1" -o json 2>/dev/null | jq -r '.[0].id // empty' || true
+}
+
+# wait_for <instance> <deployment id from before the deploy>
 wait_for() {
-  local status
-  while :; do
-    status=$(mass deployment list "$1" -o json 2>/dev/null | jq -r '.[0].status // empty')
+  local latest status
+  for _ in $(seq 1 240); do
+    latest=$(mass deployment list "$1" -o json 2>/dev/null | jq -c '.[0] // empty') || { sleep 15; continue; }
+    if [ -z "$latest" ] || [ "$(jq -r .id <<<"$latest")" = "${2:-}" ]; then
+      die "$1: the deploy didn't start; see the error above"
+    fi
+    status=$(jq -r .status <<<"$latest")
     case "$status" in
       COMPLETED) return ;;
+      PROPOSED) die "$1: the deployment waits for a second person's approval; approve it in Massdriver, then rerun" ;;
       FAILED | ABORTED | REJECTED) die "$1: deployment $status; see mass deployment logs" ;;
       *) sleep 15 ;;
     esac
   done
+  die "$1: still $status after an hour; see mass deployment logs"
 }
 
 # Grants are immutable and creating one twice fails, so reruns skip existing ones.
@@ -185,7 +201,7 @@ cmd_setup() {
   (cd "$HERE" && tofu init -input=false >/dev/null &&
     # Adopt attributes an earlier run, or a person, already defined; a missing one just fails to import.
     for key in team data_classification; do
-      tofu state list "massdriver_custom_attribute.$key" | grep -q . ||
+      tofu state list "massdriver_custom_attribute.$key" 2>/dev/null | grep -q . ||
         tofu import -input=false "massdriver_custom_attribute.$key" "$key" >/dev/null 2>&1 || true
     done &&
     tofu apply -input=false -auto-approve \
@@ -242,11 +258,14 @@ cmd_role() {
   echo "$arn" >&2
 }
 
+# Reads the same profile mass does, so every step talks to the same organization.
 profile_value() {
-  python3 - "$1" "${MASSDRIVER_PROFILE:-default}" <<'PY'
+  python3 - "$1" <<'PY'
 import os, sys, yaml
-config = yaml.safe_load(open(os.path.expanduser("~/.config/massdriver/config.yaml")))
-print(config["profiles"][sys.argv[2]][sys.argv[1]])
+home = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+config = yaml.safe_load(open(os.path.join(home, "massdriver", "config.yaml")))
+name = os.environ.get("MASSDRIVER_PROFILE") or config.get("current_profile") or "default"
+print(config["profiles"][name].get(sys.argv[1], ""))
 PY
 }
 
@@ -257,7 +276,8 @@ graphql() {
     md_*) auth="Bearer $key" ;;
     *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
   esac
-  curl -sS -X POST "${MASSDRIVER_URL:-https://api.massdriver.cloud}/api/v2" \
+  local url=${MASSDRIVER_URL:-$(profile_value url)}
+  curl -sS -X POST "${url:-https://api.massdriver.cloud}/api/v2" \
     -H "Authorization: $auth" -H 'content-type: application/json' -d "$1"
 }
 
@@ -277,6 +297,8 @@ cmd_costs() {
   }')" | jq -r '.data.integration.status // empty')
   if [ -n "$status" ]; then
     log "AWS Cost and Usage Reports integration is already $status"
+    [ "$status" != DISABLED ] ||
+      echo "warning: an organization admin can turn it back on under Integrations > AWS Cost and Usage Reports" >&2
     return
   fi
 
@@ -290,7 +312,12 @@ cmd_costs() {
     }}
   }')" | jq -e -r 'if .data.createIntegration.successful then "connected"
     else error([(.data.createIntegration.messages // [])[].message, (.errors // [])[].message] | join("; ")) end' >&2 ||
-    die "couldn't connect the integration"
+    # Costs are optional, and connecting them needs an organization admin.
+    cat >&2 <<EOF
+warning: couldn't connect the integration; everything else carries on.
+  An organization admin can connect it under Integrations > AWS Cost and Usage Reports,
+  with the values from: (cd $HERE/costs && tofu output -json massdriver_integration_config)
+EOF
 }
 
 cmd_bootstrap() {
@@ -330,13 +357,15 @@ delegate() {
       sleep 10
     done
     echo "gave up waiting for the $domain zone to delegate it" >&2
+    exit 1
   ) &
+  DELEGATING=$!
 }
 
 cmd_provision() {
   local stage
   stage=$(stage_arg "${1:-}")
-  [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
+  [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.example"
   local zone="$stage.$DOMAIN"
   confirm "$(stage_plan "$stage")"
 
@@ -344,17 +373,20 @@ cmd_provision() {
   deploy "platform-$stage-network" vpc "$stage"
   delegate "$zone"
   deploy "platform-$stage-dns" dns-zone "$stage" ".domain = \"$zone\""
-  wait
+  [ -z "${DELEGATING:-}" ] || wait "$DELEGATING" || die "couldn't delegate $zone from $PARENT_ZONE_ID; see the error above"
   deploy "platform-$stage-cluster" ecs-cluster "$stage"
   # An account has one GitHub OIDC provider. Dev creates it in the nonprod
-  # account, and prod creates its own unless everything runs in one account.
-  case "$stage" in
-    dev) echo '{"adopt_existing_provider": false}' ;;
-    prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
-  esac | if ! provisioned "platform-$stage-oidc"; then
+  # account unless one is already there, and prod creates its own unless
+  # everything runs in one account.
+  if ! provisioned "platform-$stage-oidc"; then
     log "deploy platform-$stage-oidc"
-    mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
-    wait_for "platform-$stage-oidc"
+    before=$(latest_deployment "platform-$stage-oidc")
+    case "$stage" in
+      dev) aws iam list-open-id-connect-providers --output json |
+        jq '{adopt_existing_provider: any(.OpenIDConnectProviderList[]; .Arn | endswith("/token.actions.githubusercontent.com"))}' ;;
+      prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
+    esac | mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
+    wait_for "platform-$stage-oidc" "$before"
   fi
 
   for field in network.network dns.zone cluster.cluster; do
@@ -368,6 +400,7 @@ cmd_provision() {
 
   log "visits-$stage"
   deploy "visits-$stage-registry" ecr-repository "$stage"
+  deploy "visits-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "visits-$stage-api" http-api "$stage" '.subdomain = "visits"'
   deploy "visits-$stage-slots" dynamodb-table "$stage"
   deploy "visits-$stage-reminders" sqs-queue "$stage"
@@ -379,6 +412,7 @@ cmd_provision() {
 
   log "care-$stage"
   deploy "care-$stage-registry" ecr-repository "$stage"
+  deploy "care-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "care-$stage-charts" postgres "$stage" '.database_name = "care"'
   deploy "care-$stage-sessions" valkey "$stage"
   deploy "care-$stage-documents" s3-bucket "$stage"
@@ -388,6 +422,7 @@ cmd_provision() {
 
   log "billing-$stage"
   deploy "billing-$stage-registry" ecr-repository "$stage"
+  deploy "billing-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "billing-$stage-ledger" mariadb "$stage" '.database_name = "billing"'
   deploy "billing-$stage-claims" s3-bucket "$stage"
   connect "billing-$stage-app" care "care-$stage-app.care"
@@ -401,15 +436,18 @@ cmd_ship() {
   [[ " ${APPS[*]} " == *" $app "* ]] || die "app must be one of: ${APPS[*]}"
   stage=$(stage_arg "${2:-}")
 
-  local registry url region tag image
+  local registry url region tag image before
   registry=$(mass resource get "$app-$stage-registry.repository" -o json)
-  url=$(jq -r '(.payload // .data).url' <<<"$registry")
-  region=$(jq -r '(.payload // .data).region' <<<"$registry")
+  url=$(jq -r '.payload.url' <<<"$registry")
+  region=$(jq -r '.payload.region' <<<"$registry")
   tag="$(git -C "$HERE" rev-parse --short HEAD)-$(date +%s)"
   image="$url:$tag"
 
   log "build and push $image"
   aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}"
+  # The base images are public. Docker sends any saved public.ecr.aws login with
+  # the pull, and a stale one, or one from an account that can't pull, gets a 403.
+  docker logout public.ecr.aws >/dev/null 2>&1 || true
   docker build --platform linux/arm64 --provenance=false -t "$image" "$HERE/applications/$app/src"
   docker push "$image"
 
@@ -417,9 +455,135 @@ cmd_ship() {
   [ "$app" = visits ] && instances+=("$app-$stage-notifier")
   for instance in "${instances[@]}"; do
     log "deploy $instance"
+    before=$(latest_deployment "$instance")
     mass instance deploy "$instance" --patch ".image_uri = \"$image\"" -m "Ship $tag" --follow || true
-    wait_for "$instance"
+    wait_for "$instance" "$before"
   done
+}
+
+teardown_plan() {
+  cat <<PLAN
+Deletes Tendwell Health from your Massdriver organization and $(aws_target):
+  - Empties the S3 buckets, then decommissions every instance in billing, care, visits and
+    platform, dev and prod. Their data is gone for good: databases take no final snapshot.
+  - Destroys what bootstrap.tf made: projects, environments, groups, policies, credentials,
+    bundle grants, attributes and organization settings.
+  - Disconnects the AWS Cost and Usage Reports integration and deletes the report, its bucket
+    and its IAM user.
+  - Deletes the massdriver-<org> role, and removes the organization from the Massdriver OIDC
+    provider, deleting the provider when no other organization uses it.
+Published bundles and resource types stay, so ./deploy.sh all can stand it back up.
+PLAN
+}
+
+empty_bucket() {
+  local versions
+  log "empty s3://$1"
+  aws s3 rm "s3://$1" --recursive --only-show-errors
+  while :; do
+    versions=$(aws s3api list-object-versions --bucket "$1" --max-items 1000 --output json \
+      --query '{Objects: [Versions, DeleteMarkers][][].{Key: Key, VersionId: VersionId}}')
+    [ "$(jq '.Objects | length' <<<"$versions")" -gt 0 ] || return 0
+    aws s3api delete-objects --bucket "$1" --delete "$versions" >/dev/null
+  done
+}
+
+# decommission <environment>: waits until nothing in it is deployed.
+decommission() {
+  local env=$1 instances live bucket
+  instances=$(mass instance list "$env" -o json 2>/dev/null | jq '. // []' || echo '[]')
+  live=$(jq -r '[.[] | select(.status == "PROVISIONED" or .status == "FAILED")] | length' <<<"$instances")
+  [ "$live" -gt 0 ] || { log "skip $env, nothing deployed"; return; }
+
+  # S3 won't delete a bucket that still holds files.
+  for id in $(jq -r '.[] | select(.status != "INITIALIZED" and .status != "DECOMMISSIONED") | .id' <<<"$instances"); do
+    bucket=$(mass resource get "$id.bucket" -o json 2>/dev/null | jq -r '.payload.name // empty' || true)
+    [ -z "$bucket" ] || empty_bucket "$bucket"
+  done
+
+  log "decommission $env"
+  mass environment decommission "$env" >/dev/null
+  for _ in $(seq 1 240); do
+    sleep 15
+    instances=$(mass instance list "$env" -o json 2>/dev/null) || continue
+    jq -e 'all(.[]; .status == "INITIALIZED" or .status == "DECOMMISSIONED")' <<<"$instances" >/dev/null && return
+    for id in $(jq -r '.[] | select(.status == "FAILED") | .id' <<<"$instances"); do
+      [ "$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"')" != "DECOMMISSION FAILED" ] ||
+        die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./deploy.sh teardown"
+    done
+  done
+  die "$env: still decommissioning after an hour"
+}
+
+# Massdriver won't decommission a resource another environment uses by default.
+release_platform() {
+  local org=$1 stage=$2 app id
+  for app in "${APPS[@]}"; do
+    for id in $(mass environment get "$app-$stage" -o json 2>/dev/null |
+      jq -r --arg p "platform-$stage-" '.defaults[]? | select(.resource.id | startswith($p)) | .id'); do
+      graphql "$(jq -n --arg org "$org" --arg id "$id" '{
+        query: "mutation($org: ID!, $id: UUID!) { removeEnvironmentDefault(organizationId: $org, id: $id) { successful } }",
+        variables: {org: $org, id: $id}
+      }')" | jq -e '.data.removeEnvironmentDefault.successful' >/dev/null || die "couldn't unset $app-$stage's platform defaults"
+    done
+  done
+}
+
+cmd_teardown() {
+  local org account provider stage project status
+  confirm "$(teardown_plan)"
+  org=$(mass whoami -o json | jq -r .organization.id)
+  account=$(aws sts get-caller-identity --query Account --output text)
+
+  # Apps first: the platform's zone and cluster hold their records and rules.
+  for stage in dev prod; do
+    for project in billing care visits; do decommission "$project-$stage"; done
+    release_platform "$org" "$stage"
+    decommission "platform-$stage"
+  done
+
+  log "destroy bootstrap.tf"
+  # Destroying the settings leaves the org's default tags in place, and an
+  # attribute that's still a default tag can't be deleted.
+  (cd "$HERE" && tofu init -input=false >/dev/null &&
+    trap 'rm -f teardown_override.tf' EXIT &&
+    printf 'resource "massdriver_organization_settings" "this" {\n  default_tags = []\n}\n' >teardown_override.tf &&
+    tofu apply -input=false -auto-approve -target=massdriver_organization_settings.this &&
+    rm teardown_override.tf &&
+    tofu destroy -input=false -auto-approve)
+
+  status=$(graphql "$(jq -n --arg org "$org" '{
+    query: "query($org: ID!) { integration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { status } }",
+    variables: {org: $org}
+  }')" | jq -r '.data.integration.status // empty')
+  if [ -n "$status" ]; then
+    log "disconnect the AWS Cost and Usage Reports integration"
+    graphql "$(jq -n --arg org "$org" '{
+      query: "mutation($org: ID!) { deleteIntegration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { successful } }",
+      variables: {org: $org}
+    }')" | jq -e '.data.deleteIntegration.successful' >/dev/null || die "couldn't disconnect the integration"
+  fi
+  log "delete the cost and usage report"
+  (cd "$HERE/costs" && tofu init -input=false >/dev/null &&
+    bucket=$(tofu output -json massdriver_integration_config 2>/dev/null | jq -r '.bucket_name // empty') &&
+    { [ -z "$bucket" ] || ! aws s3api head-bucket --bucket "$bucket" 2>/dev/null || empty_bucket "$bucket"; } &&
+    tofu destroy -input=false -auto-approve -var "organization=$org")
+
+  log "delete role massdriver-$org"
+  if aws iam get-role --role-name "massdriver-$org" >/dev/null 2>&1; then
+    for arn in $(aws iam list-attached-role-policies --role-name "massdriver-$org" --query 'AttachedPolicies[].PolicyArn' --output text); do
+      aws iam detach-role-policy --role-name "massdriver-$org" --policy-arn "$arn"
+    done
+    aws iam delete-role --role-name "massdriver-$org"
+  fi
+  provider="arn:aws:iam::$account:oidc-provider/${ISSUER:-api.massdriver.cloud}"
+  if aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$provider" >/dev/null 2>&1; then
+    aws iam remove-client-id-from-open-id-connect-provider --open-id-connect-provider-arn "$provider" --client-id "massdriver:$org"
+    [ "$(aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$provider" --query 'length(ClientIDList)')" != 0 ] ||
+      aws iam delete-open-id-connect-provider --open-id-connect-provider-arn "$provider"
+  fi
+  rm -f "$HERE/terraform.tfvars.json"
+  log "done"
 }
 
 case "${1:-}" in
@@ -430,9 +594,10 @@ case "${1:-}" in
   bootstrap) cmd_bootstrap ;;
   provision) cmd_provision "${2:-}" ;;
   ship) cmd_ship "${2:-}" "${3:-}" ;;
+  teardown) cmd_teardown ;;
   all)
     stage=$(stage_arg "${2:-}")
-    [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.health"
+    [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.example"
     confirm "$(role_plan)
 
 $(costs_plan)
@@ -454,5 +619,5 @@ Then builds the three app images with Docker, pushes them to ECR and deploys the
     cmd_provision "$stage"
     for app in "${APPS[@]}"; do cmd_ship "$app" "$stage"; done
     ;;
-  *) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

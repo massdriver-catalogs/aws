@@ -20,7 +20,7 @@ It depends on two other onboarding bundles:
 - **ECR repository:** the pipeline pushes there. This bundle makes an IAM role only the default branch of this repository can assume, through GitHub's OIDC tokens, with the ECR repository's push policy attached. No AWS keys are stored in GitHub. The role trusts the account's GitHub Actions OIDC provider, from `github-actions-oidc`, set as an environment default.
 - **Massdriver project:** the pipeline deploys there. This bundle makes a Massdriver service account for the repository and puts it in the project's deploy group, so the pipeline can deploy only where that group can. Its token is the `MASSDRIVER_API_KEY` Actions secret, valid for a year. The first deploy after eleven months replaces the service account and the secret with fresh ones, so redeploy at least that often.
 
-The repository resource it produces describes the repository the same way any Git host would, so the codebase bundle can merge it with the registry and project.
+The repository resource it produces describes the repository the same way any Git host would, so the codebase bundle can merge it with the registry.
 
 ## The pipeline
 
@@ -38,7 +38,7 @@ Private repositories are visible to the organization's members and use GitHub Ac
 
 ## Adopting an existing repository
 
-Turn on **Adopt an existing repository** on the first deploy to manage a repository that already exists in the organization, with **Repository name** set to its name. Nothing in it is overwritten and the workflows aren't committed, but the variables and secret above are set; delete any that already exist first. An archived repository is unarchived.
+Turn on **Adopt an existing repository** on the first deploy to manage a repository that already exists in the organization, with **Repository name** set to its name. Its code is untouched and the workflows aren't committed. Its description, visibility and default branch are set from this form, issues are turned on, and merged branches are deleted automatically. The default branch must already exist. The variables and secret above are set; delete any that already exist first. An archived repository is unarchived.
 
 ## Decommissioning
 

@@ -14,6 +14,6 @@ resource "massdriver_resource" "table" {
         { name = "read", arn = aws_iam_policy.read.arn },
       ]
     },
-    local.has_sort_key ? { sort_key = var.sort_key } : {},
+    local.has_sort_key ? { sort_key = { name = var.sort_key.name, type = coalesce(var.sort_key.type, "S") } } : {},
   ))
 }

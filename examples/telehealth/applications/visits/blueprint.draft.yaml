@@ -3,19 +3,23 @@ project: visits
 name: Visits
 components:
   registry:  { bundle: ecr-repository, name: Image Repository }
+  codebase:  { bundle: codebase, name: Codebase }
   api:       { bundle: http-api, name: Booking API }
   slots:     { bundle: dynamodb-table, name: Slots }
   reminders: { bundle: sqs-queue, name: Reminders Queue }
   app:       { bundle: tendwell-visits, name: Visits }
   notifier:  { bundle: tendwell-visits, name: Reminder Sender }
 defaults:
+  - platform/network.network
   - platform/dns.zone
+  - platform/cluster.cluster
 links:
-  - registry.repository -> app.registry
+  - registry.repository -> codebase.registry
+  - codebase.codebase   -> app.codebase
   - api.api             -> app.api
   - slots.table         -> app.table
   - reminders.queue     -> app.queue
-  - registry.repository -> notifier.registry
+  - codebase.codebase   -> notifier.codebase
   - api.api             -> notifier.api
   - slots.table         -> notifier.table
   - reminders.queue     -> notifier.queue

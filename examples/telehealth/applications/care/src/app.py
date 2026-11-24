@@ -73,7 +73,12 @@ def today():
         closed = conn.execute(
             "SELECT patient, clinician, diagnosis_code, appointment_id, closed_at FROM encounters ORDER BY closed_at DESC LIMIT 20"
         ).fetchall()
-    done = {e["appointment_id"] for e in closed}
+        done = {
+            r["appointment_id"]
+            for r in conn.execute(
+                "SELECT appointment_id FROM encounters WHERE appointment_id = ANY(%s)", ([v["sk"] for v in visits],)
+            ).fetchall()
+        }
     return render_template_string(
         PORTAL,
         visits=[v for v in sorted(visits, key=lambda v: v["slot"]) if v["sk"] not in done],

@@ -84,9 +84,11 @@ params:
       title: Encryption
       description: >-
         Files are always encrypted. A customer-managed KMS key adds key-level audit and revocation.
-        ***A KMS key is ~$1/month plus request charges.***
+        ***A KMS key is ~$1/month plus request charges.*** Can't be changed later: files written
+        with the key can't be read once it's gone.
       type: string
       default: AES256
+      $md.immutable: true
       oneOf:
         - const: AES256
           title: S3-managed (SSE-S3)

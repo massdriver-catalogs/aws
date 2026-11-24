@@ -34,6 +34,7 @@ steps:
 app:
   runtime: ecs-service
   envs:
+    MD_ENVIRONMENT: '.params.md_metadata.default_tags["md-instance"] | split("-")[1]'
     MYSQL_HOST: .dependencies.mariadb.hostname
     MYSQL_PORT: .dependencies.mariadb.port
     MYSQL_DATABASE: .dependencies.mariadb.database

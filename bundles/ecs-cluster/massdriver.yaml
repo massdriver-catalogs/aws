@@ -12,16 +12,19 @@ params:
       access_logs: false
       access_log_retention_days: 7
       deletion_protection: false
+      waf: false
     - __name: Production
       container_insights: enabled
       access_logs: true
       access_log_retention_days: 90
       deletion_protection: true
+      waf: true
   required:
     - container_insights
     - access_logs
     - access_log_retention_days
     - deletion_protection
+    - waf
   properties:
     container_insights:
       title: Container Insights
@@ -46,7 +49,7 @@ params:
       default: false
     access_log_retention_days:
       title: Access log retention (days)
-      description: Older log files are deleted from the bucket.
+      description: Older access logs, and the firewall's log of blocked requests, are deleted.
       type: integer
       default: 7
       enum:
@@ -59,6 +62,14 @@ params:
       description: >-
         The load balancer can't be deleted, so decommissioning fails until this is turned off and
         deployed. Every service's address depends on it.
+      type: boolean
+      default: false
+    waf:
+      title: Block common attacks
+      description: >-
+        A web application firewall in front of the load balancer with AWS's managed rules for
+        common exploits and known bad inputs. Blocked requests get a 403.
+        ***~$7/month plus $0.60 per million requests.***
       type: boolean
       default: false
 
@@ -83,7 +94,7 @@ steps:
     provisioner: opentofu:1.10
     config:
       checkov:
-        halt_on_failure: '.params.md_metadata.default_tags["md-target"] == "production"'
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] == "prod"'
 
 ui:
   ui:order:
@@ -91,4 +102,5 @@ ui:
     - access_logs
     - access_log_retention_days
     - deletion_protection
+    - waf
     - "*"

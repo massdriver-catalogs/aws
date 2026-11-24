@@ -1,7 +1,8 @@
 name: codebase
 description: >-
-  An application's codebase: its Git repository and ECR repository as one resource, shared with
-  the application's Massdriver project to set as an environment default there.
+  An application's codebase: the ECR repository its images go to and, when it has one, its Git
+  repository. Runtimes connect to it to pull images. It can be shared with the application's
+  Massdriver project to set as an environment default there.
 source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/codebase
 version: 0.0.0
 
@@ -22,23 +23,24 @@ params:
       title: Share with the project
       description: >-
         Lets every environment of the application's project use the codebase, so it can be set as
-        their default. Off, only people who can already see the onboarding project can use it.
+        their default. Needs the project and the Massdriver service account connected. Off, it's
+        used in its own project, linked like any other resource.
       type: boolean
       default: true
 
 dependencies:
   massdriver:
     resource_type: massdriver-service-account@0.0.0
-    required: true
+    required: false
   repository:
     resource_type: source-repository@0.0.0
-    required: true
+    required: false
   registry:
     resource_type: aws-ecr-repository@0.0.0
     required: true
   project:
     resource_type: app-project@0.0.0
-    required: true
+    required: false
 
 resources:
   codebase:

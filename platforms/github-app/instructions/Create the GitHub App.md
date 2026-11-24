@@ -30,7 +30,7 @@ It's on the app's settings page. Paste it into **App ID**.
 
 ## 3. Generate a private key
 
-In the app's sidebar, open **Credentials**, then **Key pairs**, and click **New key**. Open the downloaded `.pem` file and paste all of it into **Private Key**.
+On the app's settings page, scroll to **Private keys** and click **Generate a private key**. Open the downloaded `.pem` file and paste all of it into **Private Key**.
 
 ## 4. Install it
 

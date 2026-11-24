@@ -38,7 +38,7 @@ aws ecr describe-images --region {{params.region}} --repository-name {{resources
 ```
 
 - **No such image:** it was never pushed (check the pipeline run), or the lifecycle rules deleted it (next section).
-- **It exists:** the image isn't arm64, or the function is in another region. Rebuild with `--platform linux/arm64`.
+- **It exists:** the image isn't built for the service's or function's architecture, or it's in another region. Rebuild with that `--platform`.
 
 ## Scan findings
 
