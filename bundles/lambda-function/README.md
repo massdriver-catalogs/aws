@@ -35,7 +35,7 @@ Inside the VPC, the function reaches S3 and DynamoDB through the VPC's gateway e
 
 ## Queue
 
-Turn on **Consume from the queue** and Lambda reads the app's SQS queue and calls the function with up to 10 messages at a time. If the function returns without an error, the messages are deleted; if it fails, they come back after the queue's visibility timeout and, after enough tries, go to the dead-letter queue.
+Turn on **Consume from the queue** and Lambda reads the app's SQS queue and calls the function with up to 10 messages at a time. If the function returns without an error, the messages are deleted; if it fails, they come back after the queue's visibility timeout and, after enough tries, go to the dead-letter queue. To fail only some of a batch, return their message IDs as `{"batchItemFailures": [{"itemIdentifier": "<messageId>"}]}`; the rest are deleted.
 
 The same function still answers its API routes. Tell the two apart by the event: queue events have a `Records` list.
 

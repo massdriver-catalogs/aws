@@ -90,11 +90,21 @@ def appointment(appointment_id):
     return respond(200, item) if item else respond(404, {"error": "not found"})
 
 
+# Alex Rivera's email bounces, so their reminder lands in the dead-letter
+# queue for the front desk to call them instead.
+BOUNCES = {"Alex Rivera"}
+
+
 def send_reminders(records):
+    failed = []
     for record in records:
         appt = json.loads(record["body"])
+        if appt["patient"] in BOUNCES:
+            print(json.dumps({"reminder": "bounced", "patient": appt["patient"], "slot": appt["slot"]}))
+            failed.append({"itemIdentifier": record["messageId"]})
+            continue
         print(json.dumps({"reminder": "sent", "patient": appt["patient"], "slot": appt["slot"]}))
-    return {}
+    return {"batchItemFailures": failed}
 
 
 def handler(event, context):

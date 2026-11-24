@@ -247,6 +247,9 @@ resource "aws_lambda_event_source_mapping" "queue" {
   event_source_arn = each.value
   function_name    = aws_lambda_function.main.arn
   batch_size       = 10
+  # Only the messages the function reports as failed are retried, so one bad
+  # message doesn't send the rest of its batch to the dead-letter queue.
+  function_response_types = ["ReportBatchItemFailures"]
 
   depends_on = [aws_iam_role_policy_attachment.app]
 }
