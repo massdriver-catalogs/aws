@@ -104,8 +104,30 @@ PY
 # deploy <instance> <bundle> <stage> [jq filter applied to the preset]
 deploy() {
   local instance=$1 bundle=$2 stage=$3 filter=${4:-.}
+  provisioned "$instance" && return
   log "deploy $instance"
-  preset "$bundle" "$stage" | jq "$filter" | mass instance deploy "$instance" --params - -m "deploy.sh provision $stage" --follow
+  preset "$bundle" "$stage" | jq "$filter" | mass instance deploy "$instance" --params - -m "deploy.sh provision $stage" --follow || true
+  wait_for "$instance"
+}
+
+# Reruns pick up where a failed run stopped instead of redeploying everything.
+provisioned() {
+  [ -z "${REDEPLOY:-}" ] && [ "$(mass instance get "$1" -o json 2>/dev/null | jq -r .status)" = PROVISIONED ] &&
+    log "skip $1, already provisioned (REDEPLOY=1 redeploys it)"
+}
+
+# The log stream can end, or the API can blip, while a deployment is still
+# running. Later steps read this instance's outputs, so wait for the result.
+wait_for() {
+  local status
+  while :; do
+    status=$(mass deployment list "$1" -o json 2>/dev/null | jq -r '.[0].status // empty')
+    case "$status" in
+      COMPLETED) return ;;
+      FAILED | ABORTED | REJECTED) die "$1: deployment $status; see mass deployment logs" ;;
+      *) sleep 15 ;;
+    esac
+  done
 }
 
 # Grants are immutable and creating one twice fails, so reruns skip existing ones.
@@ -268,9 +290,10 @@ cmd_provision() {
   case "$stage" in
     dev) echo '{"adopt_existing_provider": false}' ;;
     prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
-  esac | if [ "$stage" != staging ]; then
+  esac | if [ "$stage" != staging ] && ! provisioned "platform-$stage-oidc"; then
     log "deploy platform-$stage-oidc"
-    mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow
+    mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
+    wait_for "platform-$stage-oidc"
   fi
 
   for field in network.network dns.zone cluster.cluster; do
@@ -333,7 +356,8 @@ cmd_ship() {
   [ "$app" = visits ] && instances+=("$app-$stage-notifier")
   for instance in "${instances[@]}"; do
     log "deploy $instance"
-    mass instance deploy "$instance" --patch ".image_uri = \"$image\"" -m "Ship $tag" --follow
+    mass instance deploy "$instance" --patch ".image_uri = \"$image\"" -m "Ship $tag" --follow || true
+    wait_for "$instance"
   done
 }
 

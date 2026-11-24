@@ -54,13 +54,14 @@ resource "aws_db_parameter_group" "main" {
   name_prefix = "${local.name}-${replace(local.family, ".", "-")}-"
   family      = local.family
 
+  # RDS for MariaDB 10.11 and later only knows the log_slow_* names.
   parameter {
-    name  = "slow_query_log"
+    name  = "log_slow_query"
     value = "1"
   }
 
   parameter {
-    name  = "long_query_time"
+    name  = "log_slow_query_time"
     value = "1"
   }
 
