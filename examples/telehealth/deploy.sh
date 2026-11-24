@@ -503,14 +503,27 @@ decommission() {
 
   log "decommission $env"
   mass environment decommission "$env" >/dev/null
+  local idle=0 busy latest id
   for _ in $(seq 1 240); do
     sleep 15
     instances=$(mass instance list "$env" -o json 2>/dev/null) || continue
     jq -e 'all(.[]; .status == "INITIALIZED" or .status == "DECOMMISSIONED")' <<<"$instances" >/dev/null && return
-    for id in $(jq -r '.[] | select(.status == "FAILED") | .id' <<<"$instances"); do
-      [ "$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"')" != "DECOMMISSION FAILED" ] ||
+    busy=0
+    for id in $(jq -r '.[] | select(.status == "PROVISIONED" or .status == "FAILED") | .id' <<<"$instances"); do
+      latest=$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"' || true)
+      [ "$latest" != "DECOMMISSION FAILED" ] ||
         die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./deploy.sh teardown"
+      case "$latest" in *COMPLETED | *FAILED | *ABORTED | *REJECTED) ;; *) busy=1 ;; esac
     done
+    # Massdriver sometimes stops partway down a chain of links, leaving the
+    # rest deployed and nothing running. Once it's been quiet a minute, destroy
+    # what's left; anything still in use refuses and is tried again.
+    [ "$busy" = 1 ] && idle=0 || idle=$((idle + 1))
+    [ "$idle" -ge 4 ] || continue
+    for id in $(jq -r '.[] | select(.status == "PROVISIONED") | .id' <<<"$instances"); do
+      mass instance destroy "$id" --force -m "deploy.sh teardown" >/dev/null 2>&1 || true
+    done
+    idle=0
   done
   die "$env: still decommissioning after an hour"
 }
