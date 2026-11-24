@@ -6,6 +6,15 @@ source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/telehe
 version: 0.0.0
 
 dependencies:
+  postgres:
+    resource_type: aws-postgres@0.0.0
+    required: true
+  cache:
+    resource_type: aws-valkey@0.0.0
+    required: true
+  bucket:
+    resource_type: aws-s3-bucket@0.0.0
+    required: true
   visits:
     resource_type: tendwell-visits-api@0.0.0
     required: true
@@ -28,4 +37,11 @@ steps:
 app:
   runtime: ecs-service
   envs:
+    PGHOST: .dependencies.postgres.hostname
+    PGPORT: .dependencies.postgres.port
+    PGDATABASE: .dependencies.postgres.database
+    PGUSER: .dependencies.postgres.username
+    PGPASSWORD: '.dependencies.postgres.secret_arn + ":password::"'
+    REDIS_URL: '"rediss://" + .dependencies.cache.hostname + ":" + (.dependencies.cache.port | tostring)'
+    BUCKET_NAME: .dependencies.bucket.name
     VISITS_URL: .dependencies.visits.url

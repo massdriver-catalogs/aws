@@ -372,9 +372,9 @@ cmd_provision() {
   deploy "visits-$stage-slots" dynamodb-table "$stage"
   deploy "visits-$stage-reminders" sqs-queue "$stage"
   deploy "visits-$stage-app" lambda-function "$stage" \
-    '.routes = ["GET /health", "GET /slots", "GET /appointments", "GET /appointments/{id}", "POST /appointments"] | .queue_access = "send"'
+    '.routes = ["GET /health", "GET /slots", "GET /appointments", "GET /appointments/{id}", "POST /appointments"]'
   deploy "visits-$stage-notifier" lambda-function "$stage" \
-    '.routes = ["GET /reminders"] | .queue_access = "consume" | .consume_queue = true'
+    '.routes = ["GET /reminders"] | .consume_queue = true'
   share "visits-$stage-app.visits" --condition md-project=care
 
   log "care-$stage"

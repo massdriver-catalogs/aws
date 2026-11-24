@@ -5,6 +5,14 @@ description: >-
 source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/telehealth/applications/visits
 version: 0.0.0
 
+dependencies:
+  table:
+    resource_type: aws-dynamodb-table@0.0.0
+    required: true
+  queue:
+    resource_type: aws-sqs-queue@0.0.0
+    required: true
+
 resources:
   visits:
     resource_type: tendwell-visits-api@0.0.0
@@ -22,3 +30,6 @@ steps:
 
 app:
   runtime: lambda-function
+  envs:
+    TABLE_NAME: .dependencies.table.name
+    QUEUE_URL: .dependencies.queue.url

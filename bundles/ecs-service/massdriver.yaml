@@ -1,8 +1,8 @@
 name: ecs-service
 description: >-
   A container service on Fargate in a shared ECS cluster, with an HTTPS address on the cluster's
-  load balancer or none for a background worker. Connects to databases, caches, tables, buckets and
-  queues with their credentials injected.
+  load balancer or none for a background worker. Apps that run on it bring their own databases,
+  caches, tables, buckets and queues.
 source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/ecs-service
 version: 0.0.0
 provides: [runtime]
@@ -172,8 +172,7 @@ params:
     environment:
       title: Environment variables
       description: >-
-        Plain configuration only; values are visible to anyone who can view this service. Connected
-        databases, caches, tables, buckets and queues set their own variables.
+        Plain configuration only; values are visible to anyone who can view this service.
       type: array
       default: []
       items:
@@ -191,33 +190,6 @@ params:
           value:
             title: Value
             type: string
-    table_access:
-      title: Table access
-      description: Which of the connected table's policies the service gets. Empty gives all of them.
-      type: string
-      $md.enum:
-        connection: table
-        options: .policies
-        value: .arn
-        label: .name
-    bucket_access:
-      title: Bucket access
-      description: Which of the connected bucket's policies the service gets. Empty gives all of them.
-      type: string
-      $md.enum:
-        connection: bucket
-        options: .policies
-        value: .arn
-        label: .name
-    queue_access:
-      title: Queue access
-      description: Which of the connected queue's policies the service gets. Empty gives all of them.
-      type: string
-      $md.enum:
-        connection: queue
-        options: .policies
-        value: .arn
-        label: .name
     log_retention_days:
       title: Log retention (days)
       description: "***Billed per GB ingested and stored.***"
@@ -249,24 +221,6 @@ dependencies:
   registry:
     resource_type: aws-ecr-repository@0.0.0
     required: false
-  postgres:
-    resource_type: aws-postgres@0.0.0
-    required: false
-  mariadb:
-    resource_type: aws-mariadb@0.0.0
-    required: false
-  cache:
-    resource_type: aws-valkey@0.0.0
-    required: false
-  table:
-    resource_type: aws-dynamodb-table@0.0.0
-    required: false
-  bucket:
-    resource_type: aws-s3-bucket@0.0.0
-    required: false
-  queue:
-    resource_type: aws-sqs-queue@0.0.0
-    required: false
 
 resources: {}
 
@@ -291,9 +245,6 @@ ui:
     - max_count
     - cpu_target
     - environment
-    - table_access
-    - bucket_access
-    - queue_access
     - log_retention_days
     - "*"
   desired_count:
