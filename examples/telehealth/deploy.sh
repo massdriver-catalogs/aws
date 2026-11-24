@@ -310,7 +310,12 @@ cmd_costs() {
     }}
   }')" | jq -e -r 'if .data.createIntegration.successful then "connected"
     else error([(.data.createIntegration.messages // [])[].message, (.errors // [])[].message] | join("; ")) end' >&2 ||
-    die "couldn't connect the integration"
+    # Costs are optional, and connecting them needs an organization admin.
+    cat >&2 <<EOF
+warning: couldn't connect the integration; everything else carries on.
+  An organization admin can connect it under Integrations > AWS Cost and Usage Reports,
+  with the values from: (cd $HERE/costs && tofu output -json massdriver_integration_config)
+EOF
 }
 
 cmd_bootstrap() {
