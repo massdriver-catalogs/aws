@@ -9,6 +9,7 @@
 #   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev or prod
 #   ./deploy.sh ship <app> <stage>      build an app's image, push it and deploy it
 #   ./deploy.sh all <stage>             role, costs, setup, publish, bootstrap, provision and ship every app
+#   ./deploy.sh teardown                decommission everything, then undo bootstrap, costs and role
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
 # PyYAML, docker, and AWS CLI credentials for the account the apps deploy into.
@@ -85,7 +86,7 @@ Deploys the $stage stage into $(aws_target), region us-east-1:
   - Two Lambda functions behind API Gateway, and two Fargate services.
   - IAM roles and security groups for all of it.
 Cost: $cost.
-Remove it with: mass environment decommission <project>-$stage, for billing, care, visits, then platform.
+Remove it with: ./deploy.sh teardown
 PLAN
 }
 
@@ -447,6 +448,108 @@ cmd_ship() {
   done
 }
 
+teardown_plan() {
+  cat <<PLAN
+Deletes Tendwell Health from your Massdriver organization and $(aws_target):
+  - Empties the S3 buckets, then decommissions every instance in billing, care, visits and
+    platform, dev and prod. Their data is gone for good: databases take no final snapshot.
+  - Destroys what bootstrap.tf made: projects, environments, groups, policies, credentials,
+    bundle grants, attributes and organization settings.
+  - Disconnects the AWS Cost and Usage Reports integration and deletes the report, its bucket
+    and its IAM user.
+  - Deletes the massdriver-<org> role, and removes the organization from the Massdriver OIDC
+    provider, deleting the provider when no other organization uses it.
+Published bundles and resource types stay, so ./deploy.sh all can stand it back up.
+PLAN
+}
+
+empty_bucket() {
+  local versions
+  log "empty s3://$1"
+  aws s3 rm "s3://$1" --recursive --only-show-errors
+  while :; do
+    versions=$(aws s3api list-object-versions --bucket "$1" --max-items 1000 --output json \
+      --query '{Objects: [Versions, DeleteMarkers][][].{Key: Key, VersionId: VersionId}}')
+    [ "$(jq '.Objects | length' <<<"$versions")" -gt 0 ] || return 0
+    aws s3api delete-objects --bucket "$1" --delete "$versions" >/dev/null
+  done
+}
+
+# decommission <environment>: waits until nothing in it is deployed.
+decommission() {
+  local env=$1 instances live
+  instances=$(mass instance list "$env" -o json 2>/dev/null || echo '[]')
+  live=$(jq -r '[.[] | select(.status == "PROVISIONED" or .status == "FAILED")] | length' <<<"$instances")
+  [ "$live" -gt 0 ] || { log "skip $env, nothing deployed"; return; }
+
+  # S3 won't delete a bucket that still holds files.
+  for id in $(jq -r '.[] | select(.status != "INITIALIZED" and .status != "DECOMMISSIONED") | .id' <<<"$instances"); do
+    bucket=$(mass resource get "$id.bucket" -o json 2>/dev/null | jq -r '.payload.name // empty')
+    [ -z "$bucket" ] || empty_bucket "$bucket"
+  done
+
+  log "decommission $env"
+  mass environment decommission "$env" >/dev/null
+  for _ in $(seq 1 240); do
+    sleep 15
+    instances=$(mass instance list "$env" -o json 2>/dev/null) || continue
+    jq -e 'all(.[]; .status == "INITIALIZED" or .status == "DECOMMISSIONED")' <<<"$instances" >/dev/null && return
+    for id in $(jq -r '.[] | select(.status == "FAILED") | .id' <<<"$instances"); do
+      [ "$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"')" != "DECOMMISSION FAILED" ] ||
+        die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./deploy.sh teardown"
+    done
+  done
+  die "$env: still decommissioning after an hour"
+}
+
+cmd_teardown() {
+  local org account provider stage project status
+  confirm "$(teardown_plan)"
+  org=$(mass whoami -o json | jq -r .organization.id)
+  account=$(aws sts get-caller-identity --query Account --output text)
+
+  # Apps first: the platform's zone and cluster hold their records and rules.
+  for stage in dev prod; do
+    for project in billing care visits platform; do decommission "$project-$stage"; done
+  done
+
+  log "destroy bootstrap.tf"
+  (cd "$HERE" && tofu init -input=false >/dev/null && tofu destroy -input=false -auto-approve)
+
+  status=$(graphql "$(jq -n --arg org "$org" '{
+    query: "query($org: ID!) { integration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { status } }",
+    variables: {org: $org}
+  }')" | jq -r '.data.integration.status // empty')
+  if [ -n "$status" ]; then
+    log "disconnect the AWS Cost and Usage Reports integration"
+    graphql "$(jq -n --arg org "$org" '{
+      query: "mutation($org: ID!) { deleteIntegration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { successful } }",
+      variables: {org: $org}
+    }')" | jq -e '.data.deleteIntegration.successful' >/dev/null || die "couldn't disconnect the integration"
+  fi
+  log "delete the cost and usage report"
+  (cd "$HERE/costs" && tofu init -input=false >/dev/null &&
+    bucket=$(tofu output -json massdriver_integration_config 2>/dev/null | jq -r '.bucket_name // empty') &&
+    { [ -z "$bucket" ] || ! aws s3api head-bucket --bucket "$bucket" 2>/dev/null || empty_bucket "$bucket"; } &&
+    tofu destroy -input=false -auto-approve -var "organization=$org")
+
+  log "delete role massdriver-$org"
+  if aws iam get-role --role-name "massdriver-$org" >/dev/null 2>&1; then
+    for arn in $(aws iam list-attached-role-policies --role-name "massdriver-$org" --query 'AttachedPolicies[].PolicyArn' --output text); do
+      aws iam detach-role-policy --role-name "massdriver-$org" --policy-arn "$arn"
+    done
+    aws iam delete-role --role-name "massdriver-$org"
+  fi
+  provider="arn:aws:iam::$account:oidc-provider/${ISSUER:-api.massdriver.cloud}"
+  if aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$provider" >/dev/null 2>&1; then
+    aws iam remove-client-id-from-open-id-connect-provider --open-id-connect-provider-arn "$provider" --client-id "massdriver:$org"
+    [ "$(aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$provider" --query 'length(ClientIDList)')" != 0 ] ||
+      aws iam delete-open-id-connect-provider --open-id-connect-provider-arn "$provider"
+  fi
+  rm -f "$HERE/terraform.tfvars.json"
+  log "done"
+}
+
 case "${1:-}" in
   role) cmd_role ;;
   costs) cmd_costs ;;
@@ -455,6 +558,7 @@ case "${1:-}" in
   bootstrap) cmd_bootstrap ;;
   provision) cmd_provision "${2:-}" ;;
   ship) cmd_ship "${2:-}" "${3:-}" ;;
+  teardown) cmd_teardown ;;
   all)
     stage=$(stage_arg "${2:-}")
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.example"
@@ -479,5 +583,5 @@ Then builds the three app images with Docker, pushes them to ECR and deploys the
     cmd_provision "$stage"
     for app in "${APPS[@]}"; do cmd_ship "$app" "$stage"; done
     ;;
-  *) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
