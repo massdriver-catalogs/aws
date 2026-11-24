@@ -5,7 +5,7 @@ locals {
 
   # An app running on this bundle declares its own databases, caches and
   # stores. The bundle names each one's type; the connection carries its data.
-  runtime_dependencies = ["aws_authentication", "api", "codebase", "registry", "network"]
+  runtime_dependencies = ["aws_authentication", "api", "codebase", "network"]
   connected            = try(jsondecode(file("/massdriver/dependencies.json")), {})
   app_dependencies = {
     for k, d in try(yamldecode(file("/massdriver/bundle/massdriver.yaml")).dependencies, {}) :
@@ -45,7 +45,6 @@ locals {
       {
         network  = try(var.network.region, null)
         codebase = try(var.codebase.registry.region, null)
-        registry = try(var.registry.region, null)
       },
       { for k, d in local.app_dependencies : k => try(d.value.region, null) },
     ) : k => v if v != null
@@ -53,7 +52,6 @@ locals {
   wrong_region = [for k, v in local.connected_regions : "${k} (${v})" if v != local.region]
 
   codebase_policy = var.codebase == null ? null : one([for p in var.codebase.registry.policies : p if p.name == "pull"])
-  registry_policy = var.registry == null ? null : one([for p in var.registry.policies : p if p.name == "pull"])
 
   queue_arns    = [for d in values(local.app_dependencies) : d.value.arn if d.type == "aws-sqs-queue"]
   consume_queue = var.consume_queue && length(local.queue_arns) == 1
@@ -126,10 +124,11 @@ resource "aws_iam_role_policy_attachment" "codebase" {
   policy_arn = local.codebase_policy.arn
 }
 
-resource "aws_iam_role_policy_attachment" "registry" {
-  count      = local.registry_policy != null ? 1 : 0
-  role       = aws_iam_role.function.name
-  policy_arn = local.registry_policy.arn
+# Functions that pulled through a registry connection now pull through the
+# codebase. Moving keeps the attachment instead of detaching the same policy.
+moved {
+  from = aws_iam_role_policy_attachment.registry
+  to   = aws_iam_role_policy_attachment.codebase
 }
 
 resource "aws_iam_role_policy_attachment" "app" {
@@ -221,7 +220,6 @@ resource "aws_lambda_function" "main" {
     aws_iam_role_policy.logs,
     aws_iam_role_policy_attachment.vpc,
     aws_iam_role_policy_attachment.codebase,
-    aws_iam_role_policy_attachment.registry,
   ]
 }
 

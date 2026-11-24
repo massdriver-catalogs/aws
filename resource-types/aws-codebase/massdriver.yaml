@@ -8,13 +8,11 @@ ui:
 schema:
   title: AWS Codebase
   description: >-
-    Where an application's code lives and where its images go: the Git repository and the ECR
-    repository its pipeline pushes to. Set as an environment default on the application's
-    project, so every bundle there can find both.
+    Where an application's images go, and the Git repository they're built from when it has one.
+    Runtimes pull from its ECR repository.
   type: object
   additionalProperties: false
   required:
-    - repository
     - registry
   properties:
     repository:

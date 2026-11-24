@@ -41,7 +41,7 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 | `ecr-repository` | The app's image repository, with push and pull policies | `aws-ecr-repository` |
 | `github-repo` | The app's GitHub repository, with a pipeline that builds, pushes and deploys | `source-repository` |
 | `massdriver-project` | The app's Massdriver project, its environments, and a group its pipeline deploys with | `app-project` |
-| `codebase` | The repository and registry as one resource, shared with the app's project | `aws-codebase` |
+| `codebase` | Where an app's images come from: its registry and, optionally, its repository. Runtimes connect to it | `aws-codebase` |
 
 ### Credentials
 
@@ -74,7 +74,7 @@ flowchart TB
 
 Dotted lines are environment defaults; solid lines are links on the app's canvas.
 
-- **Subdomains.** The DNS zone's certificate covers every name one level under it. An `http-api` or `ecs-service` with **Subdomain** `api` answers at `https://api.dev.example.com`, with the record and certificate handled for you. The zone, the API and the cluster must be in the same region.
+- **Subdomains.** The DNS zone's certificate covers every name one level under it. An `http-api` or `ecs-service` with **Subdomain** `api` answers at `https://api.dev.example.com`, with the record and certificate handled for you. The zone, the API and the cluster must be in the same region. An `ecs-service` takes its VPC and zone from the cluster, so it always lands in the load balancer's network and under its certificate.
 - **Databases and caches** sit in the VPC's internal subnets and only accept connections from their own client security group.
 - **Policies.** Tables, buckets, queues and registries publish IAM policies such as `read`, `read-write`, `send` or `pull`. Nothing writes its own IAM for a store.
 

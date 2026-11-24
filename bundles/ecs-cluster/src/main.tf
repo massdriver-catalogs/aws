@@ -4,6 +4,7 @@ locals {
 
   public_subnets = [for s in var.network.subnets : s.id if s.tier == "public"]
   public_zones   = distinct([for s in var.network.subnets : s.availability_zone_id if s.tier == "public"])
+  private_subnets = [for s in var.network.subnets : s.id if s.tier == "private"]
 }
 
 resource "aws_ecs_cluster" "main" {
@@ -89,6 +90,10 @@ resource "aws_lb" "main" {
     precondition {
       condition     = !local.has_zone || try(var.dns.region, "") == var.network.region
       error_message = "The DNS zone's certificate is in ${try(var.dns.region, "")}, but the VPC is in ${var.network.region}. A load balancer can only use a certificate from its own region."
+    }
+    precondition {
+      condition     = length(local.private_subnets) > 0
+      error_message = "Services run in private subnets, and the connected VPC has none."
     }
   }
 

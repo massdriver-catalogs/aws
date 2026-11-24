@@ -1,12 +1,11 @@
 # ECS Service
 
-A containerized app on Fargate, in a shared ECS cluster. It runs in the VPC's private subnets and, with a **Subdomain**, answers at `https://<subdomain>.<DNS zone>` through the cluster's load balancer. Without a subdomain it is a worker: no address, just tasks.
+A containerized app on Fargate, in a shared ECS cluster. It runs in the private subnets of the cluster's VPC and, with a **Subdomain**, answers at `https://<subdomain>.<the cluster's DNS zone>` through the cluster's load balancer. Without a subdomain it is a worker: no address, just tasks.
 
 ## What it needs
 
-- **An ECS cluster** and **the VPC** it is in. The VPC needs private subnets.
-- **A DNS zone** for a subdomain. A subdomain without a zone fails the deploy.
-- **A codebase** or an **ECR repository** (optional) lets tasks pull images from it.
+- **An ECS cluster.** The service uses the cluster's VPC and DNS zone, so it can't end up in a different network than the load balancer. A subdomain needs a cluster with a DNS zone.
+- **A codebase** (optional) lets tasks pull images from its ECR repository.
 
 ## Alarms
 
@@ -14,7 +13,7 @@ Alarms fire when CPU or memory averages over 80% for 15 minutes. With a subdomai
 
 ## Before your app exists
 
-Leave **Container image** empty and the service runs `public.ecr.aws/nginx/nginx:stable-alpine` on port 80. It answers 200, so the address, the DNS record and the load balancer work from the first deploy. Pulling it needs internet egress on the VPC.
+Leave **Container image** empty and the service runs `public.ecr.aws/nginx/nginx:stable-alpine` on port 80. It answers 200, so the address, the DNS record and the load balancer work from the first deploy. Pulling it needs internet egress on the cluster's VPC.
 
 ## Environment variables
 

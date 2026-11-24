@@ -9,13 +9,12 @@ locals {
   memory = tonumber(split("/", var.size)[1])
 
   public = var.subdomain != ""
-  fqdn   = var.dns != null ? "${var.subdomain}.${var.dns.domain}" : var.subdomain
-
-  private_subnets = [for s in var.network.subnets : s.id if s.tier == "private"]
+  zone   = try(var.cluster.zone, null)
+  fqdn   = local.zone != null ? "${var.subdomain}.${local.zone.domain}" : var.subdomain
 
   # An app running on this bundle declares its own databases, caches and
   # stores. The bundle names each one's type; the connection carries its data.
-  runtime_dependencies = ["aws_authentication", "cluster", "network", "dns", "codebase", "registry"]
+  runtime_dependencies = ["aws_authentication", "cluster", "codebase"]
   connected            = try(jsondecode(file("/massdriver/dependencies.json")), {})
   app_dependencies = {
     for k, d in try(yamldecode(file("/massdriver/bundle/massdriver.yaml")).dependencies, {}) :
@@ -45,7 +44,7 @@ resource "aws_cloudwatch_log_group" "main" {
 resource "aws_security_group" "task" {
   name        = local.name
   description = "Tasks of ${local.name}"
-  vpc_id      = var.network.id
+  vpc_id      = var.cluster.network.id
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb" {
@@ -106,7 +105,7 @@ resource "aws_ecs_task_definition" "main" {
 
 resource "aws_lb_target_group" "main" {
   count       = local.public ? 1 : 0
-  vpc_id      = var.network.id
+  vpc_id      = var.cluster.network.id
   target_type = "ip"
   protocol    = "HTTP"
   # Tasks register with the container port; this one is only a default, so
@@ -148,15 +147,15 @@ resource "aws_lb_listener_rule" "main" {
 
   lifecycle {
     precondition {
-      condition     = var.dns != null
-      error_message = "Subdomain \"${var.subdomain}\" needs a DNS zone connected to this service. Connect one, or clear Subdomain to run a worker with no address."
+      condition     = local.zone != null
+      error_message = "Subdomain \"${var.subdomain}\" needs a cluster with a DNS zone. Connect a zone to the cluster, or clear Subdomain to run a worker with no address."
     }
   }
 }
 
 resource "aws_route53_record" "main" {
-  count   = local.public && var.dns != null ? 1 : 0
-  zone_id = var.dns.zone_id
+  count   = local.public && local.zone != null ? 1 : 0
+  zone_id = local.zone.zone_id
   name    = local.fqdn
   type    = "A"
 
@@ -185,7 +184,7 @@ resource "aws_ecs_service" "main" {
   }
 
   network_configuration {
-    subnets          = local.private_subnets
+    subnets          = var.cluster.network.private_subnet_ids
     security_groups  = concat([aws_security_group.task.id], local.client_security_groups)
     assign_public_ip = false
   }
@@ -209,14 +208,6 @@ resource "aws_ecs_service" "main" {
     ignore_changes = [desired_count]
 
     precondition {
-      condition     = length(local.private_subnets) > 0
-      error_message = "The connected VPC has no private subnets. Tasks run in private subnets."
-    }
-    precondition {
-      condition     = var.cluster.region == var.network.region
-      error_message = "The cluster is in ${var.cluster.region} but the VPC is in ${var.network.region}. Connect the VPC the cluster uses."
-    }
-    precondition {
       condition     = var.max_count >= var.desired_count
       error_message = "Most tasks when busy (${var.max_count}) is below Tasks (${var.desired_count})."
     }
@@ -229,7 +220,7 @@ resource "aws_ecs_service" "main" {
 # without egress, and this bundle can't see them.
 check "egress" {
   assert {
-    condition     = var.network.internet_egress
+    condition     = var.cluster.network.internet_egress
     error_message = "The VPC has no internet egress. Tasks can't pull public images, reach AWS APIs or open ECS Exec sessions unless the VPC has endpoints for them."
   }
 }

@@ -6,7 +6,7 @@ A function on arm64 that answers routes on a connected HTTP API.
 
 - An AWS role to deploy with.
 - An **HTTP API**. The function runs in the API's region, and every connected resource must be in that region too.
-- Optional: the **codebase**, or an **ECR repository** on its own, for where your images go. The function gets permission to pull from it.
+- Optional: the **codebase**, for where your images go. The function gets permission to pull from its ECR repository.
 - Optional: the **VPC**. It's required when the app connects a PostgreSQL or MariaDB database or a Valkey cache, because they only listen inside the VPC.
 
 ## What it makes
@@ -19,7 +19,7 @@ A function on arm64 that answers routes on a connected HTTP API.
 
 Leave **Container image** empty and a built-in placeholder answers every route. It echoes the request, so you can see the API, the function and the network work before any real code exists.
 
-To run your own code, push an **arm64** image to the ECR repository and set its address. The image must speak the Lambda runtime API: start from an AWS base image (`public.ecr.aws/lambda/python`, `nodejs`, …), or add the [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter) to an ordinary web server image. Use a new tag or a digest for every release.
+To run your own code, push an **arm64** image to the codebase's ECR repository and set its address. The image must speak the Lambda runtime API: start from an AWS base image (`public.ecr.aws/lambda/python`, `nodejs`, …), or add the [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter) to an ordinary web server image. Use a new tag or a digest for every release.
 
 ## Routes
 

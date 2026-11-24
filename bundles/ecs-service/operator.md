@@ -47,24 +47,13 @@ docker buildx build --platform $PLATFORM -t $REPO:$TAG --push .
 ```
 {{/dependencies.codebase}}
 {{^dependencies.codebase}}
-{{#dependencies.registry}}
-```bash
-REPO={{dependencies.registry.url}}
-TAG=$(git rev-parse --short HEAD)
-aws ecr get-login-password --region {{dependencies.registry.region}} \
-  | docker login --username AWS --password-stdin {{dependencies.registry.registry_id}}.dkr.ecr.{{dependencies.registry.region}}.amazonaws.com
-docker buildx build --platform $PLATFORM -t $REPO:$TAG --push .
-```
-{{/dependencies.registry}}
-{{^dependencies.registry}}
-No codebase or ECR repository is connected, so the service can't pull from ECR. Connect one and deploy, then push to it:
+No codebase is connected, so the service can't pull from ECR. Connect one and deploy, then push to its repository:
 
 ```bash
 REPO=<account>.dkr.ecr.{{dependencies.cluster.region}}.amazonaws.com/<repository>
 TAG=$(git rev-parse --short HEAD)
 docker buildx build --platform $PLATFORM -t $REPO:$TAG --push .
 ```
-{{/dependencies.registry}}
 {{/dependencies.codebase}}
 
 ### 3. Deploy it
@@ -77,21 +66,21 @@ The deploy waits until the new tasks are healthy. If they keep failing, it rolls
 
 ### 4. Give it an address
 
-{{#dependencies.dns}}
+{{#dependencies.cluster.zone}}
 ```bash
-mass instance deploy {{id}} --patch '.subdomain = "api"' -m "Serve at api.{{dependencies.dns.domain}}" --follow
-curl -i https://api.{{dependencies.dns.domain}}/
+mass instance deploy {{id}} --patch '.subdomain = "api"' -m "Serve at api.{{dependencies.cluster.zone.domain}}" --follow
+curl -i https://api.{{dependencies.cluster.zone.domain}}/
 ```
 
-A new DNS name can take a minute to resolve. If the cluster has no DNS zone, the load balancer only serves HTTP; use `http://`.
-{{/dependencies.dns}}
-{{^dependencies.dns}}
-Connect a DNS zone to this service, then set **Subdomain**:
+A new DNS name can take a minute to resolve.
+{{/dependencies.cluster.zone}}
+{{^dependencies.cluster.zone}}
+The cluster has no DNS zone, so the service has no name to answer on. Connect a DNS zone to the cluster and deploy the cluster, then set **Subdomain**:
 
 ```bash
 mass instance deploy {{id}} --patch '.subdomain = "api"' -m "Give it an address" --follow
 ```
-{{/dependencies.dns}}
+{{/dependencies.cluster.zone}}
 
 ### 5. Give it a database
 
@@ -199,7 +188,7 @@ aws elbv2 describe-target-health --region {{dependencies.cluster.region}} --targ
   ```
 {{/dependencies.codebase}}
 - **`AccessDeniedException` / `403`:** the image is in an ECR repository this service has no pull policy for. Connect the codebase or ECR repository that owns it and deploy.
-- **`i/o timeout` / `dial tcp`:** the private subnets can't reach the registry. The VPC needs internet egress, or VPC endpoints for ECR and S3.
+- **`i/o timeout` / `dial tcp`:** the private subnets can't reach the registry. The cluster's VPC needs internet egress, or VPC endpoints for ECR and S3.
 - **`toomanyrequests`:** Docker Hub rate limit. Push the image to ECR instead.
 - **`image Manifest does not contain descriptor matching platform`:** the image has no **{{params.architecture}}** build. Rebuild with the right `--platform`.
 

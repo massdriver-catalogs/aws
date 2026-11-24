@@ -9,12 +9,11 @@ templating: mustache
 Sharing makes the codebase visible to the project; each environment still needs it as its default.
 
 ```bash
-mass resource list --type aws-codebase --search "{{dependencies.repository.full_name}}"
+mass resource list --type aws-codebase --search "{{dependencies.registry.name}}"
 {{#dependencies.project.environments}}
 mass environment default {{id}} <codebase-resource-id>
 {{/dependencies.project.environments}}
 ```
-{{/dependencies.project}}
 
 ## A bundle in the project can't see the codebase
 
@@ -25,3 +24,13 @@ mass environment default {{id}} <codebase-resource-id>
 ## Deploy fails sharing the resource
 
 The Massdriver Service Account credential can't share resources. It needs `resource:grant`; the credential's instructions put it in Organization Admin, which has it.
+{{/dependencies.project}}
+{{^dependencies.project}}
+## A runtime can't pull its image
+
+The codebase is linked on this canvas, not shared. Link it to the app's **codebase** slot and deploy the app; the app's role gets the registry's pull policy.
+
+## Deploy fails: Share with the project needs the Massdriver project
+
+**Share with the project** is on, but no project is connected. Turn it off to link the codebase here, or connect the project and the Massdriver Service Account credential.
+{{/dependencies.project}}
