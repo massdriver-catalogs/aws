@@ -64,7 +64,7 @@ costs_plan() {
   cat <<PLAN
 In $(aws_target):
   - A daily Cost and Usage Report, written to a new S3 bucket in us-east-1.
-  - An IAM user, massdriver-costs, that can only read that bucket and resource tags, and its access key.
+  - An IAM user, massdriver-costs-<org>, that can only read that bucket and resource tags, and its access key.
 Then connects the AWS Cost and Usage Reports integration in your Massdriver organization with that key.
 Massdriver shows costs on every instance once AWS writes the first report, within 24 hours.
 PLAN
@@ -269,7 +269,7 @@ cmd_costs() {
   org=$(mass whoami -o json | jq -r .organization.id)
 
   log "cost and usage report and read-only user"
-  (cd "$HERE/costs" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve)
+  (cd "$HERE/costs" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve -var "organization=$org")
 
   status=$(graphql "$(jq -n --arg org "$org" '{
     query: "query($org: ID!) { integration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { status } }",

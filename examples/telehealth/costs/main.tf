@@ -13,8 +13,14 @@ provider "aws" {
   region = "us-east-1"
 }
 
+variable "organization" {
+  type = string
+}
+
+# Named per organization, so it sits beside any setup the account already has.
 module "cur" {
   source        = "github.com/massdriver-cloud/integrations//aws-cost-and-usage-reports?ref=91600ba"
+  name_prefix   = "massdriver-costs-${var.organization}"
   bucket_region = "us-east-1"
 }
 
