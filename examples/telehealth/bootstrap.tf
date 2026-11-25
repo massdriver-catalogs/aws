@@ -19,6 +19,17 @@ variable "aws_accounts" {
   })
 }
 
+variable "organization_id" {
+  description = "The organization's identifier, e.g. tendwell-health. deploy.sh sets it from mass whoami."
+  type        = string
+}
+
+variable "massdriver_url" {
+  description = "The Massdriver API the onboarding service account calls."
+  type        = string
+  default     = "https://api.massdriver.cloud"
+}
+
 variable "existing_bundle_repositories" {
   description = "Bundle repositories already in the organization, e.g. from the catalog's publish workflow. They're adopted instead of created."
   type        = list(string)
@@ -300,6 +311,41 @@ resource "massdriver_resource_grant" "aws_prod" {
   recipient_conditions = jsonencode({ "md-environment" = ["prod"] })
 }
 
+# The apps project's massdriver-project and github-repo bundles create
+# projects, groups and service accounts. Platform Engineering may do anything,
+# and it owns app onboarding.
+resource "massdriver_service_account" "onboarding" {
+  name                     = "App Onboarding"
+  description              = "Creates each app's Massdriver project and its pipeline's service account."
+  token_expiration_minutes = 60 * 24 * 365
+}
+
+resource "massdriver_service_account_group_membership" "onboarding" {
+  group_id           = massdriver_group.platform.id
+  service_account_id = massdriver_service_account.onboarding.id
+}
+
+resource "massdriver_imported_resource" "onboarding" {
+  name          = "Massdriver App Onboarding"
+  resource_type = "massdriver-service-account"
+  resource = jsonencode({
+    url             = var.massdriver_url
+    organization_id = var.organization_id
+    api_key         = massdriver_service_account.onboarding.token
+  })
+
+  # The API adds the version to the type, as with the AWS credential.
+  lifecycle {
+    ignore_changes = [resource_type]
+  }
+}
+
+# Organization admin power stays in the project that onboards apps.
+resource "massdriver_resource_grant" "onboarding" {
+  resource_id          = massdriver_imported_resource.onboarding.id
+  recipient_conditions = jsonencode({ "md-project" = ["apps"] })
+}
+
 resource "massdriver_group" "platform" {
   name        = "Platform Engineering"
   description = "Owns the catalog, the platform project and app onboarding."
@@ -361,4 +407,8 @@ output "environments" {
 
 output "one_account" {
   value = split(":", var.aws_accounts.nonprod.arn)[4] == split(":", var.aws_accounts.prod.arn)[4]
+}
+
+output "onboarding_credential" {
+  value = massdriver_imported_resource.onboarding.id
 }

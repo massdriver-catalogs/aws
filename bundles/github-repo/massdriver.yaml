@@ -156,7 +156,7 @@ dependencies:
     resource_type: aws-github-oidc@0.0.0
     required: true
   massdriver:
-    resource_type: massdriver-service-account@0.0.0
+    resource_type: massdriver-service-account@~0.1
     required: true
   registry:
     resource_type: aws-ecr-repository@0.0.0

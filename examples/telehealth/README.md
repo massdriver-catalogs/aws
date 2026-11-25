@@ -14,7 +14,7 @@ A telehealth company built on this catalog. Patients book video visits, clinicia
 
 `platform`, `visits`, `care` and `billing` have `dev` and `prod`. `apps` has one environment per app, where the platform team onboards it: an image registry and a codebase, shared with the app's project and set as the default in its dev and prod, so both run the same images. Prod deploys need a second person's approval.
 
-The `apps` canvas also has `github-repo` and `massdriver-project`, which `deploy.sh` leaves undeployed. Deploying them gives an app a GitHub repository with a pipeline that builds, pushes and deploys, and a Massdriver project of its own; connect both to the codebase and it carries the repository too. They need the GitHub App and Massdriver Service Account credentials as the environment's defaults. `bootstrap.tf` already makes the Visits, Care and Billing projects, so Tendwell doesn't use them.
+The `apps` canvas also has `github-repo` and `massdriver-project`, which `deploy.sh` leaves undeployed. Deploying them gives an app a GitHub repository with a pipeline that builds, pushes and deploys, and a Massdriver project of its own; connect both to the codebase and it carries the repository too. `bootstrap.tf` makes an App Onboarding service account in Platform Engineering, and `deploy.sh` connects both bundles to it; they also need the GitHub App credential as the environment's default. `bootstrap.tf` already makes the Visits, Care and Billing projects, so Tendwell doesn't use them.
 
 Each team's group can change only its own project and read the rest. Platform Engineering can change everything, and Security & Compliance can read everything and change nothing.
 

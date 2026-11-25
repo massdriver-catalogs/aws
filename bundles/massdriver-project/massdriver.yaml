@@ -172,7 +172,7 @@ params:
 
 dependencies:
   massdriver:
-    resource_type: massdriver-service-account@0.0.0
+    resource_type: massdriver-service-account@~0.1
     required: true
 
 resources:

@@ -49,7 +49,9 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 |---|---|
 | AWS IAM Role (`aws-iam-role`) | Every AWS bundle |
 | GitHub App (`github-app`) | `github-repo` |
-| Massdriver Service Account (`massdriver-service-account`) | `massdriver-project`, `github-repo`, `codebase` |
+| Massdriver Service Account (`massdriver-service-account`, from [massdriver-resource-types](https://github.com/massdriver-cloud/massdriver-resource-types)) | `massdriver-project`, `github-repo`, `codebase` |
+
+The onboarding bundles create projects, groups and service accounts, and share resources, so their Massdriver service account must be in Organization Admin. The type has no environment default: import the service account as a resource and set it as a remote reference on each bundle's **massdriver** slot.
 
 ## How it fits together
 
@@ -120,6 +122,7 @@ platforms/        Credentials
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
 examples/         Example companies built on the catalog, with their apps
+scripts/          Publishes the official Massdriver resource types
 .github/workflows Publishing
 ```
 

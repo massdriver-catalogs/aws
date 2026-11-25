@@ -6,7 +6,7 @@ BUNDLES        = $(notdir $(wildcard bundles/*))
 
 help:
 	@echo "make repos                   Create missing OCI repositories"
-	@echo "make publish-platforms       Publish credential types"
+	@echo "make publish-platforms       Publish credential types, Massdriver's included"
 	@echo "make publish-resource-types  Publish resource types"
 	@echo "make build                   Build every bundle"
 	@echo "make lint                    Lint every bundle"
@@ -22,6 +22,7 @@ repos:
 	@for d in $(BUNDLES); do mass repository create $$d -t bundle 2>&1 || true; done
 
 publish-platforms: repos
+	@scripts/publish-massdriver-types.sh
 	@for d in $(PLATFORMS); do mass resource-type publish platforms/$$d; done
 
 publish-resource-types: repos

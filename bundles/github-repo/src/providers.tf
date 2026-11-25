@@ -46,6 +46,7 @@ provider "aws" {
 # credential's API key. The default provider stays on the deployment token.
 provider "massdriver" {
   alias           = "admin"
-  api_key         = var.massdriver.token
+  url             = var.massdriver.url
+  api_key         = var.massdriver.api_key
   organization_id = var.massdriver.organization_id
 }

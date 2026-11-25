@@ -30,7 +30,7 @@ params:
 
 dependencies:
   massdriver:
-    resource_type: massdriver-service-account@0.0.0
+    resource_type: massdriver-service-account@~0.1
     required: false
   repository:
     resource_type: source-repository@0.0.0

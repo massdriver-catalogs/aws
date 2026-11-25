@@ -13,6 +13,7 @@ terraform {
 # deployment token, which the bundle's own resource needs.
 provider "massdriver" {
   alias           = "admin"
-  api_key         = var.massdriver.token
+  url             = var.massdriver.url
+  api_key         = var.massdriver.api_key
   organization_id = var.massdriver.organization_id
 }

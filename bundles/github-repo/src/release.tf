@@ -2,7 +2,6 @@ locals {
   release_environment = var.release_environment == null ? "" : var.release_environment
   release_component   = var.release_component == null ? "" : var.release_component
   release             = local.release_environment != "" && local.release_component != ""
-  massdriver_url      = try(regex("^https?://[^/]+", var.md_metadata.observability.alarm_webhook_url), "https://api.massdriver.cloud")
 }
 
 # Tokens can't be reissued for an existing service account, so rotation
@@ -40,7 +39,7 @@ resource "github_actions_variable" "massdriver" {
   for_each = merge(
     {
       MASSDRIVER_ORGANIZATION_ID = var.massdriver.organization_id
-      MASSDRIVER_URL             = local.massdriver_url
+      MASSDRIVER_URL             = var.massdriver.url
       MASSDRIVER_PROJECT         = var.project.identifier
     },
     local.release ? {
