@@ -60,7 +60,7 @@ locals {
 
     apps = {
       name        = "Apps"
-      description = "Onboards a new app: its GitHub repository, image registry and Massdriver project. One environment per app."
+      description = "Onboards each app: its image registry and codebase, and optionally its GitHub repository and Massdriver project. One environment per app."
       team        = "platform"
       stages      = ["visits", "care", "billing"]
       components = {
@@ -73,8 +73,6 @@ locals {
         "registry.repository -> repo.registry",
         "project.project -> repo.project",
         "registry.repository -> codebase.registry",
-        "repo.repository -> codebase.repository",
-        "project.project -> codebase.project",
       ]
     }
 
@@ -84,8 +82,6 @@ locals {
       team        = "patient-experience"
       stages      = keys(local.stages)
       components = {
-        registry  = { bundle = "ecr-repository", name = "Image Repository" }
-        codebase  = { bundle = "codebase", name = "Codebase" }
         api       = { bundle = "http-api", name = "Booking API" }
         slots     = { bundle = "dynamodb-table", name = "Slots" }
         reminders = { bundle = "sqs-queue", name = "Reminders Queue" }
@@ -93,12 +89,9 @@ locals {
         notifier  = { bundle = "tendwell-visits", name = "Reminder Sender" }
       }
       links = [
-        "registry.repository -> codebase.registry",
-        "codebase.codebase -> app.codebase",
         "api.api -> app.api",
         "slots.table -> app.table",
         "reminders.queue -> app.queue",
-        "codebase.codebase -> notifier.codebase",
         "api.api -> notifier.api",
         "slots.table -> notifier.table",
         "reminders.queue -> notifier.queue",
@@ -111,16 +104,12 @@ locals {
       team        = "clinical"
       stages      = keys(local.stages)
       components = {
-        registry  = { bundle = "ecr-repository", name = "Image Repository" }
-        codebase  = { bundle = "codebase", name = "Codebase" }
         charts    = { bundle = "postgres", name = "Charts" }
         sessions  = { bundle = "valkey", name = "Sessions" }
         documents = { bundle = "s3-bucket", name = "Documents" }
         app       = { bundle = "tendwell-care", name = "Care" }
       }
       links = [
-        "registry.repository -> codebase.registry",
-        "codebase.codebase -> app.codebase",
         "charts.database -> app.postgres",
         "sessions.cache -> app.cache",
         "documents.bucket -> app.bucket",
@@ -133,15 +122,11 @@ locals {
       team        = "revenue"
       stages      = keys(local.stages)
       components = {
-        registry = { bundle = "ecr-repository", name = "Image Repository" }
-        codebase = { bundle = "codebase", name = "Codebase" }
-        ledger   = { bundle = "mariadb", name = "Claims Ledger" }
-        claims   = { bundle = "s3-bucket", name = "Claim Files" }
-        app      = { bundle = "tendwell-billing", name = "Billing" }
+        ledger = { bundle = "mariadb", name = "Claims Ledger" }
+        claims = { bundle = "s3-bucket", name = "Claim Files" }
+        app    = { bundle = "tendwell-billing", name = "Billing" }
       }
       links = [
-        "registry.repository -> codebase.registry",
-        "codebase.codebase -> app.codebase",
         "ledger.database -> app.mariadb",
         "claims.bucket -> app.bucket",
       ]
