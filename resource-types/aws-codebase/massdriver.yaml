@@ -4,6 +4,7 @@ label: AWS Codebase
 
 ui:
   connectionOrientation: link
+  environmentDefaultGroup: codebase
 
 schema:
   title: AWS Codebase

@@ -7,12 +7,14 @@ A telehealth company built on this catalog. Patients book video visits, clinicia
 | Project | Team | What runs there |
 |---|---|---|
 | `platform` | Platform Engineering | `vpc`, `dns-zone`, `ecs-cluster`, `github-actions-oidc` |
-| `apps` | Platform Engineering | App onboarding: `ecr-repository`, `massdriver-project`, `github-repo`, `codebase` |
-| `visits` | Patient Experience | The booking API on Lambda: `ecr-repository`, `http-api`, `dynamodb-table`, `sqs-queue`, `tendwell-visits` twice (the API, and the reminder sender) |
-| `care` | Clinical | The clinician portal on ECS: `ecr-repository`, `postgres`, `valkey`, `s3-bucket`, `tendwell-care` |
-| `billing` | Revenue | Claims on ECS: `ecr-repository`, `mariadb`, `s3-bucket`, `tendwell-billing` |
+| `apps` | Platform Engineering | App onboarding, one environment per app: `ecr-repository` and `codebase`, plus `github-repo` and `massdriver-project` for a governed repository and pipeline |
+| `visits` | Patient Experience | The booking API on Lambda: `http-api`, `dynamodb-table`, `sqs-queue`, `tendwell-visits` twice (the API, and the reminder sender) |
+| `care` | Clinical | The clinician portal on ECS: `postgres`, `valkey`, `s3-bucket`, `tendwell-care` |
+| `billing` | Revenue | Claims on ECS: `mariadb`, `s3-bucket`, `tendwell-billing` |
 
-`platform`, `visits`, `care` and `billing` have `dev` and `prod`. `apps` shows how a new app is onboarded, with one environment per app: deploying one creates the app's GitHub repository, pipeline and Massdriver project. `deploy.sh` leaves it undeployed, because `bootstrap.tf` already makes the Visits, Care and Billing projects; it also needs the GitHub App and Massdriver Service Account credentials set as its defaults. Prod deploys need a second person's approval.
+`platform`, `visits`, `care` and `billing` have `dev` and `prod`. `apps` has one environment per app, where the platform team onboards it: an image registry and a codebase, shared with the app's project and set as the default in its dev and prod, so both run the same images. Prod deploys need a second person's approval.
+
+The `apps` canvas also has `github-repo` and `massdriver-project`, which `deploy.sh` leaves undeployed. Deploying them gives an app a GitHub repository with a pipeline that builds, pushes and deploys, and a Massdriver project of its own; connect both to the codebase and it carries the repository too. They need the GitHub App and Massdriver Service Account credentials as the environment's defaults. `bootstrap.tf` already makes the Visits, Care and Billing projects, so Tendwell doesn't use them.
 
 Each team's group can change only its own project and read the rest. Platform Engineering can change everything, and Security & Compliance can read everything and change nothing.
 
@@ -39,11 +41,17 @@ flowchart LR
     db[(mariadb)] --> bapp[tendwell-billing]
     claims[(s3-bucket)] --> bapp
   end
+  subgraph apps
+    reg[ecr-repository] --> cb[codebase]
+  end
   vapp -- tendwell-visits-api --> capp
   capp -- tendwell-care-api --> bapp
   platform -. environment defaults .-> visits
   platform -. environment defaults .-> care
   platform -. environment defaults .-> billing
+  cb -. environment default .-> visits
+  cb -. environment default .-> care
+  cb -. environment default .-> billing
 ```
 
 ## The apps
