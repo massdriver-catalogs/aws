@@ -147,12 +147,12 @@ for name in "${names[@]}"; do
   destinations+=("$id")
 
   mkdir -p "$work/state/$name"
+  prefix="[$name]"
+  [ "$log_format" = json ] || prefix=$(printf '\033[%sm[%s]\033[0m' "${colors[$(((port - 18081) % ${#colors[@]}))]}" "$name")
   # shellcheck disable=SC2046 # automation_env returns KEY=value words without spaces
   env MASSDRIVER_ORGANIZATION_ID="$org" MASSDRIVER_API_KEY="$api_key" MASSDRIVER_SIGNING_SECRET="$secret" \
     PORT="$port" LOG_FORMAT="${LOG_FORMAT:-$log_format}" $(automation_env "$name") \
-  prefix="[$name]"
-  [ "$log_format" = json ] || prefix=$(printf '\033[%sm[%s]\033[0m' "${colors[$(((port - 18081) % ${#colors[@]}))]}" "$name")
-  "$work/massdriver-automations" run "$name" 2>&1 | sed -u "s|^|$prefix |" &
+    "$work/massdriver-automations" run "$name" 2>&1 | sed -u "s|^|$prefix |" &
   log "$name receives events at $tunnel/$name/hooks/massdriver"
 done
 
