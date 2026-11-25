@@ -25,7 +25,7 @@ die() {
 }
 
 # destination_flags <name>: what each automation's README subscribes to,
-# narrowed to Tendwell. The automations that deploy act only on dev.
+# narrowed to Tendwell.
 destination_flags() {
   case $1 in
     statuspage)
@@ -37,8 +37,7 @@ destination_flags() {
       flags=(--event-type deployment.completed --event-type deployment.failed --event-type deployment.aborted
         --condition '.data.metadata.deployment_action == "PLAN"') ;;
     autodeploy-downstream)
-      flags=(--event-type deployment.completed --attribute md-environment=dev
-        --condition '.data.metadata.deployment_action == "PROVISION"') ;;
+      flags=(--event-type deployment.completed --condition '.data.metadata.deployment_action == "PROVISION"') ;;
     rollback-on-failure)
       flags=(--event-type deployment.failed --attribute md-environment=dev
         --condition '.data.metadata.deployment_action == "PROVISION" and .data.attributes["autorollback"] == "true"') ;;
@@ -61,6 +60,7 @@ automation_env() {
     statuspage) echo "STATUSPAGE_CONFIG=$HERE/automations/statuspage.yaml STATE_DIR=$work/state/statuspage" ;;
     drift) echo "DRIFT_CONFIG=$HERE/automations/drift.yaml DRIFT_RUN_TOKEN=$drift_token STATE_DIR=$work/state/drift" ;;
     freeze-guard) echo "FREEZE_WINDOWS_FILE=$HERE/automations/freeze-guard.yaml FREEZE_ADMIN_TOKEN=$admin_token STATE_DIR=$work/state/freeze-guard" ;;
+    autodeploy-downstream) echo "AUTODEPLOY_CONFIG=$HERE/automations/autodeploy.yaml" ;;
     router) echo "ROUTER_CONFIG=$HERE/automations/router.yaml" ;;
     sandbox-on-join) echo "SANDBOX_CONFIG=$HERE/automations/sandboxes.yaml" ;;
   esac
@@ -85,6 +85,10 @@ api_key=$(cd "$HERE" && tofu output -raw automations_api_key 2>/dev/null) ||
   die "no Automations service account; run ./deploy.sh bootstrap"
 drift_token=$(openssl rand -hex 16)
 admin_token=$(openssl rand -hex 16)
+# The prefix pipe hides the terminal from the automations, which would
+# otherwise pick colored text logs themselves.
+log_format=json
+[ -t 2 ] && log_format=text
 
 work=$(mktemp -d)
 destinations=()
@@ -144,7 +148,7 @@ for name in "${names[@]}"; do
   mkdir -p "$work/state/$name"
   # shellcheck disable=SC2046 # automation_env returns KEY=value words without spaces
   env MASSDRIVER_ORGANIZATION_ID="$org" MASSDRIVER_API_KEY="$api_key" MASSDRIVER_SIGNING_SECRET="$secret" \
-    PORT="$port" $(automation_env "$name") \
+    PORT="$port" LOG_FORMAT="${LOG_FORMAT:-$log_format}" $(automation_env "$name") \
     "$work/massdriver-automations" run "$name" 2>&1 | sed -u "s/^/[$name] /" &
   log "$name receives events at $tunnel/$name/hooks/massdriver"
 done
