@@ -63,6 +63,11 @@ mass event destination --help >/dev/null 2>&1 ||
   die "this mass has no event destination commands; install it from main: go install github.com/massdriver-cloud/mass@main"
 [ -f "$SRC/go.mod" ] || die "no massdriver-automations clone at $SRC; set AUTOMATIONS_SRC"
 
+# Another run already holds the ports, and would get this run's events.
+for port in $(seq 18080 $((18080 + ${#names[@]}))); do
+  ! nc -z 127.0.0.1 "$port" 2>/dev/null || die "port $port is in use; is another automations.sh running?"
+done
+
 org=$(mass whoami -o json | jq -r .organization.id)
 api_key=$(cd "$HERE" && tofu output -raw automations_api_key 2>/dev/null) ||
   die "no Automations service account; run ./deploy.sh bootstrap"
