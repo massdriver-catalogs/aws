@@ -1,0 +1,9 @@
+checks:
+  # Runs only when asked: automations.sh prints the command.
+  - name: dev
+    match:
+      md-environment: dev
+    mode: detect
+    max_concurrent: 3
+    notify_clean: true
+    summary: true
