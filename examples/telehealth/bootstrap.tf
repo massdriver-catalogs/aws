@@ -175,6 +175,10 @@ locals {
     "billing-ledger", "billing-claims", "billing-app",
   ]
 
+  # The apps redeploy when what they connect to changes, and roll back when a
+  # deploy fails.
+  runtimes = ["visits-app", "visits-notifier", "care-app", "billing-app"]
+
   # Every catalog bundle is open to every project; each app's bundle only to its own.
   bundle_access = merge(
     { for f in fileset("${path.module}/../../bundles", "*/massdriver.yaml") : yamldecode(file("${path.module}/../../bundles/${f}")).name => "*" },
@@ -222,6 +226,16 @@ resource "massdriver_organization_settings" "this" {
   # Every bundle's access is granted below, so app bundles stay with their own project.
   grant_new_bundles_to_all_projects = false
   default_tags                      = [massdriver_custom_attribute.team.key, massdriver_custom_attribute.data_classification.key]
+}
+
+# automations.sh: the autodeploy-downstream and rollback-on-failure automations
+# act only on components that opt in with these.
+resource "massdriver_custom_attribute" "automation" {
+  for_each = toset(["autodeploy", "autorollback"])
+
+  key    = each.key
+  scope  = "COMPONENT"
+  values = ["true", "false"]
 }
 
 resource "massdriver_project" "this" {
@@ -272,9 +286,12 @@ resource "massdriver_component" "this" {
   identifier  = each.value.identifier
   name        = each.value.name
   bundle_name = each.value.bundle
-  attributes  = { data_classification = contains(local.phi, each.key) ? "phi" : "internal" }
+  attributes = merge(
+    { data_classification = contains(local.phi, each.key) ? "phi" : "internal" },
+    contains(local.runtimes, each.key) ? { autodeploy = "true", autorollback = "true" } : {},
+  )
 
-  depends_on = [massdriver_oci_repository_grant.bundle, massdriver_custom_attribute.data_classification]
+  depends_on = [massdriver_oci_repository_grant.bundle, massdriver_custom_attribute.data_classification, massdriver_custom_attribute.automation]
 }
 
 resource "massdriver_component_link" "this" {
@@ -346,6 +363,18 @@ resource "massdriver_resource_grant" "onboarding" {
   recipient_conditions = jsonencode({ "md-project" = ["apps"] })
 }
 
+# automations.sh runs the automations locally as this service account.
+resource "massdriver_service_account" "automations" {
+  name                     = "Automations"
+  description              = "Runs Massdriver automations: status page, drift checks, auto-deploy and auto-rollback."
+  token_expiration_minutes = 60 * 24 * 365
+}
+
+resource "massdriver_service_account_group_membership" "automations" {
+  group_id           = massdriver_group.platform.id
+  service_account_id = massdriver_service_account.automations.id
+}
+
 resource "massdriver_group" "platform" {
   name        = "Platform Engineering"
   description = "Owns the catalog, the platform project and app onboarding."
@@ -411,4 +440,9 @@ output "one_account" {
 
 output "onboarding_credential" {
   value = massdriver_imported_resource.onboarding.id
+}
+
+output "automations_api_key" {
+  value     = massdriver_service_account.automations.token
+  sensitive = true
 }
