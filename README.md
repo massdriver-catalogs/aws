@@ -122,7 +122,7 @@ platforms/        Credentials
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
 examples/         Example companies built on the catalog, with their apps
-scripts/          Publishes the Massdriver resource types the bundles use
+scripts/          Publishes the official Massdriver resource types
 .github/workflows Publishing
 ```
 

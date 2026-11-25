@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
-# Publishes the official Massdriver resource types that this catalog's bundles
-# depend on, from massdriver-cloud/massdriver-resource-types.
+# Publishes the official Massdriver resource types from
+# massdriver-cloud/massdriver-resource-types, so the organization has every
+# platform feature they turn on, not just the ones this catalog's bundles use.
 set -euo pipefail
 
-TYPES=(massdriver-service-account)
+TYPES=(
+  massdriver-service-account
+  massdriver-kubernetes-cluster
+  massdriver-wireguard-tunnel
+  massdriver-event-destination-https
+)
 SOURCE=${MASSDRIVER_RESOURCE_TYPES_REPO:-https://github.com/massdriver-cloud/massdriver-resource-types.git}
 
 dir=$(mktemp -d)
