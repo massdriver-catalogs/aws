@@ -3,19 +3,20 @@
 # gets its own process and event destination, all behind one ngrok tunnel;
 # Ctrl-C deletes the destinations.
 #
-#   ./automations.sh                    statuspage, drift, autodeploy-downstream, rollback-on-failure
-#   ./automations.sh statuspage drift   only these
+#   ./automations.sh                    every automation below
+#   ./automations.sh statuspage router  only these
 #
 # Needs go, ngrok with an auth token, jq, a clone of massdriver-automations
 # (AUTOMATIONS_SRC, default: next to this repository), and a mass with
 # `mass event destination`. Run ./deploy.sh bootstrap first: it makes the
-# Automations service account and the autodeploy and autorollback attributes.
+# Automations service account, the autodeploy and autorollback attributes, and
+# the Developer Sandboxes project.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=${AUTOMATIONS_SRC:-$HERE/../../../massdriver-automations}
 INSPECTOR=${NGROK_INSPECTOR:-127.0.0.1:4040}
-DEFAULT=(statuspage drift autodeploy-downstream rollback-on-failure)
+DEFAULT=(statuspage drift autodeploy-downstream rollback-on-failure freeze-guard router sandbox-on-join)
 
 log() { printf '==> %s\n' "$*" >&2; }
 die() {
@@ -24,15 +25,14 @@ die() {
 }
 
 # destination_flags <name>: what each automation's README subscribes to,
-# narrowed to Tendwell's dev environments so nothing acts on prod.
+# narrowed to Tendwell. The automations that deploy act only on dev.
 destination_flags() {
   case $1 in
     statuspage)
       flags=(--event-type 'alarm.*' --event-type alarm_state.created
         --event-type deployment.started --event-type deployment.completed
         --event-type deployment.failed --event-type deployment.aborted --event-type 'instance.*'
-        --attribute md-environment=dev
-        --condition '(.data.metadata.deployment_action // "PROVISION") != "PLAN"') ;;
+        --condition '(.data.attributes["md-project"] | IN("visits", "care", "billing")) and (.data.metadata.deployment_action // "PROVISION") != "PLAN"') ;;
     drift)
       flags=(--event-type deployment.completed --event-type deployment.failed --event-type deployment.aborted
         --condition '.data.metadata.deployment_action == "PLAN"') ;;
@@ -42,6 +42,15 @@ destination_flags() {
     rollback-on-failure)
       flags=(--event-type deployment.failed --attribute md-environment=dev
         --condition '.data.metadata.deployment_action == "PROVISION" and .data.attributes["autorollback"] == "true"') ;;
+    freeze-guard)
+      flags=(--event-type group.created --event-type group.updated --event-type group.deleted) ;;
+    router)
+      flags=(--event-type deployment.failed --event-type deployment.completed --event-type deployment.proposed
+        --event-type alarm_state.created --event-type group_membership.added --event-type group_membership.removed
+        --condition '(.data.metadata.deployment_action // "") != "PLAN"') ;;
+    sandbox-on-join)
+      flags=(--event-type group_membership.added --event-type group_membership.removed --event-type deployment.completed
+        --condition '((.type | startswith("group_membership.")) and .data.entity.account_id != null and (.data.entity.group_name | IN("Patient Experience", "Clinical", "Revenue", "Platform Engineering"))) or (.type == "deployment.completed" and .data.metadata.deployment_action == "DECOMMISSION" and .data.attributes.sandbox == "true")') ;;
     *) die "$1 isn't set up for Tendwell; choose from: ${DEFAULT[*]}" ;;
   esac
 }
@@ -51,6 +60,9 @@ automation_env() {
   case $1 in
     statuspage) echo "STATUSPAGE_CONFIG=$HERE/automations/statuspage.yaml STATE_DIR=$work/state/statuspage" ;;
     drift) echo "DRIFT_CONFIG=$HERE/automations/drift.yaml DRIFT_RUN_TOKEN=$drift_token STATE_DIR=$work/state/drift" ;;
+    freeze-guard) echo "FREEZE_WINDOWS_FILE=$HERE/automations/freeze-guard.yaml FREEZE_ADMIN_TOKEN=$admin_token STATE_DIR=$work/state/freeze-guard" ;;
+    router) echo "ROUTER_CONFIG=$HERE/automations/router.yaml" ;;
+    sandbox-on-join) echo "SANDBOX_CONFIG=$HERE/automations/sandboxes.yaml" ;;
   esac
 }
 
@@ -72,6 +84,7 @@ org=$(mass whoami -o json | jq -r .organization.id)
 api_key=$(cd "$HERE" && tofu output -raw automations_api_key 2>/dev/null) ||
   die "no Automations service account; run ./deploy.sh bootstrap"
 drift_token=$(openssl rand -hex 16)
+admin_token=$(openssl rand -hex 16)
 
 work=$(mktemp -d)
 destinations=()
@@ -145,6 +158,7 @@ for name in "${names[@]}"; do
   case $name in
     statuspage) echo "  Status page:  $tunnel/statuspage/" >&2 ;;
     drift) echo "  Drift check:  curl -X POST -H 'Authorization: Bearer $drift_token' '$tunnel/drift/drift/run?check=dev'" >&2 ;;
+    freeze-guard) echo "  Lift freeze:  curl -X POST -H 'Authorization: Bearer $admin_token' '$tunnel/freeze-guard/freeze/lift?window=after-hours'" >&2 ;;
   esac
 done
 echo >&2
