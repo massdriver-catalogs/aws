@@ -8,6 +8,7 @@ on:
       - "resource-types/**"
       - "bundles/**"
       - "examples/*/applications/**"
+      - "scripts/**"
       - ".github/workflows/publish.yml"
   workflow_dispatch:
     inputs:
@@ -71,6 +72,9 @@ jobs:
           for kind in platforms resource-types bundles app-resource-types apps; do
             echo "$kind:"; sed 's/^/  /' "$kind.txt"
           done
+
+      - name: Publish Massdriver resource types
+        run: scripts/publish-massdriver-types.sh
 
       # Order matters: bundles reference resource types, which must already exist.
       - name: Publish platforms and resource types

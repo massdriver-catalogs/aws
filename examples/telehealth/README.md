@@ -12,7 +12,7 @@ A telehealth company built on this catalog. Patients book video visits, clinicia
 | `care` | Clinical | The clinician portal on ECS: `ecr-repository`, `postgres`, `valkey`, `s3-bucket`, `tendwell-care` |
 | `billing` | Revenue | Claims on ECS: `ecr-repository`, `mariadb`, `s3-bucket`, `tendwell-billing` |
 
-`platform`, `visits`, `care` and `billing` have `dev` and `prod`. `apps` shows how a new app is onboarded, with one environment per app: deploying one creates the app's GitHub repository, pipeline and Massdriver project. `deploy.sh` leaves it undeployed, because `bootstrap.tf` already makes the Visits, Care and Billing projects; it also needs the GitHub App and Massdriver Service Account credentials set as its defaults. Prod deploys need a second person's approval.
+`platform`, `visits`, `care` and `billing` have `dev` and `prod`. `apps` shows how a new app is onboarded, with one environment per app: deploying one creates the app's GitHub repository, pipeline and Massdriver project. `deploy.sh` leaves it undeployed, because `bootstrap.tf` already makes the Visits, Care and Billing projects; it also needs the GitHub App credential as its default, and an imported Massdriver Service Account set as a remote reference on each bundle's **massdriver** slot. Prod deploys need a second person's approval.
 
 Each team's group can change only its own project and read the rest. Platform Engineering can change everything, and Security & Compliance can read everything and change nothing.
 

@@ -12,6 +12,7 @@ terraform {
 # API key. The default provider stays on the deployment token.
 provider "massdriver" {
   alias           = "admin"
-  api_key         = try(var.massdriver.token, null)
+  url             = try(var.massdriver.url, null)
+  api_key         = try(var.massdriver.api_key, null)
   organization_id = try(var.massdriver.organization_id, null)
 }

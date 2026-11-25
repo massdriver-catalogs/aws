@@ -211,6 +211,8 @@ cmd_setup() {
 # Types before the bundles that use them, and runtimes before the apps built on them.
 cmd_publish() {
   local dir app
+  log "publish Massdriver resource types"
+  "$CATALOG/scripts/publish-massdriver-types.sh"
   for dir in "$CATALOG"/platforms/*/ "$CATALOG"/resource-types/*/; do publish_type "${dir%/}"; done
   for app in "${APPS[@]}"; do publish_type "$HERE/applications/$app/resource-type"; done
   for dir in "$CATALOG"/bundles/*/; do publish_bundle "${dir%/}"; done

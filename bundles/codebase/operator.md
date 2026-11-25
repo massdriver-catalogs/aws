@@ -23,7 +23,7 @@ mass environment default {{id}} <codebase-resource-id>
 
 ## Deploy fails sharing the resource
 
-The Massdriver Service Account credential can't share resources. It needs `resource:grant`; the credential's instructions put it in Organization Admin, which has it.
+The Massdriver Service Account credential can't share resources. It needs `resource:grant`. Put the service account in Organization Admin, which has it.
 {{/dependencies.project}}
 {{^dependencies.project}}
 ## A runtime can't pull its image
