@@ -82,7 +82,8 @@ Deploys the $stage stage into $(aws_target), region us-east-1:
   - A Route 53 hosted zone for $stage.${DOMAIN:-<DOMAIN>}, with a certificate${PARENT_ZONE_ID:+, delegated by an NS record added to zone $PARENT_ZONE_ID}.
   - An ECS cluster and a public load balancer.
   - RDS PostgreSQL and RDS MariaDB, a serverless Valkey cache, a DynamoDB table, an SQS queue,
-    two S3 buckets and three ECR repositories.
+    and two S3 buckets.
+  - An ECR repository per app in the apps project, the first time any stage deploys.
   - Two Lambda functions behind API Gateway, and two Fargate services.
   - IAM roles and security groups for all of it.
 Cost: $cost.
@@ -362,6 +363,17 @@ delegate() {
   DELEGATING=$!
 }
 
+# onboard <app> <stage>: the app's registry and codebase live in the apps
+# project, one per app, so dev and prod run the same images. The app's
+# environments get the codebase as a default.
+onboard() {
+  local app=$1 stage=$2
+  deploy "apps-$app-registry" ecr-repository dev
+  deploy "apps-$app-codebase" codebase dev '.share_with_project = false'
+  share "apps-$app-codebase.codebase" --condition "md-project=$app"
+  mass environment default "$app-$stage" "apps-$app-codebase.codebase" >/dev/null
+}
+
 cmd_provision() {
   local stage
   stage=$(stage_arg "${1:-}")
@@ -398,9 +410,9 @@ cmd_provision() {
     done
   done
 
+  for app in "${APPS[@]}"; do onboard "$app" "$stage"; done
+
   log "visits-$stage"
-  deploy "visits-$stage-registry" ecr-repository "$stage"
-  deploy "visits-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "visits-$stage-api" http-api "$stage" '.subdomain = "visits"'
   deploy "visits-$stage-slots" dynamodb-table "$stage"
   deploy "visits-$stage-reminders" sqs-queue "$stage"
@@ -411,8 +423,6 @@ cmd_provision() {
   share "visits-$stage-app.visits" --condition md-project=care
 
   log "care-$stage"
-  deploy "care-$stage-registry" ecr-repository "$stage"
-  deploy "care-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "care-$stage-charts" postgres "$stage" '.database_name = "care"'
   deploy "care-$stage-sessions" valkey "$stage"
   deploy "care-$stage-documents" s3-bucket "$stage"
@@ -421,8 +431,6 @@ cmd_provision() {
   share "care-$stage-app.care" --condition md-project=billing
 
   log "billing-$stage"
-  deploy "billing-$stage-registry" ecr-repository "$stage"
-  deploy "billing-$stage-codebase" codebase "$stage" '.share_with_project = false'
   deploy "billing-$stage-ledger" mariadb "$stage" '.database_name = "billing"'
   deploy "billing-$stage-claims" s3-bucket "$stage"
   connect "billing-$stage-app" care "care-$stage-app.care"
@@ -437,7 +445,7 @@ cmd_ship() {
   stage=$(stage_arg "${2:-}")
 
   local registry url region tag image before
-  registry=$(mass resource get "$app-$stage-registry.repository" -o json)
+  registry=$(mass resource get "apps-$app-registry.repository" -o json)
   url=$(jq -r '.payload.url' <<<"$registry")
   region=$(jq -r '.payload.region' <<<"$registry")
   tag="$(git -C "$HERE" rev-parse --short HEAD)-$(date +%s)"
@@ -465,7 +473,8 @@ teardown_plan() {
   cat <<PLAN
 Deletes Tendwell Health from your Massdriver organization and $(aws_target):
   - Empties the S3 buckets, then decommissions every instance in billing, care, visits and
-    platform, dev and prod. Their data is gone for good: databases take no final snapshot.
+    platform, dev and prod, then each app's registry and codebase in apps. Their data is gone
+    for good: databases take no final snapshot.
   - Destroys what bootstrap.tf made: projects, environments, groups, policies, credentials,
     bundle grants, attributes and organization settings.
   - Disconnects the AWS Cost and Usage Reports integration and deletes the report, its bucket
@@ -503,28 +512,43 @@ decommission() {
 
   log "decommission $env"
   mass environment decommission "$env" >/dev/null
+  local idle=0 busy latest id
   for _ in $(seq 1 240); do
     sleep 15
     instances=$(mass instance list "$env" -o json 2>/dev/null) || continue
     jq -e 'all(.[]; .status == "INITIALIZED" or .status == "DECOMMISSIONED")' <<<"$instances" >/dev/null && return
-    for id in $(jq -r '.[] | select(.status == "FAILED") | .id' <<<"$instances"); do
-      [ "$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"')" != "DECOMMISSION FAILED" ] ||
+    busy=0
+    for id in $(jq -r '.[] | select(.status == "PROVISIONED" or .status == "FAILED") | .id' <<<"$instances"); do
+      latest=$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"' || true)
+      [ "$latest" != "DECOMMISSION FAILED" ] ||
         die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./deploy.sh teardown"
+      case "$latest" in *COMPLETED | *FAILED | *ABORTED | *REJECTED) ;; *) busy=1 ;; esac
     done
+    # Massdriver sometimes stops partway down a chain of links, leaving the
+    # rest deployed and nothing running. Once it's been quiet a minute, destroy
+    # what's left; anything still in use refuses and is tried again.
+    [ "$busy" = 1 ] && idle=0 || idle=$((idle + 1))
+    [ "$idle" -ge 4 ] || continue
+    for id in $(jq -r '.[] | select(.status == "PROVISIONED") | .id' <<<"$instances"); do
+      mass instance destroy "$id" --force -m "deploy.sh teardown" >/dev/null 2>&1 || true
+    done
+    idle=0
   done
   die "$env: still decommissioning after an hour"
 }
 
 # Massdriver won't decommission a resource another environment uses by default.
-release_platform() {
-  local org=$1 stage=$2 app id
-  for app in "${APPS[@]}"; do
-    for id in $(mass environment get "$app-$stage" -o json 2>/dev/null |
-      jq -r --arg p "platform-$stage-" '.defaults[]? | select(.resource.id | startswith($p)) | .id'); do
+# release <org> <resource prefix> <environment>...: unsets those defaults.
+release() {
+  local org=$1 prefix=$2 env id
+  shift 2
+  for env in "$@"; do
+    for id in $(mass environment get "$env" -o json 2>/dev/null |
+      jq -r --arg p "$prefix" '.defaults[]? | select(.resource.id | startswith($p)) | .id'); do
       graphql "$(jq -n --arg org "$org" --arg id "$id" '{
         query: "mutation($org: ID!, $id: UUID!) { removeEnvironmentDefault(organizationId: $org, id: $id) { successful } }",
         variables: {org: $org, id: $id}
-      }')" | jq -e '.data.removeEnvironmentDefault.successful' >/dev/null || die "couldn't unset $app-$stage's platform defaults"
+      }')" | jq -e '.data.removeEnvironmentDefault.successful' >/dev/null || die "couldn't unset $env's $prefix defaults"
     done
   done
 }
@@ -538,8 +562,12 @@ cmd_teardown() {
   # Apps first: the platform's zone and cluster hold their records and rules.
   for stage in dev prod; do
     for project in billing care visits; do decommission "$project-$stage"; done
-    release_platform "$org" "$stage"
+    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}"
     decommission "platform-$stage"
+  done
+  for app in "${APPS[@]}"; do
+    release "$org" "apps-$app-" "$app-dev" "$app-prod"
+    decommission "apps-$app"
   done
 
   log "destroy bootstrap.tf"
