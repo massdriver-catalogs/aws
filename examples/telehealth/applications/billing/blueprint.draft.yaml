@@ -2,8 +2,6 @@ version: 1
 project: billing
 name: Billing
 components:
-  registry: { bundle: ecr-repository, name: Image Repository }
-  codebase: { bundle: codebase, name: Codebase }
   ledger:   { bundle: mariadb, name: Claims Ledger }
   claims:   { bundle: s3-bucket, name: Claim Files }
   app:      { bundle: tendwell-billing, name: Billing }
@@ -11,9 +9,8 @@ defaults:
   - platform/network.network
   - platform/dns.zone
   - platform/cluster.cluster
+  - apps/codebase.codebase
 links:
-  - registry.repository -> codebase.registry
-  - codebase.codebase   -> app.codebase
   - ledger.database     -> app.mariadb
   - claims.bucket       -> app.bucket
   - care/app.care       -> app.care

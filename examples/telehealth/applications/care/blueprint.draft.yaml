@@ -2,8 +2,6 @@ version: 1
 project: care
 name: Care
 components:
-  registry:  { bundle: ecr-repository, name: Image Repository }
-  codebase:  { bundle: codebase, name: Codebase }
   charts:    { bundle: postgres, name: Charts }
   sessions:  { bundle: valkey, name: Sessions }
   documents: { bundle: s3-bucket, name: Documents }
@@ -12,9 +10,8 @@ defaults:
   - platform/network.network
   - platform/dns.zone
   - platform/cluster.cluster
+  - apps/codebase.codebase
 links:
-  - registry.repository -> codebase.registry
-  - codebase.codebase   -> app.codebase
   - charts.database     -> app.postgres
   - sessions.cache      -> app.cache
   - documents.bucket    -> app.bucket
