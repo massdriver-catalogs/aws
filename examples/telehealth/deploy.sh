@@ -187,6 +187,12 @@ publish_bundle() {
   mass bundle publish --bundle-directory "$1"
 }
 
+# bootstrap.tf names the organization in the onboarding credential.
+organization_var() {
+  TF_VAR_organization_id=$(mass whoami -o json | jq -r .organization.id)
+  export TF_VAR_organization_id
+}
+
 require_roles() {
   [ -f "$HERE/terraform.tfvars.json" ] || [ -f "$HERE/terraform.tfvars" ] || [ -n "${TF_VAR_aws_accounts:-}" ] ||
     die "no AWS roles; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
@@ -196,6 +202,7 @@ require_roles() {
 # anything is published or placed on a canvas.
 cmd_setup() {
   require_roles
+  organization_var
   log "define custom attributes, organization settings, bundle repositories and their grants"
   mass repository list -t bundle -o json | jq '{existing_bundle_repositories: [(. // [])[].name]}' \
     >"$HERE/existing.auto.tfvars.json"
@@ -325,6 +332,7 @@ EOF
 
 cmd_bootstrap() {
   require_roles
+  organization_var
 
   log "apply bootstrap.tf"
   (cd "$HERE" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve)
@@ -367,13 +375,18 @@ delegate() {
 
 # onboard <app> <stage>: the app's registry and codebase live in the apps
 # project, one per app, so dev and prod run the same images. The app's
-# environments get the codebase as a default.
+# environments get the codebase as a default. Its GitHub repository and Massdriver
+# project stay undeployed, but connected to the onboarding credential.
 onboard() {
   local app=$1 stage=$2
   deploy "apps-$app-registry" ecr-repository dev
   deploy "apps-$app-codebase" codebase dev '.share_with_project = false'
   share "apps-$app-codebase.codebase" --condition "md-project=$app"
   mass environment default "$app-$stage" "apps-$app-codebase.codebase" >/dev/null
+  local credential
+  credential=$(cd "$HERE" && tofu output -raw onboarding_credential)
+  connect "apps-$app-project" massdriver "$credential"
+  connect "apps-$app-repo" massdriver "$credential"
 }
 
 cmd_provision() {
@@ -478,7 +491,7 @@ Deletes Tendwell Health from your Massdriver organization and $(aws_target):
     platform, dev and prod, then each app's registry and codebase in apps. Their data is gone
     for good: databases take no final snapshot.
   - Destroys what bootstrap.tf made: projects, environments, groups, policies, credentials,
-    bundle grants, attributes and organization settings.
+    the onboarding service account, bundle grants, attributes and organization settings.
   - Disconnects the AWS Cost and Usage Reports integration and deletes the report, its bucket
     and its IAM user.
   - Deletes the massdriver-<org> role, and removes the organization from the Massdriver OIDC
@@ -569,9 +582,14 @@ cmd_teardown() {
   done
   for app in "${APPS[@]}"; do
     release "$org" "apps-$app-" "$app-dev" "$app-prod"
+    # Drop the connections to the onboarding credential before bootstrap.tf deletes it.
+    for component in project repo; do
+      mass instance remote-reference remove "apps-$app-$component" massdriver >/dev/null 2>&1 || true
+    done
     decommission "apps-$app"
   done
 
+  export TF_VAR_organization_id=$org
   log "destroy bootstrap.tf"
   # Destroying the settings leaves the org's default tags in place, and an
   # attribute that's still a default tag can't be deleted.
