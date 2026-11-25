@@ -488,8 +488,8 @@ teardown_plan() {
   cat <<PLAN
 Deletes Tendwell Health from your Massdriver organization and $(aws_target):
   - Empties the S3 buckets, then decommissions every instance in billing, care, visits and
-    platform, dev and prod, then each app's registry and codebase in apps. Their data is gone
-    for good: databases take no final snapshot.
+    platform, dev and prod, then each app's registry and codebase in apps, then every developer
+    sandbox. Their data is gone for good: databases take no final snapshot.
   - Destroys what bootstrap.tf made: projects, environments, groups, policies, credentials,
     the onboarding service account, bundle grants, attributes and organization settings.
   - Disconnects the AWS Cost and Usage Reports integration and deletes the report, its bucket
@@ -590,6 +590,12 @@ cmd_teardown() {
   done
 
   export TF_VAR_organization_id=$org
+  # sandbox-on-join forks these from the template, outside bootstrap.tf.
+  for env in $(mass environment list sandboxes -o json 2>/dev/null | jq -r '(. // [])[] | select(.id != "sandboxes-template") | .id'); do
+    decommission "$env"
+    mass environment delete "$env" --force >/dev/null
+  done
+
   log "destroy bootstrap.tf"
   # Destroying the settings leaves the org's default tags in place, and an
   # attribute that's still a default tag can't be deleted.

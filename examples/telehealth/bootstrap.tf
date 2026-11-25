@@ -142,6 +142,15 @@ locals {
         "claims.bucket -> app.bucket",
       ]
     }
+
+    sandboxes = {
+      name        = "Developer Sandboxes"
+      description = "An environment for each developer, forked from the empty template when they join a team."
+      team        = "platform"
+      stages      = ["template"]
+      components  = {}
+      links       = []
+    }
   }
 
   environments = merge([
