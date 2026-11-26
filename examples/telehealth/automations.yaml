@@ -1,0 +1,252 @@
+# Only automations that need nothing deployed beside them are on.
+
+autodeploy_downstream:
+  enabled: true
+  attributes: {}
+  config:
+    # The apps opt in with autodeploy=true on their components (bootstrap.tf), so
+    # they pick up a changed database, queue or bucket without someone redeploying
+    # them by hand.
+    rules:
+      # Dev follows its dependencies right away.
+      - name: dev-cascade
+        upstream:
+          md-environment: dev
+        downstream:
+          autodeploy: "true"
+          md-environment: dev
+        action: deploy
+
+      # Prod gets a proposal instead, so a second person still approves every
+      # change, the same as a deploy someone starts.
+      - name: prod-review
+        upstream:
+          md-environment: prod
+        downstream:
+          autodeploy: "true"
+          md-environment: prod
+        action: propose
+
+rollback_on_failure:
+  enabled: true
+  attributes: {}
+  config:
+    # The apps opt in with autorollback=true on their components (bootstrap.tf).
+    # A failed deploy of one goes back to its last good one, so a bad image doesn't
+    # leave Booking, Charting or Claims down while someone looks into it.
+    attribute:
+      key: autorollback
+      value: "true"
+
+drift:
+  enabled: true
+  attributes: {}
+  config:
+    checks:
+      # Prod should only change through reviewed deploys, so drift there becomes a
+      # proposal that restores what was last deployed, for a person to approve.
+      - name: prod-nightly
+        schedule: "0 6 * * *"
+        timezone: America/Los_Angeles
+        match:
+          md-environment: prod
+        mode: propose
+        resolve_with: deployed
+        max_concurrent: 3
+        summary: true
+
+      # Dev drifts all the time while people experiment; check it when asked.
+      - name: dev
+        match:
+          md-environment: dev
+        mode: detect
+        resolve_with: deployed
+        max_concurrent: 3
+        notify_clean: true
+        summary: true
+
+freeze_guard:
+  enabled: true
+  config:
+    # Prod changes wait for business hours on the West Coast, where Tendwell's
+    # clinicians and on-call engineers are. Platform Engineering stays exempt so the
+    # on-call engineer can still ship a fix overnight.
+    timezone: America/Los_Angeles
+    exempt_groups: [Platform Engineering]
+
+    windows:
+      - name: after-hours
+        match:
+          md-environment: prod
+        weekly:
+          - {from: Mon 17:00, to: Tue 08:00}
+          - {from: Tue 17:00, to: Wed 08:00}
+          - {from: Wed 17:00, to: Thu 08:00}
+          - {from: Thu 17:00, to: Fri 08:00}
+          - {from: Fri 17:00, to: Sat 08:00}
+          - {from: Sat 17:00, to: Sun 08:00}
+          - {from: Sun 17:00, to: Mon 08:00}
+
+sandbox_on_join:
+  enabled: true
+  config:
+    # Each person who joins a Tendwell team gets an environment of their own in the
+    # Developer Sandboxes project, forked from its empty template. Leaving the team
+    # decommissions and deletes it.
+    sandboxes:
+      - group: Patient Experience
+        project: sandboxes
+        environment: template
+        deleteAfterDecommission: true
+        # The AWS credential, so whatever they add can deploy.
+        copyEnvironmentDefaults: true
+      - group: Clinical
+        project: sandboxes
+        environment: template
+        deleteAfterDecommission: true
+        copyEnvironmentDefaults: true
+      - group: Revenue
+        project: sandboxes
+        environment: template
+        deleteAfterDecommission: true
+        copyEnvironmentDefaults: true
+      - group: Platform Engineering
+        project: sandboxes
+        environment: template
+        deleteAfterDecommission: true
+        copyEnvironmentDefaults: true
+
+statuspage:
+  enabled: true
+  attributes: {}
+  config:
+    site:
+      title: Tendwell Health Status
+      timezone: America/Los_Angeles
+
+    history_days: 30
+    deploys_as_maintenance: true
+    # Short enough that the reminders dead-letter alarm shows up while you watch.
+    min_duration: 1m
+
+    pages:
+      - title: Development
+        slug: dev
+        description: Tendwell's development environments.
+        environments:
+          - id: visits-dev
+            title: Visits
+            components: &visits
+              - title: Booking
+                description: Patients find an open slot and book a video visit.
+                match: {md-component: app}
+              - title: Booking API
+                match: {md-component: api}
+              - title: Open slots
+                match: {md-component: slots}
+              - title: Visit reminders
+                description: Texts and emails before each visit.
+                match: {md-component: notifier}
+                impact: degraded
+              - title: Reminders queue
+                match: {md-component: reminders}
+                impact: degraded
+          - id: care-dev
+            title: Care
+            components: &care
+              - title: Charting
+                description: Clinicians chart and treat.
+                match: {md-component: app}
+              - title: Charts database
+                match: {md-component: charts}
+                impact: major_outage
+              - title: Sessions
+                match: {md-component: sessions}
+              - title: Documents
+                match: {md-component: documents}
+                impact: partial_outage
+          - id: billing-dev
+            title: Billing
+            components: &billing
+              - title: Claims
+                description: Billing files claims with payers.
+                match: {md-component: app}
+              - title: Claims ledger
+                match: {md-component: ledger}
+                impact: major_outage
+              - title: Claim files
+                match: {md-component: claims}
+
+      - title: Tendwell Health
+        slug: tendwell
+        description: Booking, charting and billing for Tendwell Health.
+        environments:
+          - {id: visits-prod, title: Visits, components: *visits}
+          - {id: care-prod, title: Care, components: *care}
+          - {id: billing-prod, title: Billing, components: *billing}
+
+router:
+  enabled: true
+  scripts: {}
+  config: |
+      # Steps write to the container's own stdout, the router's process: the router
+      # keeps a command's output for its debug logs, and these lines are for people
+      # reading the Automations logs.
+      engine: jq
+      routes:
+        - name: deploy-failed
+          events: [deployment.failed]
+          do:
+            - exec:
+                - /bin/sh
+                - -c
+                - printf '✗ %s\n' "$1" >/proc/1/fd/1
+                - sh
+                - '\(.data.attributes["md-instance"] // .data.entity.instance_id) \(.data.entity.action | ascii_downcase) failed\(if .data.entity.deployed_by_name then " (\(.data.entity.deployed_by_name))" else "" end)'
+
+        - name: deploy-completed
+          events: [deployment.completed]
+          when: '.data.entity.action != "PLAN"'
+          do:
+            - exec:
+                - /bin/sh
+                - -c
+                - printf '✓ %s\n' "$1" >/proc/1/fd/1
+                - sh
+                - '\(.data.attributes["md-instance"] // .data.entity.instance_id) \(.data.entity.action | ascii_downcase)ed by \(.data.entity.deployed_by_name // "Massdriver")\(if .data.entity.message then ": \(.data.entity.message)" else "" end)'
+
+        - name: proposal
+          events: [deployment.proposed]
+          do:
+            - exec:
+                - /bin/sh
+                - -c
+                - printf '? %s\n' "$1" >/proc/1/fd/1
+                - sh
+                - '\(.data.entity.deployed_by_name) proposes to \(.data.entity.action | ascii_downcase) \(.data.attributes["md-instance"] // .data.entity.instance_id // "an instance"): \(.data.entity.message // "no message")'
+
+        - name: alarm
+          events: [alarm_state.created]
+          do:
+            - exec:
+                - /bin/sh
+                - -c
+                - printf '! %s\n' "$1" >/proc/1/fd/1
+                - sh
+                - '\(.data.entity.alarm_name) is \((.data.entity.notification.Message // "{}") | fromjson | .NewStateValue // "updated"): \(.data.entity.message // "")'
+
+        - name: membership
+          events: [group_membership.added, group_membership.removed]
+          do:
+            - exec:
+                - /bin/sh
+                - -c
+                - printf '%s\n' "$1" >/proc/1/fd/1
+                - sh
+                - '\(if .type == "group_membership.added" then "+" else "-" end) \(.data.entity.account_name // .data.entity.account_email // .data.entity.service_account_name) \(if .type == "group_membership.added" then "joined" else "left" end) \(.data.entity.group_name)'
+
+audit_archiver: {enabled: false}
+bundle_scanner: {enabled: false}
+github_deployments: {enabled: false}
+proposal_chatops: {enabled: false}
+release_notes: {enabled: false}

@@ -389,21 +389,9 @@ onboard() {
   connect "apps-$app-repo" massdriver "$credential"
 }
 
-# automations_params: the platform's automations that need no infrastructure
-# of their own, each from its config file in automations/.
+# automations_params: Tendwell's settings for the platform's automations.
 automations_params() {
-  local filter name key
-  # Every automation needs its settings, on or off.
-  filter='. + {audit_archiver: {enabled: false, config: ""}, bundle_scanner: {enabled: false, config: "", attributes: {}},
-    github_deployments: {enabled: false, config: ""}, proposal_chatops: {enabled: false, config: "", attributes: {}},
-    release_notes: {enabled: false, config: ""}, router: {enabled: false, config: "", scripts: {}},
-    autodeploy_downstream: {attributes: {}}, drift: {attributes: {}}, rollback_on_failure: {attributes: {}},
-    statuspage: {attributes: {}}}'
-  for name in statuspage drift autodeploy-downstream rollback-on-failure freeze-guard sandbox-on-join router; do
-    key=${name//-/_}
-    filter+=" | .$key = (.$key // {}) + {enabled: true, config: $(jq -Rs . <"$HERE/automations/$name.yaml")}"
-  done
-  echo "$filter"
+  echo ". + $(python3 -c 'import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml")"
 }
 
 cmd_provision() {
