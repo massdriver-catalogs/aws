@@ -12,3 +12,6 @@ crash.log
 !*.tfvars.example
 
 .DS_Store
+
+# deploy.sh DEV=1 records the development releases it published
+examples/*/.dev-versions

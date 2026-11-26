@@ -123,7 +123,7 @@ Keep the contract identical to bundles/lab-box, so the Gamelab server and the la
   PGPASSWORD from the database's secret, and REDIS_URL exactly as lab-box does.
 - Same secrets: ANTHROPIC_API_KEY and LAB_PASSWORD, both required, with the same precondition that refuses to
   deploy without LAB_PASSWORD.
-- Same resource: field "lab" of type lab-box, with hostname, agent_url (port 4096), game_url (port 8080,
+- Same resource: field "lab" of type lab-endpoint, with hostname, agent_url (port 4096), game_url (port 8080,
   /play/), agent "opencode", region and security_group_id. Give the box a stable private DNS name the same way
   (a Cloud Map private DNS namespace), because instances are replaced.
 - Same network rules: no public IP, ports 4096 and 8080 open only to the VPC's CIDR, all egress allowed.

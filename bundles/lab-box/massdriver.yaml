@@ -160,7 +160,7 @@ dependencies:
 
 resources:
   lab:
-    resource_type: lab-box@0.0.0
+    resource_type: lab-endpoint@0.0.0
     required: true
 
 app:

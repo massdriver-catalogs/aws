@@ -15,7 +15,7 @@ As the **Gamelab Server** service account, which may change only the `labs` proj
 
 ## What it proxies
 
-Only these, over the VPC, to the box in the lab's `lab-box` resource:
+Only these, over the VPC, to the box in the lab's `lab-endpoint` resource:
 
 | Gamelab route | Lab box |
 |---|---|

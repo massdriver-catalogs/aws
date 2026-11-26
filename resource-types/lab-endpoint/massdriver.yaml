@@ -1,6 +1,6 @@
-name: lab-box
+name: lab-endpoint
 version: 0.0.0
-label: Lab Box
+label: Lab Endpoint
 
 ui:
   connectionOrientation: link

@@ -21,6 +21,8 @@
 #   PARENT_ZONE_ID     Route 53 zone of DOMAIN's parent in the same account. When set, the zone
 #                      is delegated from it automatically; otherwise delegate by hand.
 #   ISSUER             Massdriver's token issuer host; api.massdriver.cloud unless self-hosted
+#   DEV=1              publish development releases and pin each instance to the one just
+#                      published, for organizations that only take development releases
 #   YES=1              skip the confirmation before anything changes in AWS
 #   REDEPLOY=1         provision redeploys instances that are already up
 
@@ -31,7 +33,7 @@ CATALOG="$(cd "$HERE/../.." && pwd)"
 APP="$HERE/applications/gamelab"
 BUNDLES=(vpc dns-zone ecs-cluster ecr-repository codebase ecs-service postgres valkey lab-box)
 # The bundles above reference these, even where the connection is optional.
-TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-ecr-repository aws-codebase aws-postgres aws-valkey lab-box source-repository app-project)
+TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-ecr-repository aws-codebase aws-postgres aws-valkey lab-endpoint source-repository app-project)
 SUBDOMAIN=play
 
 log() { printf '\n==> %s\n' "$*" >&2; }
@@ -102,6 +104,7 @@ PY
 # deploy <instance> <bundle> [jq filter applied to the preset]
 deploy() {
   local instance=$1 bundle=$2 filter=${3:-.}
+  pin "$instance"
   provisioned "$instance" && return
   log "deploy $instance"
   local before
@@ -157,7 +160,29 @@ publish_bundle() {
   local name
   name=$(awk '/^name:/ { print $2; exit }' "$1/massdriver.yaml")
   log "publish bundle $name"
-  mass bundle publish --bundle-directory "$1"
+  if [ -z "${DEV:-}" ]; then
+    mass bundle publish --bundle-directory "$1"
+    return
+  fi
+  local out version
+  out=$(mass bundle publish --development --bundle-directory "$1")
+  echo "$out" >&2
+  version=$(grep -o "$name:[^ ]*-dev\.[0-9TZ]*" <<<"$out" | head -1 | cut -d: -f2)
+  [ -n "$version" ] || die "couldn't read the development version of $name"
+  # latest+dev resolves to the newest stable release, so instances are pinned to exactly this one.
+  touch "$HERE/.dev-versions"
+  { grep -v "^$name " "$HERE/.dev-versions" || true; echo "$name $version"; } >"$HERE/.dev-versions.new"
+  mv "$HERE/.dev-versions.new" "$HERE/.dev-versions"
+}
+
+# pin <instance>: with DEV, runs the instance on the development release publish recorded.
+pin() {
+  [ -n "${DEV:-}" ] || return 0
+  local bundle version
+  bundle=$(mass instance get "$1" -o json | jq -r '.bundle.name // .bundle.id')
+  version=$(awk -v b="$bundle" '$1 == b { print $2 }' "$HERE/.dev-versions" 2>/dev/null)
+  [ -n "$version" ] || die "no development release of $bundle recorded; run DEV=1 ./deploy.sh publish"
+  mass instance version "$1@$version" >/dev/null
 }
 
 require_role() {
@@ -389,6 +414,9 @@ cmd_provision() {
   deploy labs-template-codebase codebase '.share_with_project = false'
   share labs-template-codebase.codebase --condition md-project=labs
   mass environment default labs-template labs-template-codebase.codebase >/dev/null
+  # Forks take the template's versions, so labs run the same releases.
+  local part
+  for part in box saves scores; do pin "labs-template-$part"; done
 
   log "gamelab-main"
   deploy gamelab-main-registry ecr-repository
