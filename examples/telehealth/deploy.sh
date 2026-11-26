@@ -23,6 +23,8 @@
 #   YES=1             skip the confirmation before anything changes in AWS
 #   REDEPLOY=1        provision redeploys instances that are already up, from the preset;
 #                     apps go back to the placeholder until shipped again
+#   COST_ALLOCATION_TAGS  md-instance, md-package or both, comma-separated: activate them as AWS
+#                     cost allocation tags so the report carries them      (costs; payer account only)
 
 set -euo pipefail
 
@@ -34,6 +36,10 @@ log() { printf '\n==> %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 CONFIRMED=${YES:-}
+
+cost_allocation_tags() {
+  jq -cn --arg t "${COST_ALLOCATION_TAGS:-}" '$t | split(",") | map(gsub("^\\s+|\\s+$"; "") | select(. != ""))'
+}
 
 # Everything here creates real, billed AWS infrastructure with administrator
 # access, so nothing runs until a person has read what it will do.
@@ -70,6 +76,11 @@ In $(aws_target):
   - An IAM user, massdriver-costs-<org>, that can only read that bucket and resource tags, and its access key.
 Then connects the AWS Cost and Usage Reports integration in your Massdriver organization with that key.
 Massdriver shows costs on every instance once AWS writes the first report, within 24 hours.
+PLAN
+  [ -z "${COST_ALLOCATION_TAGS:-}" ] || cat <<PLAN
+Also activates $COST_ALLOCATION_TAGS as AWS cost allocation tags. That only works in the
+management (payer) account, and only once the tag shows up in billing data, up to 24 hours after
+the first tagged resource. Costs from before then aren't attributed by it.
 PLAN
 }
 
@@ -299,7 +310,7 @@ cmd_costs() {
   org=$(mass whoami -o json | jq -r .organization.id)
 
   log "cost and usage report and read-only user"
-  (cd "$HERE/costs" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve -var "organization=$org")
+  (cd "$HERE/costs" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve -var "organization=$org" -var "cost_allocation_tags=$(cost_allocation_tags)")
 
   status=$(graphql "$(jq -n --arg org "$org" '{
     query: "query($org: ID!) { integration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { status } }",
@@ -634,7 +645,7 @@ cmd_teardown() {
   (cd "$HERE/costs" && tofu init -input=false >/dev/null &&
     bucket=$(tofu output -json massdriver_integration_config 2>/dev/null | jq -r '.bucket_name // empty') &&
     { [ -z "$bucket" ] || ! aws s3api head-bucket --bucket "$bucket" 2>/dev/null || empty_bucket "$bucket"; } &&
-    tofu destroy -input=false -auto-approve -var "organization=$org")
+    tofu destroy -input=false -auto-approve -var "organization=$org" -var "cost_allocation_tags=$(cost_allocation_tags)")
 
   log "delete role massdriver-$org"
   if aws iam get-role --role-name "massdriver-$org" >/dev/null 2>&1; then
