@@ -1,0 +1,10 @@
+name: phpfleet-search
+description: >-
+  Product search and the filters beside it. Runs on the ECS service runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/php-fleet/applications/search
+version: 0.6.0
+
+app:
+  runtime: ecs-service
+  envs:
+    APP_NAME: '"search"'

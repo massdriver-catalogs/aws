@@ -1,0 +1,10 @@
+name: phpfleet-reviews
+description: >-
+  Product ratings and reviews, and their moderation queue. Runs on the ECS service runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/php-fleet/applications/reviews
+version: 0.3.0
+
+app:
+  runtime: ecs-service
+  envs:
+    APP_NAME: '"reviews"'

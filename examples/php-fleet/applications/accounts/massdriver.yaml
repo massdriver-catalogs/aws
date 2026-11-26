@@ -1,0 +1,10 @@
+name: phpfleet-accounts
+description: >-
+  Customer sign-in, addresses and order history. Runs on the ECS service runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/php-fleet/applications/accounts
+version: 1.2.0
+
+app:
+  runtime: ecs-service
+  envs:
+    APP_NAME: '"accounts"'
