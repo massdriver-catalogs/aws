@@ -184,13 +184,27 @@ locals {
       ]
     }
 
+    # The template builds the workspace image once: its registry and codebase
+    # are deployed there and become every sandbox's default codebase. Forks
+    # leave theirs undeployed, like the cluster, which comes from the
+    # platform's dev environment.
     sandboxes = {
       name        = "Developer Sandboxes"
-      description = "An environment for each developer, forked from the empty template when they join a team."
+      description = "An environment for each developer, forked from the template when they join a team: a workspace with Claude Code, OpenCode and mass, and a VPN into the dev VPC."
       team        = "platform"
       stages      = ["template"]
-      components  = {}
-      links       = []
+      components = {
+        registry  = { bundle = "ecr-repository", name = "Workspace Image Repository" }
+        codebase  = { bundle = "codebase", name = "Workspace Codebase" }
+        cluster   = { bundle = "ecs-cluster", name = "ECS Cluster" }
+        workspace = { bundle = "dev-workspace", name = "Workspace" }
+        vpn       = { bundle = "developer-vpn", name = "Developer VPN" }
+      }
+      links = [
+        "registry.repository -> codebase.registry",
+        "codebase.codebase -> workspace.codebase",
+        "cluster.cluster -> workspace.cluster",
+      ]
     }
   }
 
@@ -235,7 +249,7 @@ locals {
     { for f in fileset("${path.module}/../../bundles", "*/massdriver.yaml") : yamldecode(file("${path.module}/../../bundles/${f}")).name => "*" },
     { for app in ["visits", "care", "billing"] : yamldecode(file("${path.module}/applications/${app}/bundle/massdriver.yaml")).name => app },
     # A VPN into a shared VPC belongs in a developer's own sandbox, not beside prod.
-    { "developer-vpn" = "sandboxes" },
+    { "developer-vpn" = "sandboxes", "dev-workspace" = "sandboxes" },
   )
 
   teams = {
@@ -487,6 +501,39 @@ resource "massdriver_resource_grant" "sre_agent" {
   recipient_conditions = jsonencode({ "md-project" = ["sreagent"] })
 }
 
+# The workspace bundle makes each sandbox's own service account with this,
+# and puts it in the groups its form picks.
+resource "massdriver_service_account" "sandbox" {
+  name                     = "Sandbox Provisioner"
+  description              = "Creates the service account each developer sandbox's workspace signs in to Massdriver with."
+  token_expiration_minutes = 60 * 24 * 365
+}
+
+resource "massdriver_service_account_group_membership" "sandbox" {
+  group_id           = massdriver_group.platform.id
+  service_account_id = massdriver_service_account.sandbox.id
+}
+
+resource "massdriver_imported_resource" "sandbox" {
+  name          = "Massdriver Sandbox Provisioner"
+  resource_type = "massdriver-service-account"
+  resource = jsonencode({
+    url             = var.massdriver_url
+    organization_id = var.organization_id
+    api_key         = massdriver_service_account.sandbox.token
+  })
+
+  # The API adds the version to the type, as with the AWS credential.
+  lifecycle {
+    ignore_changes = [resource_type]
+  }
+}
+
+resource "massdriver_resource_grant" "sandbox" {
+  resource_id          = massdriver_imported_resource.sandbox.id
+  recipient_conditions = jsonencode({ "md-project" = ["sandboxes"] })
+}
+
 resource "massdriver_group" "platform" {
   name        = "Platform Engineering"
   description = "Owns the catalog, the platform project and app onboarding."
@@ -612,4 +659,8 @@ output "automations_credential" {
 
 output "sre_agent_credential" {
   value = massdriver_imported_resource.sre_agent.id
+}
+
+output "sandbox_provisioner_credential" {
+  value = massdriver_imported_resource.sandbox.id
 }

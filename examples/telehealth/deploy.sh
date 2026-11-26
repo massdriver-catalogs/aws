@@ -8,6 +8,7 @@
 #   ./deploy.sh bootstrap               apply bootstrap.tf and set each environment's AWS credential
 #   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev or prod
 #   ./deploy.sh ship <app> <stage>      build an app's image, push it and deploy it
+#   ./deploy.sh sandbox <name>          fork a developer sandbox from the template and deploy its workspace
 #   ./deploy.sh all <stage>             role, costs, setup, publish, bootstrap, provision and ship every app
 #   ./deploy.sh teardown                decommission everything, then undo bootstrap, costs and role
 #
@@ -27,6 +28,7 @@
 #                     cost allocation tags so the report carries them      (costs; payer account only)
 #   ANTHROPIC_API_KEY the key Jimmy, the SRE agent, calls Claude with   (provision dev)
 #   AGENT_IMAGE       Jimmy's image; default: built and pushed to his registry (provision dev)
+#   ANTHROPIC_API_KEY, GH_TOKEN  optional secrets for a sandbox's workspace     (sandbox)
 
 set -euo pipefail
 
@@ -98,6 +100,7 @@ Deploys the $stage stage into $(aws_target), region us-east-1:
     and two S3 buckets.
   - An ECR repository per app in the apps project, the first time any stage deploys.
   - Two Lambda functions behind API Gateway, and two Fargate services.
+  - In dev, an ECR repository for the developer sandboxes' workspace image, and the image.
   - IAM roles and security groups for all of it.
 Cost: $cost.
 Remove it with: ./deploy.sh teardown
@@ -423,18 +426,25 @@ automations() {
   python3 -c 'import sys, yaml; print("\n".join(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml"
 }
 
-# build_agent_image: builds bundles/ecs-agent/image into Jimmy's registry and
-# prints the image.
-build_agent_image() {
-  local registry url region image
-  registry=$(mass resource get sreagent-jimmy-registry.repository -o json)
+# build_image <registry instance> <bundle>: builds bundles/<bundle>/image into
+# that registry and prints the image. Tags are immutable, so an image already
+# built from this commit is reused.
+build_image() {
+  local registry url region tag image
+  registry=$(mass resource get "$1.repository" -o json)
   url=$(jq -r '.payload.url' <<<"$registry")
   region=$(jq -r '.payload.region' <<<"$registry")
-  image="$url:$(git -C "$CATALOG" rev-parse --short HEAD)"
+  tag=$(git -C "$CATALOG" rev-parse --short HEAD)
+  image="$url:$tag"
+  if aws ecr describe-images --region "$region" --repository-name "${url#*/}" --image-ids "imageTag=$tag" >/dev/null 2>&1; then
+    log "reuse $image"
+    echo "$image"
+    return
+  fi
   log "build and push $image"
   aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}" >&2
   docker logout public.ecr.aws >/dev/null 2>&1 || true
-  docker build --platform linux/arm64 --provenance=false -t "$image" "$CATALOG/bundles/ecs-agent/image" >&2
+  docker build --platform linux/arm64 --provenance=false -t "$image" "$CATALOG/bundles/$2/image" >&2
   docker push "$image" >&2
   echo "$image"
 }
@@ -537,16 +547,26 @@ cmd_provision() {
     else
       deploy sreagent-jimmy-registry ecr-repository dev
       deploy sreagent-jimmy-codebase codebase dev '.share_with_project = false'
-      [ -n "${AGENT_IMAGE:-}" ] || AGENT_IMAGE=$(build_agent_image)
+      [ -n "${AGENT_IMAGE:-}" ] || AGENT_IMAGE=$(build_image sreagent-jimmy-registry ecs-agent)
       connect sreagent-jimmy-agent massdriver "$(cd "$HERE" && tofu output -raw sre_agent_credential)"
       set_secret sreagent-jimmy-agent ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
       deploy sreagent-jimmy-agent ecs-agent "$stage" "$(jimmy_params)"
     fi
 
     # Sandboxes are forked from the template with its defaults, so each
-    # developer's environment lands in the dev VPC without connecting anything.
-    share "platform-$stage-network.network" --condition "md-project=sandboxes"
-    mass environment default sandboxes-template "platform-$stage-network.network" >/dev/null
+    # developer's environment lands in the dev VPC and cluster, with the
+    # workspace image and the provisioner, without connecting anything.
+    log "sandboxes-template"
+    for field in network.network cluster.cluster; do
+      share "platform-$stage-$field" --condition "md-project=sandboxes"
+      mass environment default sandboxes-template "platform-$stage-$field" >/dev/null
+    done
+    mass environment default sandboxes-template "$(cd "$HERE" && tofu output -raw sandbox_provisioner_credential)" >/dev/null
+    deploy sandboxes-template-registry ecr-repository dev
+    deploy sandboxes-template-codebase codebase dev '.share_with_project = false'
+    share sandboxes-template-codebase.codebase --condition md-project=sandboxes
+    mass environment default sandboxes-template sandboxes-template-codebase.codebase >/dev/null
+    build_image sandboxes-template-registry dev-workspace >/dev/null
   fi
 
   log "done. Ship real images with: ./deploy.sh ship <app> $stage"
@@ -580,6 +600,25 @@ cmd_ship() {
     mass instance deploy "$instance" --patch ".image_uri = \"$image\"" -m "Ship $tag" --follow || true
     wait_for "$instance" "$before"
   done
+}
+
+# cmd_sandbox <name>: what sandbox-on-join does when someone joins a team,
+# for trying the workspace without it: forks the template and deploys the
+# workspace into the fork.
+cmd_sandbox() {
+  local name=${1:-} env
+  [[ "$name" =~ ^[a-z0-9]{1,20}$ ]] || die "sandbox name must be 1-20 lowercase letters and digits"
+  env="sandboxes-$name"
+  mass environment get "$env" >/dev/null 2>&1 ||
+    mass environment fork sandboxes-template "$name" --name "$name" --copy-environment-defaults >/dev/null
+  [ -z "${ANTHROPIC_API_KEY:-}" ] || set_secret "$env-workspace" ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
+  [ -z "${GH_TOKEN:-}" ] || set_secret "$env-workspace" GH_TOKEN "$GH_TOKEN"
+  deploy "$env-workspace" dev-workspace dev
+  local cluster
+  cluster=$(mass resource get platform-dev-cluster.cluster -o json)
+  log "open a shell in $env with:
+  TASK=\$(aws ecs list-tasks --region $(jq -r .payload.region <<<"$cluster") --cluster $(jq -r .payload.name <<<"$cluster") --service-name $env-workspace --query 'taskArns[0]' --output text)
+  aws ecs execute-command --region $(jq -r .payload.region <<<"$cluster") --cluster $(jq -r .payload.name <<<"$cluster") --task \$TASK --container workspace --interactive --command 'workspace shell'"
 }
 
 teardown_plan() {
@@ -672,6 +711,15 @@ cmd_teardown() {
   org=$(mass whoami -o json | jq -r .organization.id)
   account=$(aws sts get-caller-identity --query Account --output text)
 
+  # sandbox-on-join forks these from the template, outside bootstrap.tf. Their
+  # workspaces run on the platform's dev cluster, so they go first.
+  for env in $(mass environment list sandboxes -o json 2>/dev/null | jq -r '(. // [])[] | select(.id != "sandboxes-template") | .id'); do
+    decommission "$env"
+    mass environment delete "$env" --force >/dev/null
+  done
+  release "$org" "sandboxes-template-" sandboxes-template
+  decommission sandboxes-template
+
   # Apps first: the platform's zone and cluster hold their records and rules.
   for stage in dev prod; do
     for project in billing care visits; do decommission "$project-$stage"; done
@@ -683,7 +731,7 @@ cmd_teardown() {
       decommission sreagent-jimmy
       mass instance remote-reference remove sreagent-jimmy-agent massdriver >/dev/null 2>&1 || true
     fi
-    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}" automations-main sreagent-jimmy
+    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}" automations-main sreagent-jimmy sandboxes-template
     decommission "platform-$stage"
   done
   for app in "${APPS[@]}"; do
@@ -696,11 +744,6 @@ cmd_teardown() {
   done
 
   export TF_VAR_organization_id=$org
-  # sandbox-on-join forks these from the template, outside bootstrap.tf.
-  for env in $(mass environment list sandboxes -o json 2>/dev/null | jq -r '(. // [])[] | select(.id != "sandboxes-template") | .id'); do
-    decommission "$env"
-    mass environment delete "$env" --force >/dev/null
-  done
 
   log "destroy bootstrap.tf"
   # Destroying the settings leaves the org's default tags in place, and an
@@ -754,6 +797,7 @@ case "${1:-}" in
   bootstrap) cmd_bootstrap ;;
   provision) cmd_provision "${2:-}" ;;
   ship) cmd_ship "${2:-}" "${3:-}" ;;
+  sandbox) cmd_sandbox "${2:-}" ;;
   teardown) cmd_teardown ;;
   all)
     stage=$(stage_arg "${2:-}")
@@ -779,5 +823,5 @@ Then builds the three app images with Docker, pushes them to ECR and deploys the
     cmd_provision "$stage"
     for app in "${APPS[@]}"; do cmd_ship "$app" "$stage"; done
     ;;
-  *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

@@ -1,0 +1,197 @@
+name: dev-workspace
+description: >-
+  A developer's own Linux workspace in one Fargate task on a shared ECS cluster, with Claude Code, OpenCode,
+  the mass CLI, the Massdriver MCP server, git and mise. The home directory is kept on EFS, and developers get
+  in with ECS Exec, so nothing listens on the internet.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/dev-workspace
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Development
+      image_tag: ""
+      architecture: arm64
+      groups: []
+      git_name: ""
+      git_email: ""
+      mise_tools: []
+      vpn_ports: []
+      home_backups: true
+      size: 1024/4096
+      spot: true
+      log_retention_days: 7
+  required:
+    - image_tag
+    - architecture
+    - groups
+    - git_name
+    - git_email
+    - mise_tools
+    - vpn_ports
+    - home_backups
+    - size
+    - spot
+    - log_retention_days
+  properties:
+    image_tag:
+      title: Image tag
+      description: >-
+        A tag in the codebase's image repository. Leave it empty to run the newest image pushed there; each
+        deploy picks up the newest one again.
+      type: string
+      default: ""
+      pattern: ^(|[A-Za-z0-9_][A-Za-z0-9._-]{0,127})$
+      message:
+        pattern: "An image tag like 3f2a9c1, or empty for the newest image."
+    architecture:
+      title: Architecture
+      description: The CPU type the image is built for. A mismatch fails with `exec format error`. ***arm64 is ~20% cheaper.***
+      type: string
+      default: arm64
+      oneOf:
+        - const: arm64
+          title: arm64 (Graviton)
+        - const: x86_64
+          title: x86_64 (Intel/AMD)
+    groups:
+      title: Massdriver groups
+      description: >-
+        The groups the workspace's Massdriver service account joins. `mass` and the Massdriver MCP server in the
+        workspace can do what these groups allow and nothing more.
+      type: array
+      default: []
+      uniqueItems: true
+      items:
+        type: string
+        $md.list:
+          resource: group
+    git_name:
+      title: Git name
+      description: The name on the developer's commits. Leave empty to set it in the workspace.
+      type: string
+      default: ""
+    git_email:
+      title: Git email
+      description: The email on the developer's commits. Leave empty to set it in the workspace.
+      type: string
+      default: ""
+      pattern: ^(|[^@\s]+@[^@\s]+)$
+      message:
+        pattern: "An email address, or empty."
+    mise_tools:
+      title: Extra tools
+      description: >-
+        Tools [mise](https://mise.jdx.dev) installs when the workspace starts, like `node@22`, `python@3.13`,
+        `go@1.25` or `terraform@1.9`. They're kept in the home directory, so only the first start is slow.
+      type: array
+      default: []
+      uniqueItems: true
+      items:
+        type: string
+        pattern: ^[A-Za-z0-9:/._-]+(@[A-Za-z0-9._-]+)?$
+        message:
+          pattern: "A mise tool with an optional version, like node@22."
+    vpn_ports:
+      title: Ports open to the VPC
+      description: >-
+        Ports of dev servers in the workspace that the rest of the VPC may reach, like `3000`. With the
+        Developer VPN connected, the developer's laptop opens them at the workspace's private IP.
+      type: array
+      default: []
+      uniqueItems: true
+      items:
+        type: integer
+        minimum: 1024
+        maximum: 65535
+    home_backups:
+      title: Back up the home directory
+      description: >-
+        Daily AWS Backup copies of the home directory, kept 35 days, to undo a deleted file or a broken
+        checkout. ***~$0.05 per GB-month backed up.***
+      type: boolean
+      default: true
+    size:
+      title: Workspace size
+      description: >-
+        CPU and memory. Claude Code, OpenCode and a build running together want at least 4 GB.
+        ***Per month on arm64, running all the time; Spot is ~70% less.***
+      type: string
+      default: 1024/4096
+      oneOf:
+        - const: 1024/4096
+          title: 1 vCPU, 4 GB (~$34)
+        - const: 2048/8192
+          title: 2 vCPU, 8 GB (~$68)
+        - const: 4096/16384
+          title: 4 vCPU, 16 GB (~$136)
+    spot:
+      title: Run on Spot
+      description: >-
+        Spare capacity AWS can take back with two minutes' notice. ECS starts a new workspace and the home
+        directory is still there; running programs and open shells are not. ***~70% cheaper.***
+      type: boolean
+      default: true
+    log_retention_days:
+      title: Log retention (days)
+      description: How long the workspace's startup logs are kept. ***Billed per GB ingested and stored.***
+      type: integer
+      default: 7
+      enum:
+        - 1
+        - 7
+        - 30
+        - 90
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  cluster:
+    resource_type: aws-ecs-cluster@0.0.0
+    required: true
+  codebase:
+    resource_type: aws-codebase@0.0.0
+    required: true
+  massdriver:
+    resource_type: massdriver-service-account@~0.1
+    required: true
+
+resources: {}
+
+app:
+  secrets:
+    ANTHROPIC_API_KEY:
+      title: Anthropic API key
+      description: >-
+        A key from the Claude Console for Claude Code and OpenCode. Without it, sign in to Claude in the
+        workspace with `claude` instead.
+      required: false
+    GH_TOKEN:
+      title: GitHub token
+      description: A GitHub token git and `gh` push and pull with. Without it, sign in from the workspace.
+      required: false
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+    config:
+      checkov:
+        # The environment is the second part of the instance slug, <project>-<environment>-<component>.
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] | . == "prod" or . == "production"'
+        # With md-environment in the organization's default tags:
+        # halt_on_failure: '.params.md_metadata.default_tags["md-environment"] | . == "prod" or . == "production"'
+
+ui:
+  ui:order:
+    - groups
+    - git_name
+    - git_email
+    - mise_tools
+    - vpn_ports
+    - home_backups
+    - size
+    - spot
+    - image_tag
+    - architecture
+    - log_retention_days
+    - "*"

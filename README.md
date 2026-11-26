@@ -24,6 +24,7 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 | `lambda-function` | A function that answers routes on an HTTP API, or reads a queue. Apps run on it | — |
 | `ecs-service` | A container service on Fargate, at `<subdomain>.<zone>` or as a worker with no address. Apps run on it | — |
 | `ecs-agent` | A Claude agent on Fargate with its own Massdriver service account, working on one goal around the clock | — |
+| `dev-workspace` | A developer's workspace on Fargate with Claude Code, OpenCode, `mass`, the Massdriver MCP server and git, a persistent home directory, and a shell through ECS Exec | — |
 
 ### Data stores
 
@@ -52,7 +53,7 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 |---|---|
 | AWS IAM Role (`aws-iam-role`) | Every AWS bundle |
 | GitHub App (`github-app`) | `github-repo` |
-| Massdriver Service Account (`massdriver-service-account`, from [massdriver-resource-types](https://github.com/massdriver-cloud/massdriver-resource-types)) | `massdriver-project`, `github-repo`, `codebase`, `massdriver-<automation>-ecs`, `ecs-agent` |
+| Massdriver Service Account (`massdriver-service-account`, from [massdriver-resource-types](https://github.com/massdriver-cloud/massdriver-resource-types)) | `massdriver-project`, `github-repo`, `codebase`, `massdriver-<automation>-ecs`, `ecs-agent`, `dev-workspace` |
 
 The onboarding bundles create projects, groups and service accounts, and share resources, so their Massdriver service account must be in Organization Admin. The type has no environment default: import the service account as a resource and set it as a remote reference on each bundle's **massdriver** slot.
 

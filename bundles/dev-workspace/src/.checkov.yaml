@@ -1,0 +1,5 @@
+skip-check:
+  # The values are the workspace's service account token and the Anthropic and
+  # GitHub keys set in Massdriver. A deploy writes them; Secrets Manager has no
+  # rotation function for any of them.
+  - CKV2_AWS_57
