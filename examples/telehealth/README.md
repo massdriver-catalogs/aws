@@ -12,6 +12,7 @@ A telehealth company built on this catalog. Patients book video visits, clinicia
 | `care` | Clinical | The clinician portal on ECS: `postgres`, `valkey`, `s3-bucket`, `tendwell-care` |
 | `billing` | Revenue | Claims on ECS: `mariadb`, `s3-bucket`, `tendwell-billing` |
 | `sreagent` | Platform Engineering | Jimmy, a Claude agent that watches dev and proposes fixes: `ecs-agent`, on the platform's dev cluster |
+| `sandboxes` | Platform Engineering | An environment per developer, forked from `template`: `dev-workspace` and `developer-vpn`, on the platform's dev cluster and VPC |
 
 `platform`, `visits`, `care` and `billing` have `dev` and `prod`. `apps` has one environment per app, where the platform team onboards it: an image registry and a codebase, shared with the app's project and set as the default in its dev and prod, so both run the same images. Prod deploys need a second person's approval.
 
@@ -20,6 +21,8 @@ The `apps` canvas also has `github-repo` and `massdriver-project`, which `deploy
 Each team's group can change only its own project and read the rest. Platform Engineering can change everything, and Security & Compliance can read everything and change nothing.
 
 `sreagent` has one environment per agent. Jimmy, in `jimmy`, runs on the platform's dev cluster as his own service account in SRE Agents, which can read everything and propose deploys in dev that a person approves. `deploy.sh provision dev` deploys him when `ANTHROPIC_API_KEY` and `AGENT_IMAGE` are set; [`bundles/ecs-agent`](../../bundles/ecs-agent) shows how to build the image.
+
+`sandboxes` has a `template`, and sandbox-on-join forks it for each person who joins a team. The template deploys the workspace image's registry and codebase once; `deploy.sh provision dev` builds [`bundles/dev-workspace/image`](../../bundles/dev-workspace) into it and sets the codebase, the dev cluster and VPC, and a Sandbox Provisioner credential as the template's defaults, which every fork copies. In a fork, the developer deploys **Workspace** for a shell with Claude Code, OpenCode, `mass` and git, and **Developer VPN** to reach the dev VPC from their laptop. `./deploy.sh sandbox <name>` does the same by hand and prints the command to get in.
 
 ```mermaid
 flowchart LR

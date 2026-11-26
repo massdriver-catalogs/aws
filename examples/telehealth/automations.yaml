@@ -166,14 +166,15 @@ freeze-guard:
 sandbox-on-join:
   config:
     # Each person who joins a Tendwell team gets an environment of their own in the
-    # Developer Sandboxes project, forked from its empty template. Leaving the team
+    # Developer Sandboxes project, forked from its template. Leaving the team
     # decommissions and deletes it.
     sandboxes:
       - group: Patient Experience
         project: sandboxes
         environment: template
         deleteAfterDecommission: true
-        # The AWS credential, so whatever they add can deploy.
+        # The AWS credential, the dev cluster and VPC, the workspace image and the
+        # provisioner, so the workspace and VPN deploy without connecting anything.
         copyEnvironmentDefaults: true
       - group: Clinical
         project: sandboxes
