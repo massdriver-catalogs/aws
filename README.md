@@ -42,7 +42,7 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 | `github-repo` | The app's GitHub repository, with a pipeline that builds, pushes and deploys | `source-repository` |
 | `massdriver-project` | The app's Massdriver project, its environments, and a group its pipeline deploys with | `app-project` |
 | `codebase` | Where an app's images come from: its registry and, optionally, its repository. Runtimes connect to it | `aws-codebase` |
-| `massdriver-automations` | [Massdriver automations](https://github.com/massdriver-cloud/massdriver-automations) on the cluster: status page, drift checks, freeze windows, auto-deploys and more | none |
+| `massdriver-automations` | [Massdriver automations](https://github.com/massdriver-cloud/massdriver-automations) on the cluster: status page, drift checks, freeze windows, auto-deploys and more | `status-page` |
 
 ### Credentials
 
