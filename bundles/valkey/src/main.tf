@@ -9,8 +9,15 @@ locals {
   private_subnets  = [for s in var.network.subnets : s if s.tier == "private"]
   cache_subnets    = length(local.internal_subnets) > 0 ? local.internal_subnets : local.private_subnets
 
+  # Serverless ElastiCache isn't offered in these zones, and a subnet in one
+  # fails the create after the old cache is already gone.
+  unsupported_az_ids = ["use1-az3"]
+
   # ElastiCache takes at most one subnet per availability zone.
-  subnets_by_az = { for s in local.cache_subnets : s.availability_zone_id => s.id... }
+  subnets_by_az = {
+    for s in local.cache_subnets : s.availability_zone_id => s.id...
+    if !contains(local.unsupported_az_ids, s.availability_zone_id)
+  }
   subnet_ids    = slice([for az, ids in local.subnets_by_az : ids[0]], 0, min(3, length(local.subnets_by_az)))
 }
 
