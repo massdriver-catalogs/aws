@@ -1,0 +1,45 @@
+{{define "title"}}Labs · Gamelab{{end}}
+{{define "main"}}
+<section class="intro">
+  <h1>Labs</h1>
+  <p class="lead">Each lab is a private computer where one player and their helper build games.</p>
+</section>
+{{with .Error}}<p class="error banner">{{.}}</p>{{end}}
+{{if .Labs}}
+<ul class="labs">
+  {{range .Labs}}
+  <li class="lab state-{{.State}}">
+    <a class="lab-main" href="/labs/{{.ID}}">
+      <span class="avatar" aria-hidden="true">{{slice .Player 0 1}}</span>
+      <span class="lab-text">
+        <strong>{{.Player}}</strong>
+        <span class="muted">{{if .Age}}Age {{.Age}} · {{end}}{{with index $.Plans .Plan}}{{.}} plan{{else}}{{.Plan}}{{end}}{{if .Saves}} · saves{{end}}{{if .Scores}} · leaderboard{{end}}</span>
+      </span>
+      <span class="status"><span class="dot"></span>{{.Detail}}</span>
+    </a>
+    <div class="lab-actions">
+      {{if or (eq .State "broken") (eq .State "stopped")}}
+      <form method="post" action="/labs/{{.ID}}/resume"><button class="small" type="submit">{{if eq .State "broken"}}Try again{{else}}Set up{{end}}</button></form>
+      {{end}}
+      {{if ne .State "removing"}}
+      <details class="confirm">
+        <summary class="link danger">Remove</summary>
+        <form method="post" action="/labs/{{.ID}}/remove">
+          <p>Remove {{.Player}}'s lab? Their games are deleted for good.</p>
+          <button class="small danger" type="submit">Remove the lab</button>
+        </form>
+      </details>
+      {{end}}
+    </div>
+  </li>
+  {{end}}
+</ul>
+{{else if not .Error}}
+<section class="empty card">
+  <h2>No labs yet</h2>
+  <p>Make one for a player. It takes about five minutes to build.</p>
+  <a class="button" href="/new">New lab</a>
+</section>
+{{end}}
+{{end}}
+{{define "scripts"}}<script src="/static/home.js"></script>{{end}}

@@ -1,0 +1,47 @@
+{{define "title"}}New lab · Gamelab{{end}}
+{{define "main"}}
+<section class="intro">
+  <h1>New lab</h1>
+  <p class="lead">Who's playing, and how big a lab do they need?</p>
+</section>
+<form method="post" action="/new" class="new-lab">
+  {{with .Error}}<p class="error banner">{{.}}</p>{{end}}
+  <div class="card fields">
+    <div class="field">
+      <label for="player">Player's first name or nickname</label>
+      <input id="player" name="player" value="{{.Form.player}}" maxlength="30" pattern="[A-Za-z][A-Za-z '\-]{0,29}" required autofocus>
+      <p class="hint">The helper calls them this. Nothing else about them goes in the lab.</p>
+    </div>
+    <div class="field">
+      <label for="age">Age</label>
+      <select id="age" name="age">
+        {{range .Ages}}<option value="{{.}}"{{if eq (print .) $.Form.age}} selected{{end}}>{{.}}</option>{{end}}
+      </select>
+      <p class="hint">Sets the helper's rules: simple words and gentle games for young players; the web only for 13 and up.</p>
+    </div>
+  </div>
+
+  <h2>Plan</h2>
+  <div class="plans" role="radiogroup">
+    {{range .Plans}}
+    <label class="plan{{if .Popular}} popular{{end}}">
+      <input type="radio" name="plan" value="{{.ID}}"{{if eq .ID $.Form.plan}} checked{{end}} required>
+      {{if .Popular}}<span class="ribbon">Most picked</span>{{end}}
+      <span class="plan-name">{{.Name}}</span>
+      <span class="price"><span class="amount">${{.Monthly.Box}}</span>/month</span>
+      <span class="tagline">{{.Tagline}}</span>
+      <ul>{{range .Features}}<li>{{.}}</li>{{end}}</ul>
+      <span class="extras">Game saves +${{.Monthly.Saves}} · Leaderboard +${{.Monthly.Leaderboard}}</span>
+    </label>
+    {{end}}
+  </div>
+
+  <h2>Extras</h2>
+  <div class="card extras-card">
+    <label class="check"><input type="checkbox" name="saves"{{if eq $.Form.saves "on"}} checked{{end}}> <span><strong>Game saves</strong> A PostgreSQL database, for games that remember things between visits.</span></label>
+    <label class="check"><input type="checkbox" name="scores"{{if eq $.Form.scores "on"}} checked{{end}}> <span><strong>Leaderboard</strong> A Valkey store, for fast high scores.</span></label>
+  </div>
+  <p class="hint">Prices are AWS running all month, on spare capacity. Claude usage is billed by Anthropic on top.</p>
+  <button type="submit" class="big">Make the lab</button>
+</form>
+{{end}}

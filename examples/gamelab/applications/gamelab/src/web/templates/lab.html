@@ -1,0 +1,45 @@
+{{define "title"}}{{.Lab.Player}}'s Lab · Gamelab{{end}}
+{{define "main"}}
+{{if .Lab.Ready}}
+<section class="studio" data-lab="{{.Lab.ID}}" data-play="{{.PlayURL}}" data-player="{{.Lab.Player}}" data-age="{{.Lab.Age}}">
+  <div class="chat card">
+    <div class="chat-head">
+      <h1>{{.Lab.Player}}'s Lab</h1>
+      <span class="status"><span class="dot"></span><span id="state">Ready</span></span>
+    </div>
+    <ol id="messages" class="messages" aria-live="polite">
+      <li class="msg assistant intro">
+        <p>Hi {{.Lab.Player}}! I'm your game helper. What game should we make? You can say something like "a bunny that jumps over carrots" or "a space game with lots of stars".</p>
+      </li>
+    </ol>
+    <form id="say" class="say">
+      <textarea id="text" rows="2" maxlength="2000" placeholder="Tell your helper what to make..." required></textarea>
+      <div class="say-buttons">
+        <button type="button" id="stop" class="secondary" hidden>Stop</button>
+        <button type="submit" id="send">Send</button>
+      </div>
+    </form>
+  </div>
+  <div class="play card">
+    <div class="play-head">
+      <h2>Play</h2>
+      <div>
+        <button type="button" id="reload" class="secondary small">Reload</button>
+        <a class="button secondary small" href="{{.PlayURL}}" target="_blank" rel="noopener">Full screen</a>
+      </div>
+    </div>
+    <iframe id="game" title="{{.Lab.Player}}'s game" src="{{.PlayURL}}" sandbox="allow-scripts allow-pointer-lock" allow="fullscreen; gamepad; autoplay"></iframe>
+  </div>
+</section>
+{{else}}
+<section class="building card state-{{.Lab.State}}">
+  <span class="spinner" aria-hidden="true"></span>
+  <h1>{{.Lab.Player}}'s Lab</h1>
+  <p class="lead">{{.Lab.Detail}}</p>
+  {{if and (ne .Lab.State "building") (ne .Lab.State "removing")}}
+  <form method="post" action="/labs/{{.Lab.ID}}/resume"><button type="submit">{{if eq .Lab.State "broken"}}Try again{{else}}Set up the lab{{end}}</button></form>
+  {{end}}
+</section>
+{{end}}
+{{end}}
+{{define "scripts"}}{{if .Lab.Ready}}<script src="/static/lab.js"></script>{{else}}<script src="/static/home.js"></script>{{end}}{{end}}

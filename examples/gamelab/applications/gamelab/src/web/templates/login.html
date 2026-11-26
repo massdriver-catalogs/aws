@@ -1,0 +1,14 @@
+{{define "title"}}Sign in · Gamelab{{end}}
+{{define "main"}}
+<section class="login">
+  <img src="/static/icon.svg" alt="" width="88" height="88">
+  <h1>Gamelab</h1>
+  <p class="lead">Kids dream up games. A helper builds them.</p>
+  <form method="post" action="/login" class="card">
+    <label for="password">Grown-up password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+    {{with .Error}}<p class="error">{{.}}</p>{{end}}
+    <button type="submit">Sign in</button>
+  </form>
+</section>
+{{end}}

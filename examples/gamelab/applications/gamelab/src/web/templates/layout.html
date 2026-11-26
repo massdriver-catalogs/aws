@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{block "title" .}}Gamelab{{end}}</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page-{{.Page}}">
+{{if ne .Page "login"}}
+<header class="top">
+  <a class="brand" href="/"><img src="/static/icon.svg" alt="" width="32" height="32"> Gamelab</a>
+  <nav>
+    <a class="button small" href="/new">New lab</a>
+    <form method="post" action="/logout"><button class="link" type="submit">Sign out</button></form>
+  </nav>
+</header>
+{{end}}
+<main>
+{{block "main" .}}{{end}}
+</main>
+{{block "scripts" .}}{{end}}
+</body>
+</html>

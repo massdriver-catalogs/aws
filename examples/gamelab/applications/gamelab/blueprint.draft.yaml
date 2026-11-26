@@ -1,0 +1,19 @@
+version: 1
+project: gamelab
+name: Gamelab
+components:
+  registry: { bundle: ecr-repository, name: Image Repository }
+  repo:     { bundle: github-repo, name: Source Repository }
+  codebase: { bundle: codebase, name: Codebase }
+  cluster:  { bundle: ecs-cluster, name: ECS Cluster }
+  app:      { bundle: gamelab-server, name: Gamelab Server }
+defaults:
+  - platform/network.network
+  - platform/dns.zone
+  - platform/cluster.cluster
+links:
+  - registry.repository -> repo.registry
+  - repo.repository     -> codebase.repository
+  - registry.repository -> codebase.registry
+  - codebase.codebase   -> app.codebase
+  - cluster.cluster     -> app.cluster

@@ -1,0 +1,51 @@
+version: 1
+project: platform
+name: Platform
+components:
+  network: { bundle: vpc, name: Network }
+  dns:     { bundle: dns-zone, name: DNS Zone }
+  cluster: { bundle: ecs-cluster, name: ECS Cluster }
+links:
+  - network.network -> cluster.network
+  - dns.zone        -> cluster.dns
+---
+version: 1
+project: gamelab
+name: Gamelab
+components:
+  registry: { bundle: ecr-repository, name: Image Repository }
+  repo:     { bundle: github-repo, name: Source Repository }
+  codebase: { bundle: codebase, name: Codebase }
+  cluster:  { bundle: ecs-cluster, name: ECS Cluster }
+  app:      { bundle: gamelab-server, name: Gamelab Server }
+defaults:
+  - platform/network.network
+  - platform/dns.zone
+  - platform/cluster.cluster
+links:
+  - registry.repository -> repo.registry
+  - repo.repository     -> codebase.repository
+  - registry.repository -> codebase.registry
+  - codebase.codebase   -> app.codebase
+  - cluster.cluster     -> app.cluster
+---
+version: 1
+project: labs
+name: Labs
+components:
+  registry: { bundle: ecr-repository, name: Lab Image Repository }
+  codebase: { bundle: codebase, name: Lab Codebase }
+  cluster:  { bundle: ecs-cluster, name: ECS Cluster }
+  box:      { bundle: lab-box, name: Lab Box }
+  saves:    { bundle: postgres, name: Game Saves }
+  scores:   { bundle: valkey, name: Leaderboard }
+defaults:
+  - platform/network.network
+  - platform/cluster.cluster
+  - labs/codebase.codebase
+links:
+  - registry.repository -> codebase.registry
+  - codebase.codebase   -> box.codebase
+  - cluster.cluster     -> box.cluster
+  - saves.database      -> box.postgres
+  - scores.cache        -> box.cache

@@ -1,0 +1,35 @@
+name: gamelab-server
+description: >-
+  Gamelab's web app. A parent signs in, makes a lab for a player, and Gamelab forks the labs template in
+  Massdriver and deploys it. It's the only public part of Gamelab: it proxies each lab's chat and game
+  from inside the VPC. Runs on the ECS service runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/gamelab/applications/gamelab
+version: 0.0.0
+
+dependencies: {}
+
+resources: {}
+
+app:
+  runtime: ecs-service
+  envs:
+    MASSDRIVER_URL: '"https://api.massdriver.cloud"'
+    LABS_PROJECT: '"labs"'
+    LAB_TEMPLATE: '"labs-template"'
+  secrets:
+    GAMELAB_PASSWORD:
+      title: Sign-in password
+      description: The one password parents sign in to Gamelab with.
+      required: true
+    SESSION_SECRET:
+      title: Session secret
+      description: >-
+        A long random string. Signs sign-ins, and makes each lab's agent password and game address.
+        Changing it signs everyone out, and every lab needs a deploy to get its new password.
+      required: true
+    MASSDRIVER_API_KEY:
+      title: Massdriver API key
+      description: >-
+        The token of the Gamelab Server service account, which may make, deploy and remove labs in the
+        labs project and nothing else.
+      required: true
