@@ -99,11 +99,16 @@ locals {
       stages      = ["jimmy"]
       components = {
         registry = { bundle = "ecr-repository", name = "Image Repository" }
+        repo     = { bundle = "github-repo", name = "Source Repository" }
         codebase = { bundle = "codebase", name = "Codebase" }
         cluster  = { bundle = "ecs-cluster", name = "ECS Cluster" }
         agent    = { bundle = "ecs-agent", name = "Agent" }
       }
+      # repo stays undeployed until the agent's image moves to its own
+      # repository; until then deploy.sh pushes it straight to the registry.
       links = [
+        "registry.repository -> repo.registry",
+        "repo.repository -> codebase.repository",
         "registry.repository -> codebase.registry",
         "codebase.codebase -> agent.codebase",
         "cluster.cluster -> agent.cluster",
