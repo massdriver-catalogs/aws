@@ -246,8 +246,9 @@ cmd_role() {
 cmd_setup() {
   require_role
   log "define attributes, organization settings, bundle repositories and their grants"
-  mass repository list -t bundle -o json | jq '{existing_bundle_repositories: [(. // [])[].name]}' \
-    >"$HERE/existing.auto.tfvars.json"
+  # Some mass versions fail to list repositories ("Project not found"); a new organization has none to adopt.
+  { mass repository list -t bundle -o json 2>/dev/null || echo '[]'; } |
+    jq '{existing_bundle_repositories: [(. // [])[].name]}' >"$HERE/existing.auto.tfvars.json"
   (cd "$HERE" && tofu init -input=false >/dev/null &&
     # Adopt attributes an earlier run, or a person, already defined; a missing one just fails to import.
     for key in lab_plan player_age; do
