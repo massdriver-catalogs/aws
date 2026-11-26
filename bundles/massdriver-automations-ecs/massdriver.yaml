@@ -1,8 +1,8 @@
-name: massdriver-automations
+name: massdriver-automations-ecs
 description: >-
   Runs Massdriver automations on Amazon ECS with Fargate. Each enabled automation gets an ECS service, a host on the
   cluster's load balancer, and an event destination that sends it only the events it uses.
-source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/massdriver-automations
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/massdriver-automations-ecs
 version: 0.0.0
 
 steps:
@@ -12,11 +12,11 @@ steps:
 params:
   examples:
     - __name: Development
-      image: {repository: ghcr.io/massdriver-cloud/massdriver-automations, tag: "0.1"}
+      image: {repository: ghcr.io/massdriver-cloud/massdriver-automations, tag: latest}
       ingress: {dns_records: true}
       logs: {retention_days: 7}
     - __name: Production
-      image: {repository: ghcr.io/massdriver-cloud/massdriver-automations, tag: "0.1"}
+      image: {repository: ghcr.io/massdriver-cloud/massdriver-automations, tag: latest}
       ingress: {dns_records: true}
       logs: {retention_days: 90}
   required:
@@ -1583,7 +1583,7 @@ dependencies:
   aws_authentication:
     resource_type: aws-iam-role@0.0.0
     required: true
-  cluster:
+  ecs_cluster:
     resource_type: aws-ecs-cluster@0.0.0
     required: true
   service_account:

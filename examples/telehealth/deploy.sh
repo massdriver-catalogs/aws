@@ -391,7 +391,10 @@ onboard() {
 
 # automations_params: Tendwell's settings for the platform's automations.
 automations_params() {
-  echo ". + $(python3 -c 'import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml")"
+  echo ". + $(python3 -c 'import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml")
+    | $(cd "$HERE" && tofu output -json group_ids) as \$ids
+    | .sandbox_on_join.config.sandboxes |= map(.group = (\$ids[.group] // .group))
+    | .freeze_guard.config.exempt_groups |= map(\$ids[.] // .)"
 }
 
 cmd_provision() {
@@ -456,12 +459,15 @@ cmd_provision() {
   connect "billing-$stage-app" care "care-$stage-app.care"
   deploy "billing-$stage-app" ecs-service "$stage" '.subdomain = "billing" | .health_check_path = "/health"'
 
-  # One set of automations serves the whole organization. Tendwell always runs
-  # dev, so they run there.
+  # Tendwell always runs dev, so the organization's automations run on its cluster.
   if [ "$stage" = dev ]; then
-    log "platform-$stage automations"
-    connect "platform-$stage-automations" service_account "$(cd "$HERE" && tofu output -raw automations_credential)"
-    deploy "platform-$stage-automations" massdriver-automations "$stage" "$(automations_params)"
+    log "automations-main"
+    for field in network.network dns.zone cluster.cluster; do
+      share "platform-$stage-$field" --condition "md-project=automations"
+      mass environment default automations-main "platform-$stage-$field" >/dev/null
+    done
+    connect automations-main-automations service_account "$(cd "$HERE" && tofu output -raw automations_credential)"
+    deploy automations-main-automations massdriver-automations-ecs "$stage" "$(automations_params)"
   fi
 
   log "done. Ship real images with: ./deploy.sh ship <app> $stage"
@@ -590,7 +596,11 @@ cmd_teardown() {
   # Apps first: the platform's zone and cluster hold their records and rules.
   for stage in dev prod; do
     for project in billing care visits; do decommission "$project-$stage"; done
-    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}"
+    if [ "$stage" = dev ]; then
+      decommission automations-main
+      mass instance remote-reference remove automations-main-automations service_account >/dev/null 2>&1 || true
+    fi
+    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}" automations-main
     decommission "platform-$stage"
   done
   for app in "${APPS[@]}"; do

@@ -62,13 +62,26 @@ locals {
         dns         = { bundle = "dns-zone", name = "DNS Zone" }
         cluster     = { bundle = "ecs-cluster", name = "ECS Cluster" }
         oidc        = { bundle = "github-actions-oidc", name = "GitHub Actions OIDC" }
-        automations = { bundle = "massdriver-automations", name = "Automations" }
       }
       links = [
         "network.network -> cluster.network",
         "dns.zone -> cluster.dns",
-        "cluster.cluster -> automations.cluster",
       ]
+    }
+
+    # One set of automations serves the whole organization. main leaves the
+    # cluster undeployed and runs on the platform's dev cluster, its environment
+    # default; another environment can deploy its own.
+    automations = {
+      name        = "Automations"
+      description = "Massdriver automations for the whole organization: status page, drift checks, change freezes, auto-deploys and more."
+      team        = "platform"
+      stages      = ["main"]
+      components = {
+        cluster     = { bundle = "ecs-cluster", name = "ECS Cluster" }
+        automations = { bundle = "massdriver-automations-ecs", name = "Automations" }
+      }
+      links = ["cluster.cluster -> automations.ecs_cluster"]
     }
 
     apps = {
@@ -404,7 +417,7 @@ resource "massdriver_imported_resource" "automations" {
 
 resource "massdriver_resource_grant" "automations" {
   resource_id          = massdriver_imported_resource.automations.id
-  recipient_conditions = jsonencode({ "md-project" = ["platform"] })
+  recipient_conditions = jsonencode({ "md-project" = ["automations"] })
 }
 
 resource "massdriver_group" "platform" {
@@ -472,6 +485,14 @@ output "one_account" {
 
 output "onboarding_credential" {
   value = massdriver_imported_resource.onboarding.id
+}
+
+# The automations' forms pick groups by ID, which changes with each bootstrap.
+output "group_ids" {
+  value = merge(
+    { (massdriver_group.platform.name) = massdriver_group.platform.id },
+    { for g in massdriver_group.team : g.name => g.id },
+  )
 }
 
 output "automations_api_key" {

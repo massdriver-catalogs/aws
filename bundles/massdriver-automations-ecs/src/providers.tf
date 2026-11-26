@@ -14,7 +14,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.cluster.region
+  region = var.ecs_cluster.region
 
   # Massdriver writes one identity token for each level; the role's trust policy accepts the level it names.
   assume_role_with_web_identity {

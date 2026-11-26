@@ -1,4 +1,4 @@
-# massdriver-automations
+# massdriver-automations-ecs
 
 Runs the [Massdriver automations](https://github.com/massdriver-cloud/massdriver-automations) on Amazon ECS with Fargate, on this catalog's `ecs-cluster`. Turn on any set of automations. For each enabled automation, the
 bundle creates:

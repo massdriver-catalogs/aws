@@ -34,12 +34,12 @@ resource "aws_kms_key" "main" {
         # CloudWatch Logs encrypts with the key itself, so the key policy must allow the service.
         Sid       = "CloudWatchLogs"
         Effect    = "Allow"
-        Principal = { Service = "logs.${var.cluster.region}.amazonaws.com" }
+        Principal = { Service = "logs.${var.ecs_cluster.region}.amazonaws.com" }
         Action    = ["kms:Encrypt*", "kms:Decrypt*", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:Describe*"]
         Resource  = "*"
         Condition = {
           ArnLike = {
-            "kms:EncryptionContext:aws:logs:arn" = "arn:${data.aws_partition.current.partition}:logs:${var.cluster.region}:${data.aws_caller_identity.current.account_id}:log-group:${local.log_group_prefix}*"
+            "kms:EncryptionContext:aws:logs:arn" = "arn:${data.aws_partition.current.partition}:logs:${var.ecs_cluster.region}:${data.aws_caller_identity.current.account_id}:log-group:${local.log_group_prefix}*"
           }
         }
       },
@@ -158,7 +158,7 @@ resource "aws_ecs_task_definition" "main" {
         logDriver = "awslogs"
         options = {
           awslogs-group         = aws_cloudwatch_log_group.main[each.key].name
-          awslogs-region        = var.cluster.region
+          awslogs-region        = var.ecs_cluster.region
           awslogs-stream-prefix = "files"
         }
       }
@@ -202,7 +202,7 @@ resource "aws_ecs_task_definition" "main" {
         logDriver = "awslogs"
         options = {
           awslogs-group         = aws_cloudwatch_log_group.main[each.key].name
-          awslogs-region        = var.cluster.region
+          awslogs-region        = var.ecs_cluster.region
           awslogs-stream-prefix = "automation"
         }
       }
@@ -214,7 +214,7 @@ resource "aws_ecs_service" "main" {
   for_each = local.enabled
 
   name             = local.names[each.key]
-  cluster          = var.cluster.arn
+  cluster          = var.ecs_cluster.arn
   task_definition  = aws_ecs_task_definition.main[each.key].arn
   launch_type      = "FARGATE"
   platform_version = "LATEST"
@@ -235,7 +235,7 @@ resource "aws_ecs_service" "main" {
   }
 
   network_configuration {
-    subnets          = var.cluster.network.private_subnet_ids
+    subnets          = var.ecs_cluster.network.private_subnet_ids
     security_groups  = [aws_security_group.tasks[0].id]
     assign_public_ip = false
   }
