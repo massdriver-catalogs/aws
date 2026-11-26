@@ -195,6 +195,7 @@ locals {
       stages      = ["template"]
       components = {
         registry  = { bundle = "ecr-repository", name = "Workspace Image Repository" }
+        repo      = { bundle = "github-repo", name = "Source Repository" }
         codebase  = { bundle = "codebase", name = "Workspace Codebase" }
         cluster   = { bundle = "ecs-cluster", name = "ECS Cluster" }
         workspace = { bundle = "dev-workspace", name = "Workspace" }
@@ -202,6 +203,8 @@ locals {
       }
       links = [
         "registry.repository -> codebase.registry",
+        "registry.repository -> repo.registry",
+        "repo.repository -> codebase.repository",
         "codebase.codebase -> workspace.codebase",
         "cluster.cluster -> workspace.cluster",
       ]
