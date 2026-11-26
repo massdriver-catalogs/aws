@@ -542,6 +542,11 @@ cmd_provision() {
       set_secret sreagent-jimmy-agent ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
       deploy sreagent-jimmy-agent ecs-agent "$stage" "$(jimmy_params)"
     fi
+
+    # Sandboxes are forked from the template with its defaults, so each
+    # developer's environment lands in the dev VPC without connecting anything.
+    share "platform-$stage-network.network" --condition "md-project=sandboxes"
+    mass environment default sandboxes-template "platform-$stage-network.network" >/dev/null
   fi
 
   log "done. Ship real images with: ./deploy.sh ship <app> $stage"

@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf install -y wireguard-tools iptables-nft
+
+umask 077
+mkdir -p /etc/wireguard
+private_key=$(aws ssm get-parameter --region ${region} --with-decryption --name '${private_key_param}' --query Parameter.Value --output text)
+preshared_key=$(aws ssm get-parameter --region ${region} --with-decryption --name '${preshared_key_param}' --query Parameter.Value --output text)
+
+nic=$(ip -o -4 route show to default | awk '{print $5}')
+
+# Masquerading makes developer traffic look like it comes from this server,
+# so the VPC needs no route back to the tunnel network.
+cat >/etc/wireguard/wg0.conf <<CONF
+[Interface]
+Address = ${server_address}
+ListenPort = ${port}
+PrivateKey = $private_key
+PostUp = iptables -t nat -A POSTROUTING -o $nic -j MASQUERADE
+PostDown = iptables -t nat -D POSTROUTING -o $nic -j MASQUERADE
+
+[Peer]
+PublicKey = ${client_public_key}
+PresharedKey = $preshared_key
+AllowedIPs = ${client_address}
+CONF
+
+echo 'net.ipv4.ip_forward = 1' >/etc/sysctl.d/90-wireguard.conf
+sysctl --system
+systemctl enable --now wg-quick@wg0

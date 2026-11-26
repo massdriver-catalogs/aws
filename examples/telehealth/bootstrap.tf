@@ -234,6 +234,8 @@ locals {
   bundle_access = merge(
     { for f in fileset("${path.module}/../../bundles", "*/massdriver.yaml") : yamldecode(file("${path.module}/../../bundles/${f}")).name => "*" },
     { for app in ["visits", "care", "billing"] : yamldecode(file("${path.module}/applications/${app}/bundle/massdriver.yaml")).name => app },
+    # A VPN into a shared VPC belongs in a developer's own sandbox, not beside prod.
+    { "developer-vpn" = "sandboxes" },
   )
 
   teams = {

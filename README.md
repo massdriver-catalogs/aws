@@ -14,6 +14,7 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 | `dns-zone` | A Route 53 zone, such as `dev.example.com`, and a certificate for every name under it | `aws-dns-zone` |
 | `ecs-cluster` | A Fargate cluster and the load balancer its services share | `aws-ecs-cluster` |
 | `github-actions-oidc` | The AWS account's trust in GitHub Actions. Once per account | `aws-github-oidc` |
+| `developer-vpn` | A WireGuard tunnel from one developer's laptop into the VPC, for sandboxes. See [docs/developer-vpn.md](docs/developer-vpn.md) | `massdriver-wireguard-tunnel` |
 
 ### Runtimes
 

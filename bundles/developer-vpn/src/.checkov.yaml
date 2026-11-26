@@ -1,0 +1,7 @@
+skip-check:
+  # One-minute metrics would cost about as much as the server itself, and
+  # nothing alarms on a single developer's tunnel.
+  - CKV_AWS_126
+  # The keys live only as long as one developer's sandbox. Parameter Store's
+  # AWS managed key covers them without a $1/month key and its policy per sandbox.
+  - CKV_AWS_337
