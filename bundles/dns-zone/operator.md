@@ -36,6 +36,38 @@ dig NS {{params.domain}} +trace | tail -n 8
 
 Both must list the same four `awsdns` name servers. If `+short` returns nothing or different servers, the parent record is missing, has a typo, or points at an older zone with the same name.
 
+## Finish DNSSEC
+
+With **Sign the zone (DNSSEC)** on, Route 53 signs the zone, but resolvers only check the signatures once the parent has a `DS` record for it. Get the record:
+
+{{#resources.zone}}
+```bash
+aws route53 get-dnssec --hosted-zone-id {{resources.zone.zone_id}} --query 'KeySigningKeys[0].DSRecord' --output text
+```
+{{/resources.zone}}
+
+If the parent is in Route 53, add it next to the `NS` record:
+
+```bash
+aws route53 change-resource-record-sets --hosted-zone-id "$PARENT_ZONE_ID" --change-batch '{
+  "Changes": [{"Action": "UPSERT", "ResourceRecordSet": {
+    "Name": "{{params.domain}}", "Type": "DS", "TTL": 3600,
+    "ResourceRecords": [{"Value": "<DSRecord>"}]
+  }}]
+}'
+```
+
+For a domain you registered, add it at the registrar. Check it:
+
+```bash
+dig DS {{params.domain}} +short
+dig @1.1.1.1 {{params.domain}} SOA +dnssec | grep flags
+```
+
+The second command shows `ad` in the flags once a validating resolver trusts the answer. `SERVFAIL` means the `DS` record doesn't match the zone's key.
+
+**Turning it off:** delete the `DS` record first and wait for its TTL (a day at most registrars). Turning signing off while the parent still has the `DS` record makes the whole domain fail to resolve.
+
 ## Deploy timed out waiting for the certificate
 
 The error is `waiting for ACM Certificate ... to be issued: timeout`. The zone and certificate exist; only the wait failed. Look at the certificate:

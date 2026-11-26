@@ -7,3 +7,8 @@ skip-check:
   # owns; a customer managed key adds one to rotate, pay for and keep
   # available, or API Gateway stops writing logs.
   - CKV_AWS_158
+
+  # The alarm topic only carries alarm state changes to Massdriver. CloudWatch
+  # can't publish to a topic encrypted with the AWS-managed SNS key, so
+  # encrypting it means a customer managed key just for alarms.
+  - CKV_AWS_26

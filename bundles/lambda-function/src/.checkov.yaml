@@ -20,3 +20,22 @@ skip-check:
   # Lambda code signing only applies to zip packages. The only zip is the
   # built-in placeholder; app code ships as container images.
   - CKV_AWS_272
+
+  # The alarm topic only carries alarm state changes to Massdriver. CloudWatch
+  # can't publish to a topic encrypted with the AWS-managed SNS key, so
+  # encrypting it means a customer managed key just for alarms.
+  - CKV_AWS_26
+
+  # Routes are the app's public API, and the app decides who may call it. An
+  # API Gateway authorizer needs an identity provider this bundle can't know.
+  - CKV_AWS_309
+
+  # A function joins the VPC only when a database or cache is connected, since
+  # those are only reachable there. Without one, joining would just send its
+  # AWS calls through the VPC's egress.
+  - CKV_AWS_117
+
+  # Secrets are refused, so environment variables hold only configuration.
+  # Lambda encrypts them with a key AWS manages; a customer managed key adds
+  # one to rotate, pay for and keep available, or the function can't start.
+  - CKV_AWS_173

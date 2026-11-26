@@ -1,0 +1,10 @@
+skip-check:
+  # Vulnerability alerts are turned on by their own resource,
+  # github_repository_vulnerability_alerts. The check only reads the
+  # repository's attribute.
+  - CKV_GIT_3
+
+  # The API key is the service account's token, which is in state either way,
+  # so pre-encrypting it hides nothing. The provider encrypts it with the
+  # repository's public key before GitHub stores it.
+  - CKV_GIT_4

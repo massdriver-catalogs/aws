@@ -1,0 +1,9 @@
+skip-check:
+  # The alarm topic only carries alarm state changes to Massdriver. CloudWatch
+  # can't publish to a topic encrypted with the AWS-managed SNS key, so
+  # encrypting it means a customer managed key just for alarms.
+  - CKV_AWS_26
+
+  # Every API and service in the environment gets a name directly under the
+  # domain and serves it with this one certificate, so it covers *.domain.
+  - CKV2_AWS_71

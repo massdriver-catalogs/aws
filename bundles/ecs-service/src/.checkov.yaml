@@ -26,3 +26,12 @@ skip-check:
   # the task, which is what app images serve; HTTPS here would need every app
   # to carry its own certificate.
   - CKV_AWS_378
+
+  # The alarm topic only carries alarm state changes to Massdriver. CloudWatch
+  # can't publish to a topic encrypted with the AWS-managed SNS key, so
+  # encrypting it means a customer managed key just for alarms.
+  - CKV_AWS_26
+
+  # The record is an alias for the cluster's load balancer, which the cluster
+  # bundle makes. The check only counts targets made alongside the record.
+  - CKV2_AWS_23

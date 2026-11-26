@@ -7,10 +7,16 @@ resource "aws_wafv2_web_acl" "main" {
     allow {}
   }
 
+  # Webhooks and other services call in from cloud providers' addresses, so
+  # those are only counted. Tor exits and anonymizing proxies are blocked.
   dynamic "rule" {
-    for_each = ["AWSManagedRulesCommonRuleSet", "AWSManagedRulesKnownBadInputsRuleSet"]
+    for_each = [
+      { name = "AWSManagedRulesCommonRuleSet", count_only = [] },
+      { name = "AWSManagedRulesKnownBadInputsRuleSet", count_only = [] },
+      { name = "AWSManagedRulesAnonymousIpList", count_only = ["HostingProviderIPList"] },
+    ]
     content {
-      name     = rule.value
+      name     = rule.value.name
       priority = rule.key
 
       override_action {
@@ -20,13 +26,23 @@ resource "aws_wafv2_web_acl" "main" {
       statement {
         managed_rule_group_statement {
           vendor_name = "AWS"
-          name        = rule.value
+          name        = rule.value.name
+
+          dynamic "rule_action_override" {
+            for_each = rule.value.count_only
+            content {
+              name = rule_action_override.value
+              action_to_use {
+                count {}
+              }
+            }
+          }
         }
       }
 
       visibility_config {
         cloudwatch_metrics_enabled = true
-        metric_name                = "${local.name}-${rule.value}"
+        metric_name                = "${local.name}-${rule.value.name}"
         sampled_requests_enabled   = true
       }
     }

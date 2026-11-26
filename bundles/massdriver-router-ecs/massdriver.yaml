@@ -8,6 +8,12 @@ version: 0.1.0
 steps:
 - path: src
   provisioner: opentofu:1.10
+  config:
+    checkov:
+      # The environment is the second part of the instance slug, <project>-<environment>-<component>.
+      halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] | . == "prod" or . == "production"'
+      # With md-environment in the organization's default tags:
+      # halt_on_failure: '.params.md_metadata.default_tags["md-environment"] | . == "prod" or . == "production"'
 params:
   examples:
     - __name: Development

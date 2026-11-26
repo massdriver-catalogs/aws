@@ -2,3 +2,13 @@ skip-check:
   # Event notifications are how an app reacts to new files, not a security
   # control. Apps that need them subscribe to the bucket themselves.
   - CKV2_AWS_62
+
+  # Access logs need a second bucket that can't log its own access or use a
+  # KMS key, so it would fail these same checks. Who read which file is
+  # recorded by CloudTrail data events, which are set once for the account.
+  - CKV_AWS_18
+
+  # S3 already keeps every file in at least three availability zones. A copy
+  # in a second region only helps an app that can also run there, and nothing
+  # else in the catalog does.
+  - CKV_AWS_144
