@@ -39,7 +39,7 @@ Gamelab's server is the only thing on the internet, behind one password. Lab box
 | `gamelab` | `main` | The Gamelab server: `ecr-repository` and `codebase` for its image, `gamelab-server` on the `ecs-service` runtime at `https://play.<DOMAIN>`, and `github-repo`, undeployed, for when it moves to its own repository |
 | `labs` | `template`, then one per player | `template` deploys only the lab image's `ecr-repository` and `codebase`. Each fork deploys `lab-box`, and `postgres` (Game Saves) and `valkey` (Leaderboard) if the parent picked them |
 
-`ecs-cluster` sits undeployed on the `gamelab` and `labs` canvases: both run on the platform's cluster, their environment default. A lab inherits the template's defaults (the VPC, the cluster, the lab image and the AWS credential) and its secrets (the Anthropic key), so a fork needs nothing connected by hand.
+`ecs-cluster` sits undeployed on the `gamelab` and `labs` canvases: both run on the platform's cluster, their environment default. A lab inherits the template's defaults (the VPC, the cluster, the lab image and the AWS credential), so a fork needs nothing connected by hand. Each lab brings its own Anthropic key: the parent pastes it on **New lab**, and the server stores it as a secret on that lab's box.
 
 ### Who can do what
 
@@ -75,16 +75,15 @@ Each lab, running all month on Spot in us-east-1. Claude is billed by Anthropic 
 
 The plans are in [`applications/gamelab/src/plans.json`](applications/gamelab/src/plans.json): the box size and the database and cache params Gamelab deploys for each. Gamelab itself (the VPC's NAT, the load balancer, the server and the zone) is about $60/month before any labs.
 
-The helper uses Claude Opus 5.5 ($4/$20 per million tokens in/out). To halve that, add `LAB_MODEL` = `claude-sonnet-5-5` to the Gamelab Server's **Environment variables**; new labs use it. Use an Anthropic key made for Gamelab, with a monthly spend limit.
+The helper uses Claude Opus 5.5 ($4/$20 per million tokens in/out). To halve that, add `LAB_MODEL` = `claude-sonnet-5-5` to the Gamelab Server's **Environment variables**; new labs use it. Each lab's key is its own, so give each one a monthly spend limit in the Anthropic console.
 
 ## Stand it up
 
-You need a Massdriver organization and an API key for a service account in its **Organization Admin** group (a new organization puts it in no group, and publishing fails until it joins), AWS CLI credentials for the account to deploy into, a domain whose parent zone is in Route 53 in that account, and an Anthropic API key. You also need `mass`, `tofu`, `jq`, `docker` and `python3` with PyYAML.
+You need a Massdriver organization and an API key for a service account in its **Organization Admin** group (a new organization puts it in no group, and publishing fails until it joins), AWS CLI credentials for the account to deploy into and a domain whose parent zone is in Route 53 in that account. Anthropic keys come later, one per lab, on **New lab**. You also need `mass`, `tofu`, `jq`, `docker` and `python3` with PyYAML.
 
 ```bash
 export MASSDRIVER_API_KEY=... MASSDRIVER_ORG_ID=...
 export DOMAIN=gamelab.example.com PARENT_ZONE_ID=Z0123456789ABCDEFGHIJ
-export ANTHROPIC_API_KEY=sk-ant-...
 
 ./deploy.sh all
 ./deploy.sh password
@@ -96,7 +95,7 @@ Before it touches AWS it lists what it will create and roughly what it costs, an
 2. Defines the `lab_plan` and `player_age` attributes and creates a repository for every bundle.
 3. Publishes the resource types and the bundles Gamelab uses, `lab-box` among them, and the Gamelab server.
 4. Applies [bootstrap.tf](bootstrap.tf): projects, environments, components, links, groups, policies, the Gamelab Server service account, the AWS credential, and a sign-in password and session secret.
-5. Deploys the platform, the lab template's image repository and the server's, builds both images (about 10 minutes the first time) and pushes them, sets the Anthropic key on the template's lab box, and deploys the server with its secrets.
+5. Deploys the platform, the lab template's image repository and the server's, builds both images (about 10 minutes the first time) and pushes them and deploys the server with its secrets.
 
 `./deploy.sh password` prints the address and the password. Sign in, press **New lab**, and the first lab is ready in about five minutes, longer with Game Saves.
 

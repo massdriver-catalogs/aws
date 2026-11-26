@@ -346,6 +346,8 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 		Plan:   r.PostFormValue("plan"),
 		Saves:  r.PostFormValue("saves") == "on",
 		Scores: r.PostFormValue("scores") == "on",
+
+		AnthropicKey: r.PostFormValue("anthropic_key"),
 	}
 	id, err := s.labs.Create(r.Context(), in)
 	if err != nil {

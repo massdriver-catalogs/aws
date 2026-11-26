@@ -235,7 +235,7 @@ func (m *Massdriver) Fork(ctx context.Context, parent string, in ForkInput) erro
 		"description":             in.Description,
 		"attributes":              mapString(in.Attributes),
 		"copyEnvironmentDefaults": true,
-		"copySecrets":             true,
+		"copySecrets":             false,
 		"copyRemoteReferences":    false,
 	}}, &out)
 	if err != nil {

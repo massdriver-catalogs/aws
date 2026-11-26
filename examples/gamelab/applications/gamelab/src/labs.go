@@ -64,6 +64,10 @@ type NewLab struct {
 	Plan   string
 	Saves  bool
 	Scores bool
+	// Each lab brings its own Anthropic key, so its Claude bill and spend
+	// limit belong to whoever made it. Never kept by the server; it goes
+	// straight to the box as a secret.
+	AnthropicKey string
 }
 
 // Labs forks, deploys and removes labs through Massdriver. Massdriver holds
@@ -235,6 +239,9 @@ func (n NewLab) validate(l *Labs) error {
 	if _, ok := l.plan(n.Plan); !ok {
 		return errors.New("Pick a plan.")
 	}
+	if !strings.HasPrefix(strings.TrimSpace(n.AnthropicKey), "sk-ant-") {
+		return errors.New("Paste an Anthropic API key. It starts with sk-ant-.")
+	}
 	return nil
 }
 
@@ -367,6 +374,14 @@ func (l *Labs) setup(id string, in NewLab, plan Plan) {
 	if err := l.md.SetSecret(ctx, l.instance(id, "box"), "LAB_PASSWORD", labPassword(l.secret, id)); err != nil {
 		fail("Setting the lab's password", err)
 		return
+	}
+	// A resumed lab already has its key; only a new one brings it.
+	if key := strings.TrimSpace(in.AnthropicKey); key != "" {
+		l.setJob(id, "Saving the lab's Anthropic key")
+		if err := l.md.SetSecret(ctx, l.instance(id, "box"), "ANTHROPIC_API_KEY", key); err != nil {
+			fail("Saving the lab's Anthropic key", err)
+			return
+		}
 	}
 
 	type step struct {

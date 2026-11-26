@@ -20,8 +20,6 @@
 #                      play.<DOMAIN>                                               (provision)
 #   PARENT_ZONE_ID     Route 53 zone of DOMAIN's parent in the same account. When set, the zone
 #                      is delegated from it automatically; otherwise delegate by hand.
-#   ANTHROPIC_API_KEY  the key every lab's helper calls Claude with. Use one made for Gamelab,
-#                      with a monthly spend limit                                  (provision)
 #   ISSUER             Massdriver's token issuer host; api.massdriver.cloud unless self-hosted
 #   YES=1              skip the confirmation before anything changes in AWS
 #   REDEPLOY=1         provision redeploys instances that are already up
@@ -387,12 +385,6 @@ cmd_provision() {
   deploy labs-template-codebase codebase '.share_with_project = false'
   share labs-template-codebase.codebase --condition md-project=labs
   mass environment default labs-template labs-template-codebase.codebase >/dev/null
-  if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-    # Labs copy the template's secrets, so the key is set once, here.
-    set_secret labs-template-box ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
-  else
-    log "ANTHROPIC_API_KEY is not set; labs' helpers can't reach Claude until it's set on labs-template-box"
-  fi
 
   log "gamelab-main"
   deploy gamelab-main-registry ecr-repository
