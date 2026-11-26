@@ -90,6 +90,20 @@ locals {
       links = [for a in local.automations : "cluster.cluster -> ${replace(a, "-", "")}.ecs_cluster"]
     }
 
+    # Like automations, the cluster stays undeployed and Jimmy runs on the
+    # platform's dev cluster, his environment default.
+    sreagent = {
+      name        = "SRE Agent"
+      description = "Claude agents that watch the platform and the apps, each one an environment."
+      team        = "platform"
+      stages      = ["jimmy"]
+      components = {
+        cluster = { bundle = "ecs-cluster", name = "ECS Cluster" }
+        agent   = { bundle = "ecs-agent", name = "Agent" }
+      }
+      links = ["cluster.cluster -> agent.cluster"]
+    }
+
     apps = {
       name        = "Apps"
       description = "Onboards each app: its image registry and codebase, and optionally its GitHub repository and Massdriver project. One environment per app."
@@ -432,6 +446,39 @@ resource "massdriver_resource_grant" "automations" {
   recipient_conditions = jsonencode({ "md-project" = ["automations"] })
 }
 
+# The agent bundle makes each agent's own service account with this, and
+# puts it in the groups its form picks.
+resource "massdriver_service_account" "sre_agent" {
+  name                     = "SRE Agent Provisioner"
+  description              = "Creates each SRE agent's service account and the webhook that reports its actions."
+  token_expiration_minutes = 60 * 24 * 365
+}
+
+resource "massdriver_service_account_group_membership" "sre_agent" {
+  group_id           = massdriver_group.platform.id
+  service_account_id = massdriver_service_account.sre_agent.id
+}
+
+resource "massdriver_imported_resource" "sre_agent" {
+  name          = "Massdriver SRE Agent Provisioner"
+  resource_type = "massdriver-service-account"
+  resource = jsonencode({
+    url             = var.massdriver_url
+    organization_id = var.organization_id
+    api_key         = massdriver_service_account.sre_agent.token
+  })
+
+  # The API adds the version to the type, as with the AWS credential.
+  lifecycle {
+    ignore_changes = [resource_type]
+  }
+}
+
+resource "massdriver_resource_grant" "sre_agent" {
+  resource_id          = massdriver_imported_resource.sre_agent.id
+  recipient_conditions = jsonencode({ "md-project" = ["sreagent"] })
+}
+
 resource "massdriver_group" "platform" {
   name        = "Platform Engineering"
   description = "Owns the catalog, the platform project and app onboarding."
@@ -467,6 +514,27 @@ resource "massdriver_group_policy" "team_own" {
   effect     = "ALLOW"
   actions    = local.team_actions
   conditions = jsonencode({ "md-project" = [for p, project in local.projects : p if project.team == each.key] })
+}
+
+# What the SRE agents may do: read everything, and suggest dev deploys that a
+# person approves. They never deploy themselves.
+resource "massdriver_group" "sre_agents" {
+  name        = "SRE Agents"
+  description = "Claude agents. Read everything; propose deploys in dev."
+}
+
+resource "massdriver_group_policy" "sre_agents_read" {
+  group_id   = massdriver_group.sre_agents.id
+  effect     = "ALLOW"
+  actions    = local.read_actions
+  conditions = "*"
+}
+
+resource "massdriver_group_policy" "sre_agents_propose" {
+  group_id   = massdriver_group.sre_agents.id
+  effect     = "ALLOW"
+  actions    = ["instance:plan", "instance:propose"]
+  conditions = jsonencode({ "md-environment" = ["dev"] })
 }
 
 resource "massdriver_group" "security" {
@@ -509,10 +577,11 @@ output "cost_explorer_password" {
   sensitive = true
 }
 
-# The automations' forms pick groups by ID, which changes with each bootstrap.
+# The automations' and agents' forms pick groups by ID, which changes with each bootstrap.
 output "group_ids" {
   value = merge(
     { (massdriver_group.platform.name) = massdriver_group.platform.id },
+    { (massdriver_group.sre_agents.name) = massdriver_group.sre_agents.id },
     { for g in massdriver_group.team : g.name => g.id },
   )
 }
@@ -524,4 +593,8 @@ output "automations_api_key" {
 
 output "automations_credential" {
   value = massdriver_imported_resource.automations.id
+}
+
+output "sre_agent_credential" {
+  value = massdriver_imported_resource.sre_agent.id
 }

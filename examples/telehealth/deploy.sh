@@ -23,6 +23,8 @@
 #   YES=1             skip the confirmation before anything changes in AWS
 #   REDEPLOY=1        provision redeploys instances that are already up, from the preset;
 #                     apps go back to the placeholder until shipped again
+#   ANTHROPIC_API_KEY the key Jimmy, the SRE agent, calls Claude with   (provision dev)
+#   AGENT_IMAGE       Jimmy's image, built from bundles/ecs-agent/image  (provision dev)
 
 set -euo pipefail
 
@@ -410,6 +412,16 @@ automations() {
   python3 -c 'import sys, yaml; print("\n".join(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml"
 }
 
+# jimmy_params: Jimmy's name, group, goal and image, over the preset.
+jimmy_params() {
+  echo ". + $(jq -n -c --argjson ids "$(cd "$HERE" && tofu output -json group_ids)" --arg image "$AGENT_IMAGE" '{
+    service_account_name: "Jimmy",
+    groups: [$ids["SRE Agents"]],
+    image_uri: $image,
+    goal: "Keep the dev environments of Tendwell healthy. Look for failed deployments, firing alarms and instances that drifted from their last deploy. For each, find the cause from the deployment logs, the params of the instance and what it connects to. When the fix is a change to params, propose a deploy with it in dev and say why in the message. Never touch prod. Write down what you found, even when nothing is wrong."
+  }')"
+}
+
 cmd_provision() {
   local stage
   stage=$(stage_arg "${1:-}")
@@ -487,6 +499,19 @@ cmd_provision() {
         set_secret "$instance" COST_EXPLORER_PASSWORD "$(cd "$HERE" && tofu output -raw cost_explorer_password)"
       deploy "$instance" "massdriver-$automation-ecs" "$stage" "$(automation_params "$automation")"
     done
+
+    log "sreagent-jimmy"
+    for field in network.network dns.zone cluster.cluster; do
+      share "platform-$stage-$field" --condition "md-project=sreagent"
+      mass environment default sreagent-jimmy "platform-$stage-$field" >/dev/null
+    done
+    if [ -z "${ANTHROPIC_API_KEY:-}" ] || [ -z "${AGENT_IMAGE:-}" ]; then
+      log "skip sreagent-jimmy-agent: set ANTHROPIC_API_KEY and AGENT_IMAGE to deploy Jimmy (bundles/ecs-agent/README.md shows how to build the image)"
+    else
+      connect sreagent-jimmy-agent massdriver "$(cd "$HERE" && tofu output -raw sre_agent_credential)"
+      set_secret sreagent-jimmy-agent ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
+      deploy sreagent-jimmy-agent ecs-agent "$stage" "$(jimmy_params)"
+    fi
   fi
 
   log "done. Ship real images with: ./deploy.sh ship <app> $stage"
@@ -620,8 +645,10 @@ cmd_teardown() {
       for automation in $(automations); do
         mass instance remote-reference remove "automations-main-${automation//-/}" service_account >/dev/null 2>&1 || true
       done
+      decommission sreagent-jimmy
+      mass instance remote-reference remove sreagent-jimmy-agent massdriver >/dev/null 2>&1 || true
     fi
-    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}" automations-main
+    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}" automations-main sreagent-jimmy
     decommission "platform-$stage"
   done
   for app in "${APPS[@]}"; do

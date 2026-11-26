@@ -1,0 +1,5 @@
+skip-check:
+  # The values are the agent's service account token, the Anthropic key and
+  # MCP secrets set in Massdriver, and the webhook's signing secret. A deploy
+  # writes them; Secrets Manager has no rotation function for any of them.
+  - CKV2_AWS_57

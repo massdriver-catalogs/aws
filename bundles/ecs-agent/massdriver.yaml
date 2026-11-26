@@ -1,0 +1,365 @@
+name: ecs-agent
+description: >-
+  A Claude agent that works on one goal around the clock, as its own Massdriver service account, in one Fargate
+  task on a shared ECS cluster. It has the Massdriver MCP server, the mass CLI and Linux troubleshooting tools, and
+  can send everything it does in Massdriver to a webhook.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/ecs-agent
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Development
+      image_uri: ""
+      architecture: arm64
+      groups: []
+      model: claude-sonnet-5-5
+      effort: medium
+      interval_minutes: 30
+      budget_per_run_usd: 1
+      mcp_servers: []
+      mise_tools: []
+      action_sync:
+        enabled: false
+        url: ""
+      size: 512/1024
+      spot: true
+      log_retention_days: 7
+    - __name: Production
+      image_uri: ""
+      architecture: arm64
+      groups: []
+      model: claude-opus-5-5
+      effort: high
+      interval_minutes: 15
+      budget_per_run_usd: 5
+      mcp_servers: []
+      mise_tools: []
+      action_sync:
+        enabled: false
+        url: ""
+      size: 1024/2048
+      spot: false
+      log_retention_days: 90
+  required:
+    - image_uri
+    - architecture
+    - service_account_name
+    - groups
+    - goal
+    - model
+    - effort
+    - interval_minutes
+    - budget_per_run_usd
+    - mcp_servers
+    - mise_tools
+    - action_sync
+    - size
+    - spot
+    - log_retention_days
+  properties:
+    image_uri:
+      title: Agent image
+      description: >-
+        The agent image from this bundle's `image/` directory, by tag or digest, built for the **Architecture**
+        below. The README shows how to build and push it.
+      type: string
+      default: ""
+      pattern: ^(|[a-z0-9][a-z0-9.-]*(:[0-9]+)?(/[a-z0-9][a-z0-9._-]*)*(:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}|@sha256:[a-f0-9]{64}))$
+      message:
+        pattern: "An image with a tag or digest, like 123456789012.dkr.ecr.us-east-1.amazonaws.com/ecs-agent:0.1.0."
+    architecture:
+      title: Architecture
+      description: The CPU type the image is built for. A mismatch fails with `exec format error`. ***arm64 is ~20% cheaper.***
+      type: string
+      default: arm64
+      oneOf:
+        - const: arm64
+          title: arm64 (Graviton)
+        - const: x86_64
+          title: x86_64 (Intel/AMD)
+    service_account_name:
+      title: Agent name
+      description: >-
+        The name of the agent's Massdriver service account, like `Jimmy`. It shows in the audit log next to
+        everything the agent does.
+      type: string
+      minLength: 1
+      maxLength: 64
+    groups:
+      title: Groups
+      description: >-
+        The groups the agent's service account joins. It can do what these groups allow and nothing more; with no
+        group it can see nothing.
+      type: array
+      default: []
+      uniqueItems: true
+      items:
+        type: string
+        $md.list:
+          resource: group
+    goal:
+      title: Goal
+      description: >-
+        What the agent works on, in plain words. It reads this at the start of every run. Say what to watch, what
+        to fix on its own, and what to only report.
+      type: string
+      minLength: 1
+    model:
+      title: Model
+      description: The Claude model the agent thinks with.
+      type: string
+      default: claude-opus-5-5
+      oneOf:
+        - const: claude-opus-5-5
+          title: Claude Opus 5.5 (***$4 / $20 per million tokens in / out***)
+        - const: claude-sonnet-5-5
+          title: Claude Sonnet 5.5 (***$2 / $10 per million tokens***)
+        - const: claude-haiku-5-5
+          title: Claude Haiku 5.5 (***$0.10 / $0.50 per million tokens***)
+    effort:
+      title: Effort
+      description: How hard the model thinks before it acts. ***Higher effort uses more tokens.***
+      type: string
+      default: medium
+      oneOf:
+        - const: low
+          title: Low
+        - const: medium
+          title: Medium
+        - const: high
+          title: High
+        - const: xhigh
+          title: Extra high
+    interval_minutes:
+      title: Minutes between runs
+      description: >-
+        The agent works on the goal until it has nothing left to do, then waits this long and starts again.
+        ***Each run is billed; shorter waits cost more.***
+      type: integer
+      default: 15
+      minimum: 1
+      maximum: 1440
+    budget_per_run_usd:
+      title: Most spent per run (USD)
+      description: A run stops when its model spend reaches this. ***The most one run can cost.***
+      type: number
+      default: 2
+      minimum: 0.1
+      maximum: 100
+    mcp_servers:
+      title: More MCP servers
+      description: >-
+        Tools the agent gets besides Massdriver. A local server runs a command in the container; a remote server
+        is a URL. Write `${NAME}` in an argument, variable or header to use a value from the `MCP_ENV` secret.
+      type: array
+      default: []
+      items:
+        type: object
+        required:
+          - name
+          - transport
+        properties:
+          name:
+            title: Name
+            description: The agent sees its tools as `mcp__<name>__<tool>`.
+            type: string
+            pattern: ^[a-z][a-z0-9_-]{0,31}$
+            message:
+              pattern: "Lowercase letters, digits, - and _, starting with a letter. Not massdriver."
+          transport:
+            title: Runs as
+            type: string
+            default: stdio
+            oneOf:
+              - const: stdio
+                title: A command in the container
+              - const: http
+                title: A remote server (streamable HTTP)
+              - const: sse
+                title: A remote server (SSE)
+          command:
+            title: Command
+            description: For a command in the container, like `npx`. Install its runtime with **Extra tools**.
+            type: string
+          args:
+            title: Arguments
+            type: array
+            default: []
+            items:
+              type: string
+          url:
+            title: URL
+            description: For a remote server.
+            type: string
+            pattern: ^(|https?://.+)$
+            message:
+              pattern: "A URL starting with https://, or empty."
+          env:
+            title: Environment variables
+            type: array
+            default: []
+            items:
+              type: object
+              required: [name, value]
+              properties:
+                name:
+                  title: Name
+                  type: string
+                  pattern: ^[A-Za-z_][A-Za-z0-9_]*$
+                  message:
+                    pattern: "Letters, digits and underscores, not starting with a digit."
+                value:
+                  title: Value
+                  type: string
+          headers:
+            title: Headers
+            description: For a remote server, like `Authorization` with `Bearer ${GRAFANA_TOKEN}`.
+            type: array
+            default: []
+            items:
+              type: object
+              required: [name, value]
+              properties:
+                name:
+                  title: Name
+                  type: string
+                value:
+                  title: Value
+                  type: string
+    mise_tools:
+      title: Extra tools
+      description: >-
+        Tools [mise](https://mise.jdx.dev) installs when the task starts, like `node@22`, `python@3.13`,
+        `terraform@1.9` or `kubectl@latest`. Each start installs them again, so a long list slows starts down.
+      type: array
+      default: []
+      uniqueItems: true
+      items:
+        type: string
+        pattern: ^[A-Za-z0-9:/._-]+(@[A-Za-z0-9._-]+)?$
+        message:
+          pattern: "A mise tool with an optional version, like node@22."
+    action_sync:
+      title: Send the agent's actions to a webhook
+      description: >-
+        Every change the agent makes in Massdriver, and every deploy it starts, is sent to a URL as a signed
+        CloudEvent. Use it to watch the agent from a log tool, a chat channel or an audit archive.
+      type: object
+      required:
+        - enabled
+        - url
+      properties:
+        enabled:
+          title: Send actions
+          type: boolean
+          default: false
+        url:
+          title: Webhook URL
+          description: Receives a POST for each action.
+          type: string
+          default: ""
+          pattern: ^(|https://.+)$
+          message:
+            pattern: "A URL starting with https://, or empty."
+    size:
+      title: Task size
+      description: CPU and memory for the agent's task. ***Per month on arm64; x86_64 is ~25% more, Spot ~70% less.***
+      type: string
+      default: 512/1024
+      oneOf:
+        - const: 512/1024
+          title: 0.5 vCPU, 1 GB (~$14)
+        - const: 1024/2048
+          title: 1 vCPU, 2 GB (~$29)
+        - const: 1024/4096
+          title: 1 vCPU, 4 GB (~$34)
+        - const: 2048/4096
+          title: 2 vCPU, 4 GB (~$58)
+    spot:
+      title: Run on Spot
+      description: >-
+        Spare capacity AWS can take back with two minutes' notice; ECS starts a new task and the agent picks the goal
+        up again. ***~70% cheaper.***
+      type: boolean
+      default: false
+    log_retention_days:
+      title: Log retention (days)
+      description: How long the agent's transcripts are kept. ***Billed per GB ingested and stored.***
+      type: integer
+      default: 30
+      enum:
+        - 1
+        - 7
+        - 30
+        - 90
+        - 365
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  cluster:
+    resource_type: aws-ecs-cluster@0.0.0
+    required: true
+  massdriver:
+    resource_type: massdriver-service-account@~0.1
+    required: true
+  codebase:
+    resource_type: aws-codebase@0.0.0
+    required: false
+
+resources: {}
+
+app:
+  secrets:
+    ANTHROPIC_API_KEY:
+      title: Anthropic API key
+      description: The key the agent calls Claude with, from the Claude Console.
+      required: true
+    MCP_ENV:
+      title: MCP server secrets
+      description: >-
+        A JSON object of values for **More MCP servers**, like `{"GRAFANA_TOKEN": "glsa_..."}`. Each one is an
+        environment variable in the container.
+      json: true
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+    config:
+      checkov:
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] == "prod"'
+
+ui:
+  ui:order:
+    - service_account_name
+    - groups
+    - goal
+    - model
+    - effort
+    - interval_minutes
+    - budget_per_run_usd
+    - mcp_servers
+    - mise_tools
+    - action_sync
+    - image_uri
+    - architecture
+    - size
+    - spot
+    - log_retention_days
+    - "*"
+  goal:
+    ui:widget: textarea
+  interval_minutes:
+    ui:widget: updown
+  mcp_servers:
+    items:
+      ui:order: [name, transport, command, args, url, env, headers]
+      env:
+        items:
+          ui:order: [name, value]
+      headers:
+        items:
+          ui:order: [name, value]
+  action_sync:
+    ui:order: [enabled, url]
