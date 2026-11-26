@@ -1,10 +1,10 @@
 name: phpfleet-storefront
 description: >-
-  The Tendwell Supply shop's home page and product catalog. Runs on the ECS service runtime.
+  The Tendwell Supply shop's home page and product catalog. Runs on PHP 7 on the ECS service runtime.
 source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/php-fleet/applications/storefront
 version: 1.4.0
 
 app:
-  runtime: ecs-service
+  runtime: ecs-service-php7
   envs:
     APP_NAME: '"storefront"'

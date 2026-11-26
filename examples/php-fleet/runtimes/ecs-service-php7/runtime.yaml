@@ -1,0 +1,5 @@
+name: ecs-service-php7
+description: >-
+  The ECS service runtime for PHP 7 apps. Each version is the PHP release its apps' images are
+  built from, so moving an app to a new PHP patch is a runtime upgrade.
+source_url: https://github.com/massdriver-catalogs/aws/tree/php-fleet/examples/php-fleet/runtimes/ecs-service-php7

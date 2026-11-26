@@ -14,19 +14,18 @@ provider "massdriver" {}
 locals {
   apps = toset([for f in fileset("${path.module}/applications", "*/massdriver.yaml") : dirname(f)])
 
-  bundles = { for app in local.apps : app => yamldecode(file("${path.module}/applications/${app}/massdriver.yaml")).name }
+  runtimes = { for f in fileset("${path.module}/runtimes", "*/runtime.yaml") : dirname(f) => yamldecode(file("${path.module}/runtimes/${f}")).name }
+
+  app_bundles = { for app in local.apps : app => yamldecode(file("${path.module}/applications/${app}/massdriver.yaml")).name }
+
+  bundles = merge(local.app_bundles, local.runtimes)
 
   components = merge(
     {
       registry = { bundle = "ecr-repository", name = "Image Repository" }
       codebase = { bundle = "codebase", name = "Codebase" }
     },
-    { for app in local.apps : app => { bundle = local.bundles[app], name = title(app) } },
-  )
-
-  links = merge(
-    { registry = { from = "registry", from_field = "repository", to = "codebase", to_field = "registry" } },
-    { for app in local.apps : app => { from = "codebase", from_field = "codebase", to = app, to_field = "codebase" } },
+    { for app in local.apps : app => { bundle = local.app_bundles[app], name = title(app) } },
   )
 }
 
@@ -34,7 +33,7 @@ locals {
 resource "massdriver_project" "phpfleet" {
   identifier  = "phpfleet"
   name        = "PHP Fleet"
-  description = "Tendwell Supply, the home-health supply shop: seven PHP services on the ECS service runtime, partway through a runtime upgrade."
+  description = "Tendwell Supply, the home-health supply shop: seven PHP services partway through a PHP 7 upgrade."
   attributes  = { team = "platform" }
 }
 
@@ -46,19 +45,19 @@ resource "massdriver_environment" "dev" {
   name       = "Development"
 }
 
-# The organization doesn't grant new bundles to every project, so each app's
-# bundle is opened to this project only.
-resource "massdriver_oci_repository" "app" {
+# The organization doesn't grant new bundles to every project, so the PHP
+# runtimes and the apps are opened to this project only.
+resource "massdriver_oci_repository" "bundle" {
   for_each = local.bundles
 
   name          = each.value
   artifact_type = "BUNDLE"
 }
 
-resource "massdriver_oci_repository_grant" "app" {
+resource "massdriver_oci_repository_grant" "bundle" {
   for_each = local.bundles
 
-  repository_id        = massdriver_oci_repository.app[each.key].id
+  repository_id        = massdriver_oci_repository.bundle[each.key].id
   recipient_conditions = jsonencode({ "md-project" = ["phpfleet"] })
 }
 
@@ -71,14 +70,13 @@ resource "massdriver_component" "this" {
   bundle_name = each.value.bundle
   attributes  = { data_classification = "internal" }
 
-  depends_on = [massdriver_oci_repository_grant.app]
+  depends_on = [massdriver_oci_repository_grant.bundle]
 }
 
-resource "massdriver_component_link" "this" {
-  for_each = local.links
-
-  from_component_id = massdriver_component.this[each.value.from].id
-  from_field        = each.value.from_field
-  to_component_id   = massdriver_component.this[each.value.to].id
-  to_field          = each.value.to_field
+# The apps get the codebase as an environment default, from deploy.sh.
+resource "massdriver_component_link" "registry" {
+  from_component_id = massdriver_component.this["registry"].id
+  from_field        = "repository"
+  to_component_id   = massdriver_component.this["codebase"].id
+  to_field          = "registry"
 }
