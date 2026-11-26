@@ -36,7 +36,7 @@ Gamelab's server is the only thing on the internet, behind one password. Lab box
 | Project | Environments | What runs there |
 |---|---|---|
 | `platform` | `main` | `vpc`, `dns-zone`, `ecs-cluster`: the network, `<DOMAIN>` and its certificate, and the cluster and load balancer everything shares |
-| `gamelab` | `main` | The Gamelab server: `ecr-repository` and `codebase` for its image, `gamelab-server` on the `ecs-service` runtime at `https://play.<DOMAIN>`, and `github-repo`, undeployed, for when it moves to its own repository |
+| `gamelab` | `main` | The Gamelab server: `ecr-repository` and `codebase` for its image, `gamelab-server` on the `ecs-service` runtime at `https://play.<DOMAIN>` |
 | `labs` | `template`, then one per player | `template` deploys only the lab image's `ecr-repository` and `codebase`. Each fork deploys `lab-box`, and `postgres` (Game Saves) and `valkey` (Leaderboard) if the parent picked them |
 
 `ecs-cluster` sits undeployed on the `gamelab` and `labs` canvases: both run on the platform's cluster, their environment default. A lab inherits the template's defaults (the VPC, the cluster, the lab image and the AWS credential), so a fork needs nothing connected by hand. Each lab brings its own Anthropic key: the parent pastes it on **New lab**, and the server stores it as a secret on that lab's box.

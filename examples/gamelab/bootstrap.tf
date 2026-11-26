@@ -56,14 +56,11 @@ locals {
       stages      = { main = "Main" }
       components = {
         registry = { bundle = "ecr-repository", name = "Image Repository" }
-        repo     = { bundle = "github-repo", name = "Source Repository" }
         codebase = { bundle = "codebase", name = "Codebase" }
         cluster  = { bundle = "ecs-cluster", name = "ECS Cluster" }
         app      = { bundle = "gamelab-server", name = "Gamelab Server" }
       }
       links = [
-        "registry.repository -> repo.registry",
-        "repo.repository -> codebase.repository",
         "registry.repository -> codebase.registry",
         "codebase.codebase -> app.codebase",
         "cluster.cluster -> app.cluster",
@@ -122,7 +119,8 @@ locals {
   # Every catalog bundle is open to every project, except the lab box, which
   # belongs in labs, and the server, which belongs in gamelab.
   bundle_access = merge(
-    { for f in fileset("${path.module}/../../bundles", "*/massdriver.yaml") : yamldecode(file("${path.module}/../../bundles/${f}")).name => "*" },
+    # Only what Gamelab runs, so its organization holds nothing else.
+    { for b in ["vpc", "dns-zone", "ecs-cluster", "ecr-repository", "codebase", "ecs-service", "postgres", "valkey"] : b => "*" },
     { (yamldecode(file("${path.module}/applications/gamelab/bundle/massdriver.yaml")).name) = "gamelab" },
     { "lab-box" = "labs" },
   )

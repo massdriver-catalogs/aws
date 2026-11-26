@@ -29,7 +29,9 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CATALOG="$(cd "$HERE/../.." && pwd)"
 APP="$HERE/applications/gamelab"
-BUNDLES=(vpc dns-zone ecs-cluster ecr-repository github-repo codebase ecs-service postgres valkey lab-box)
+BUNDLES=(vpc dns-zone ecs-cluster ecr-repository codebase ecs-service postgres valkey lab-box)
+# The bundles above reference these, even where the connection is optional.
+TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-ecr-repository aws-codebase aws-postgres aws-valkey lab-box source-repository app-project)
 SUBDOMAIN=play
 
 log() { printf '\n==> %s\n' "$*" >&2; }
@@ -265,7 +267,8 @@ cmd_publish() {
   local dir bundle
   log "publish Massdriver resource types"
   "$CATALOG/scripts/publish-massdriver-types.sh"
-  for dir in "$CATALOG"/platforms/*/ "$CATALOG"/resource-types/*/; do publish_type "${dir%/}"; done
+  publish_type "$CATALOG/platforms/aws-iam-role"
+  for type in "${TYPES[@]}"; do publish_type "$CATALOG/resource-types/$type"; done
   for bundle in "${BUNDLES[@]}"; do publish_bundle "$CATALOG/bundles/$bundle"; done
   publish_bundle "$APP/bundle"
 }
