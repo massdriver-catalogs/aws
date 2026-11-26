@@ -77,3 +77,21 @@ resource "aws_route53_record" "main" {
   ttl     = 300
   records = [var.cluster.load_balancer.dns_name]
 }
+
+# The cluster's listener is HTTPS when it has a DNS zone. Without one it may be HTTP, and Massdriver and Slack send
+# requests only to https:// URLs.
+check "https_listener" {
+  assert {
+    condition = coalesce(
+      try(var.cluster.load_balancer.protocol, null), try(var.cluster.zone.zone_id, null) != null ? "HTTPS" : "HTTP"
+    ) == "HTTPS"
+    error_message = "The cluster's load balancer listener is not HTTPS. Massdriver sends events only to https:// URLs, so the event destinations will fail until TLS ends in front of the load balancer."
+  }
+}
+
+check "internet_egress" {
+  assert {
+    condition     = var.cluster.network.internet_egress
+    error_message = "The cluster's private subnets have no internet egress. The tasks cannot pull the image or call the Massdriver API and Slack."
+  }
+}

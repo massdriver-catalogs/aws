@@ -16,6 +16,7 @@ bundle creates:
   types, attributes, and condition from the automation's README
 - for drift, freeze-guard, and statuspage, an EFS access point mounted at `STATE_DIR`, and a task role that can
   mount only that access point
+- for statuspage with `output_dir` in its config, a second EFS access point mounted writable at `output_dir`
 - for audit-archiver with an S3 bucket and no AWS key secrets, a task role that can write to the bucket
 
 The instance also gets one KMS key for the secrets, the logs, and the state, one security group for the tasks, and,
@@ -24,21 +25,22 @@ The bundle produces no resources for other bundles.
 
 ## Requirements
 
+- The `massdriver-service-account` credential, from `scripts/publish-massdriver-types.sh`.
 - The `aws-iam-role` credential.
 - An `ecs-cluster` with a DNS zone, so its listener is HTTPS with a certificate for `*.<zone>`.
-- A [`massdriver-service-account`](https://github.com/massdriver-cloud/massdriver-resource-types/tree/main/massdriver-service-account)
-  dependency.
-- An internet-facing Application Load Balancer with an HTTPS listener. The listener needs a certificate for
+- An internet-facing Application Load Balancer whose listener, `load_balancer.listener_arn`, is HTTPS. The plan
+  warns when `load_balancer.protocol` is not `HTTPS`, or when it is not set and the cluster has no `zone`. The
+  listener needs a certificate for
   `*.<domain>`, and for the statuspage host when it is outside `<domain>`. Massdriver and Slack send requests to
   `https://` URLs.
 - The load balancer's security group allows outbound traffic to the tasks on port 8080.
-- Private subnets with a route through a NAT gateway, so tasks can pull images and call the Massdriver API, Slack,
-  GitHub, and the other services in their settings.
+- Private subnets, `network.private_subnet_ids`, with a route through a NAT gateway, so tasks can pull images and
+  call the Massdriver API, Slack, GitHub, and the other services in their settings. The plan warns when
+  `network.internet_egress` is false.
 
 ## Ingress host
 
-Set **Ingress > Domain**, such as `automations.acme.com`, or leave it empty to use the base domain of the cluster's
-hosted zone. Each automation is served at `<name>.<domain>`:
+Set **Ingress > Domain**, such as `automations.acme.com`, or leave it empty to use the cluster's `zone.domain`. Each automation is served at `<name>.<domain>`:
 
 | Automation | Host | Paths that must be public |
 |---|---|---|
@@ -83,6 +85,12 @@ drift, freeze-guard, and statuspage keep state in `STATE_DIR`: plans in progress
 that freeze-guard created, and incident and uptime history. Each one gets an access point on the instance's EFS file
 system, with the root directory `/<name>` and the user `65532`. EFS grows with the data, so there is no size
 setting. Decommissioning the instance deletes the file system and the state.
+
+When the statuspage config sets `output_dir`, such as `/srv/status`, statuspage writes the static site to an access
+point of its own on the same file system, with the root directory `/statuspage-site`. To serve or copy the files,
+mount that access point in another task or service, read-only. Its role needs `elasticfilesystem:ClientMount` on the
+file system with the condition `elasticfilesystem:AccessPointArn` set to the access point, and its security group
+needs to be allowed by the file system's security group on port 2049.
 
 ## Configuration
 
@@ -138,7 +146,7 @@ The roles that the bundle creates get only these permissions:
 | Role | Permissions |
 |---|---|
 | Task execution role, one for each automation | `logs:CreateLogStream` and `logs:PutLogEvents` on its log group, `secretsmanager:GetSecretValue` on its secret, and `kms:Decrypt` on the instance's key. When **Image > Repository** is an ECR repository, also `ecr:GetAuthorizationToken`, and pull on that repository. |
-| Task role of drift, freeze-guard, and statuspage | `elasticfilesystem:ClientMount` and `elasticfilesystem:ClientWrite` through its access point. |
+| Task role of drift, freeze-guard, and statuspage | `elasticfilesystem:ClientMount` and `elasticfilesystem:ClientWrite` through its access point, and for statuspage also through the site access point. |
 | Task role of audit-archiver | `s3:PutObject` on `<bucket>/<prefix>/*`, and `s3:PutObjectRetention` with `s3.object_lock`. |
 
 audit-archiver uses the task role when its config sets `s3.bucket` and no `s3.endpoint`, and the
@@ -162,6 +170,13 @@ Each secret is set on the instance. Set only the secrets of the automations that
 | `GITHUB_DEPLOYMENTS_TOKEN` | github-deployments | `GITHUB_TOKEN` |
 | `RELEASE_NOTES_TEAMS_WEBHOOK_URL` | release-notes | `TEAMS_WEBHOOK_URL` |
 | `ROUTER_ENV` | router | Each key of the JSON object |
+| `OTEL_EXPORTER_OTLP_HEADERS` | every automation | `OTEL_EXPORTER_OTLP_HEADERS` |
+
+## Tracing
+
+Set **Tracing > OTLP endpoint** to send the traces of every automation to an OpenTelemetry collector over
+OTLP/HTTP. Each automation gets it as `OTEL_EXPORTER_OTLP_ENDPOINT`, and the `OTEL_EXPORTER_OTLP_HEADERS` secret as
+`OTEL_EXPORTER_OTLP_HEADERS`. See [Tracing](https://github.com/massdriver-cloud/massdriver-automations/blob/main/README.md#tracing).
 
 ## Event destinations
 

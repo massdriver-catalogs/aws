@@ -74,6 +74,10 @@ locals {
     ? "($env | IN(${join(", ", [for e in local.statuspage_environments : jsonencode(e)])}))"
   : "false")
 
+  # statuspage writes the static site to output_dir, when its config sets one.
+  statuspage_output_dir = try(trimsuffix(coalesce(local.statuspage_config.output_dir), "/"), "")
+  statuspage_site       = var.statuspage.enabled && local.statuspage_output_dir != ""
+
   statuspage_host = coalesce(var.statuspage.host, "statuspage.${local.domain}")
 
   audit_archiver_static_keys = lookup(local.secrets, "AUDIT_ARCHIVER_AWS_ACCESS_KEY_ID", "") != ""
@@ -294,12 +298,19 @@ locals {
 
   # Unset settings are left out, so each automation uses its own default.
   settings = {
-    for name, a in local.enabled : name => { for k, v in a.env : k => tostring(v) if v != null && v != "" }
+    for name, a in local.enabled : name => {
+      for k, v in merge(a.env, { OTEL_EXPORTER_OTLP_ENDPOINT = try(var.otel.endpoint, null) }) :
+      k => tostring(v) if v != null && v != ""
+    }
+  }
+
+  otel_secrets = {
+    OTEL_EXPORTER_OTLP_HEADERS = lookup(local.secrets, "OTEL_EXPORTER_OTLP_HEADERS", "")
   }
 
   secret_env = {
     for name, a in local.enabled : name => merge(
-      { for k, v in a.secrets : k => tostring(v) if v != null && v != "" },
+      { for k, v in merge(a.secrets, local.otel_secrets) : k => tostring(v) if v != null && v != "" },
       { MASSDRIVER_SIGNING_SECRET = massdriver_event_destination.main[name].signing_secret }
     )
   }

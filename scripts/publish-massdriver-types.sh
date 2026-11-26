@@ -8,7 +8,6 @@ TYPES=(
   massdriver-service-account
   massdriver-kubernetes-cluster
   massdriver-wireguard-tunnel
-  massdriver-event-destination-https
 )
 SOURCE=${MASSDRIVER_RESOURCE_TYPES_REPO:-https://github.com/massdriver-cloud/massdriver-resource-types.git}
 
