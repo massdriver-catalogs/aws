@@ -3,6 +3,15 @@ templating: mustache
 ---
 # VPC
 
+- **Region:** {{params.region}}
+{{#resources.network}}
+- **VPC:** `{{resources.network.id}}`, {{resources.network.cidr}}
+{{/resources.network}}
+- **Zones:** {{params.zone_count}}
+- **Internet egress:** `{{params.egress}}`
+- **Interface endpoints:** {{#params.private_endpoints}}`{{.}}` {{/params.private_endpoints}}{{^params.private_endpoints}}none{{/params.private_endpoints}}
+- **Flow logs:** `/vpc/{{params.md_metadata.name_prefix}}/flow-logs`, days kept: {{params.flow_log_retention_days}}
+
 ## Private subnets lost internet access
 
 Check which egress is in use, then follow that section.

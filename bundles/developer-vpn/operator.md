@@ -3,6 +3,13 @@ templating: mustache
 ---
 # Developer VPN
 
+- **Server:** {{params.instance_type}}, `{{params.md_metadata.name_prefix}}`, UDP 51820
+{{#dependencies.network}}
+- **VPC:** `{{dependencies.network.id}}`, {{dependencies.network.region}}, {{dependencies.network.cidr}}
+{{/dependencies.network}}
+- **Tunnel addresses:** {{params.tunnel_cidr}}
+- **Allowed laptop networks:** {{#params.allowed_source_cidrs}}`{{.}}` {{/params.allowed_source_cidrs}}{{^params.allowed_source_cidrs}}any{{/params.allowed_source_cidrs}}
+
 {{#resources.tunnel}}
 ## Connect
 

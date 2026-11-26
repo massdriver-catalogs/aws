@@ -4,6 +4,19 @@ templating: mustache
 # ECS Cluster
 
 {{#resources.cluster}}
+- **Cluster:** `{{resources.cluster.name}}`, {{resources.cluster.region}}
+- **Load balancer:** `{{resources.cluster.load_balancer.dns_name}}`, {{resources.cluster.load_balancer.protocol}}
+- **VPC:** `{{resources.cluster.network.id}}`
+{{#resources.cluster.zone}}
+- **Services answer on:** `<subdomain>.{{resources.cluster.zone.domain}}`
+{{/resources.cluster.zone}}
+{{/resources.cluster}}
+- **Firewall (WAF):** {{#params.waf}}on{{/params.waf}}{{^params.waf}}off{{/params.waf}}
+- **Access logs:** {{#params.access_logs}}on, days kept: {{params.access_log_retention_days}}{{/params.access_logs}}{{^params.access_logs}}off{{/params.access_logs}}
+- **Container Insights:** `{{params.container_insights}}`
+- **Deletion protection:** {{#params.deletion_protection}}on{{/params.deletion_protection}}{{^params.deletion_protection}}off{{/params.deletion_protection}}
+
+{{#resources.cluster}}
 ## 5xx from the load balancer
 
 Find out who sent it: the load balancer itself, or a service behind it.

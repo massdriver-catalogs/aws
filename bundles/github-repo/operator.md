@@ -3,6 +3,17 @@ templating: mustache
 ---
 # GitHub Repository
 
+{{#resources.repository.url}}
+**URL:** {{resources.repository.url}}
+
+{{/resources.repository.url}}
+- **Repository:** `{{#resources.repository}}{{resources.repository.full_name}}{{/resources.repository}}{{^resources.repository}}{{params.repository_name}}{{/resources.repository}}`, {{params.visibility}}
+- **Default branch:** `{{params.default_branch}}`
+- **Images:** {{params.image_platform}}{{#dependencies.registry}}, pushed to `{{dependencies.registry.url}}`{{/dependencies.registry}}
+{{#params.release_component}}
+- **Releases deploy to:** `{{params.release_environment}}`, component `{{params.release_component}}`
+{{/params.release_component}}
+
 {{#resources.repository}}
 ## See recent runs
 

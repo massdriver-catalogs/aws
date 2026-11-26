@@ -3,6 +3,12 @@ templating: mustache
 ---
 # GitHub Actions OIDC
 
+{{#resources.oidc}}
+- **Provider:** `{{resources.oidc.provider_arn}}`
+- **Issuer:** `{{resources.oidc.url}}`
+{{/resources.oidc}}
+- **Adopted an existing provider:** {{#params.adopt_existing_provider}}yes{{/params.adopt_existing_provider}}{{^params.adopt_existing_provider}}no{{/params.adopt_existing_provider}}
+
 ## Deploy fails with EntityAlreadyExists
 
 The account already has a GitHub OIDC provider, created by hand or by another tool. Turn on **Adopt the existing provider** and redeploy:

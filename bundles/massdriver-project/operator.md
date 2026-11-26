@@ -3,6 +3,16 @@ templating: mustache
 ---
 # Massdriver Project
 
+- **Project:** `{{params.project_identifier}}`, {{params.project_name}}
+{{#params.team}}
+- **Team:** {{params.team}}
+{{/params.team}}
+- **Environments:** {{#params.environments}}`{{identifier}}` {{/params.environments}}
+- **Pipeline deploys to:** {{#params.deploy_environments}}`{{.}}` {{/params.deploy_environments}}{{^params.deploy_environments}}nowhere{{/params.deploy_environments}}
+{{#resources.project}}
+- **Deploy group:** `{{resources.project.deploy_group_id}}`
+{{/resources.project}}
+
 {{#resources.project}}
 ## Set the environments' defaults
 

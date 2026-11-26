@@ -4,6 +4,14 @@ templating: mustache
 # ECR Repository
 
 {{#resources.repository}}
+- **Repository:** `{{resources.repository.url}}`
+- **Region:** {{resources.repository.region}}
+{{/resources.repository}}
+- **Tags:** `{{params.tag_mutability}}`
+- **Lifecycle:** keeps the newest {{params.keep_images}} images, deletes untagged images after this many days: {{params.untagged_expiry_days}}
+- **Scan on push:** {{#params.scan_on_push}}on{{/params.scan_on_push}}{{^params.scan_on_push}}off{{/params.scan_on_push}}
+
+{{#resources.repository}}
 ## List what's there
 
 ```bash

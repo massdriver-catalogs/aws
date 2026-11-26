@@ -3,6 +3,22 @@ templating: mustache
 ---
 # ECS Service
 
+{{#params.subdomain}}
+{{#dependencies.cluster.zone}}
+**URL:** https://{{params.subdomain}}.{{dependencies.cluster.zone.domain}}
+
+{{/dependencies.cluster.zone}}
+{{/params.subdomain}}
+{{^params.subdomain}}
+**URL:** none. Set **Subdomain** to give it one.
+
+{{/params.subdomain}}
+- **Size:** {{params.size}} ({{params.architecture}}), {{params.desired_count}} to {{params.max_count}} tasks{{#params.spot}}, Spot{{/params.spot}}
+- **Cluster:** `{{dependencies.cluster.name}}`, {{dependencies.cluster.region}}
+- **Service and log group:** `{{params.md_metadata.name_prefix}}`, `/ecs/{{params.md_metadata.name_prefix}}`
+- **Port and health check:** {{params.port}}, `{{params.health_check_path}}`
+- **Image:** `{{params.image_uri}}`
+
 ## Ship your app
 
 ### 1. Add a Dockerfile

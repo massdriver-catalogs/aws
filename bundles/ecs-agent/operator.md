@@ -1,7 +1,19 @@
 ---
 templating: mustache
 ---
-# ECS Agent: {{params.service_account_name}}
+# ECS Agent
+
+- **Acts as:** the Massdriver service account `{{params.service_account_name}}`
+- **Goal:** {{params.goal}}
+- **Model:** `{{params.model}}`, effort `{{params.effort}}`, at most ${{params.budget_per_run_usd}} per run
+- **Runs:** every {{params.interval_minutes}} minutes
+- **Size:** {{params.size}} ({{params.architecture}}){{#params.spot}}, Spot{{/params.spot}}
+- **Cluster:** `{{dependencies.cluster.name}}`, {{dependencies.cluster.region}}
+- **Image:** `{{params.image_uri}}`
+- **Logs:** `/ecs/{{params.md_metadata.name_prefix}}`, days kept: {{params.log_retention_days}}
+{{#params.action_sync.enabled}}
+- **Sends its actions to:** {{params.action_sync.url}}
+{{/params.action_sync.enabled}}
 
 ## What is it doing right now?
 

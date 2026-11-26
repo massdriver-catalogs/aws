@@ -3,6 +3,15 @@ templating: mustache
 ---
 # DNS Zone
 
+- **Domain:** {{params.domain}}
+- **Region:** {{params.region}}
+- **Hosted zone:** `{{params.hosted_zone.source}}`, DNSSEC {{#params.hosted_zone.dnssec}}on{{/params.hosted_zone.dnssec}}{{^params.hosted_zone.dnssec}}off{{/params.hosted_zone.dnssec}}
+{{#resources.zone}}
+- **Zone ID:** `{{resources.zone.zone_id}}`
+- **Name servers:** {{#resources.zone.name_servers}}`{{.}}` {{/resources.zone.name_servers}}
+- **Certificate:** `{{resources.zone.certificate_arn}}`, for `{{resources.zone.domain}}` and `*.{{resources.zone.domain}}`
+{{/resources.zone}}
+
 ## Delegate a new zone
 
 A new zone answers nothing until its parent points to it. Get its name servers:

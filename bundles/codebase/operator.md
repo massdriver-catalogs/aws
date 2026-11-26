@@ -3,6 +3,18 @@ templating: mustache
 ---
 # Codebase
 
+{{#resources.codebase.repository.url}}
+**URL:** {{resources.codebase.repository.url}}
+
+{{/resources.codebase.repository.url}}
+{{#resources.codebase}}
+- **Registry:** `{{resources.codebase.registry.url}}`, {{resources.codebase.registry.region}}
+{{#resources.codebase.repository}}
+- **Repository:** `{{resources.codebase.repository.full_name}}`, branch `{{resources.codebase.repository.default_branch}}`
+{{/resources.codebase.repository}}
+{{/resources.codebase}}
+- **Shared with the project:** {{#params.share_with_project}}on{{#dependencies.project}}, `{{dependencies.project.identifier}}`{{/dependencies.project}}{{/params.share_with_project}}{{^params.share_with_project}}off{{/params.share_with_project}}
+
 {{#dependencies.project}}
 ## Set it as the project's default
 

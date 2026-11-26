@@ -4,6 +4,18 @@ templating: mustache
 # PostgreSQL
 
 {{#resources.database}}
+- **Endpoint:** `{{resources.database.hostname}}:{{resources.database.port}}`, database `{{resources.database.database}}`, user `{{resources.database.username}}`
+- **Region:** {{resources.database.region}}
+{{/resources.database}}
+- **Version:** PostgreSQL {{params.engine_version}}
+- **Size:** {{params.instance_class}}, {{params.storage_gb}} GB storage{{#params.multi_az}}, Multi-AZ{{/params.multi_az}}
+{{#dependencies.network}}
+- **VPC:** `{{dependencies.network.id}}`
+{{/dependencies.network}}
+- **Backups:** days kept: {{params.backup_retention_days}}
+- **Deletion protection:** {{#params.deletion_protection}}on{{/params.deletion_protection}}{{^params.deletion_protection}}off{{/params.deletion_protection}}
+
+{{#resources.database}}
 ## Connect with psql
 
 The database has no public address and there is no bastion host. Use one of these.

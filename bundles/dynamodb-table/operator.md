@@ -4,6 +4,16 @@ templating: mustache
 # DynamoDB Table
 
 {{#resources.table}}
+- **Table:** `{{resources.table.name}}`, {{resources.table.region}}
+{{/resources.table}}
+- **Keys:** `{{params.partition_key.name}}` ({{params.partition_key.type}}){{#params.sort_key.name}}, sort key `{{params.sort_key.name}}` ({{params.sort_key.type}}){{/params.sort_key.name}}
+{{#params.ttl_attribute}}
+- **Expires items by:** `{{params.ttl_attribute}}`
+{{/params.ttl_attribute}}
+- **Point-in-time recovery:** {{#params.point_in_time_recovery}}on{{/params.point_in_time_recovery}}{{^params.point_in_time_recovery}}off{{/params.point_in_time_recovery}}
+- **Deletion protection:** {{#params.deletion_protection}}on{{/params.deletion_protection}}{{^params.deletion_protection}}off{{/params.deletion_protection}}
+
+{{#resources.table}}
 ## Look at the data
 
 ```bash

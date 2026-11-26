@@ -4,6 +4,16 @@ templating: mustache
 # SQS Queue
 
 {{#resources.queue}}
+- **Queue:** `{{resources.queue.url}}`
+- **Dead-letter queue:** `{{resources.queue.dead_letter_arn}}`
+{{/resources.queue}}
+- **Region:** {{params.region}}
+- **Type:** {{#params.fifo}}FIFO{{/params.fifo}}{{^params.fifo}}standard{{/params.fifo}}
+- **Retries:** {{params.max_receive_count}} tries, then the dead-letter queue
+- **Visibility timeout:** {{params.visibility_timeout_seconds}} seconds
+- **Messages kept:** {{params.message_retention_seconds}} seconds
+
+{{#resources.queue}}
 ## How many messages are waiting
 
 ```bash

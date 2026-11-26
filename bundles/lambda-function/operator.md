@@ -3,6 +3,20 @@ templating: mustache
 ---
 # Lambda Function
 
+{{#dependencies.api.endpoint}}
+**URL:** {{dependencies.api.endpoint}}
+
+{{/dependencies.api.endpoint}}
+- **Routes:** {{#params.routes}}`{{.}}` {{/params.routes}}{{^params.routes}}none{{/params.routes}}
+- **Memory:** {{params.memory_mb}} MB, timeout {{params.timeout_seconds}} seconds
+- **Region:** {{dependencies.api.region}}
+- **Function and log group:** `{{params.md_metadata.name_prefix}}`, `/aws/lambda/{{params.md_metadata.name_prefix}}`
+- **Reads a queue:** {{#params.consume_queue}}on{{/params.consume_queue}}{{^params.consume_queue}}off{{/params.consume_queue}}
+{{#dependencies.network}}
+- **VPC:** `{{dependencies.network.id}}`
+{{/dependencies.network}}
+- **Image:** {{#params.image_uri}}`{{params.image_uri}}`{{/params.image_uri}}{{^params.image_uri}}the placeholder{{/params.image_uri}}
+
 ## Ship your app
 
 Until it has an image, the function runs a placeholder. Try it:

@@ -3,9 +3,7 @@ templating: mustache
 ---
 # Developer Workspace
 
-## Get in
-
-You need AWS credentials for this account and the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
+**Get in:**
 
 ```bash
 TASK=$(aws ecs list-tasks --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} \
@@ -13,6 +11,18 @@ TASK=$(aws ecs list-tasks --region {{dependencies.cluster.region}} --cluster {{d
 aws ecs execute-command --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} \
   --task $TASK --container workspace --interactive --command "workspace shell"
 ```
+
+- **Size:** {{params.size}} ({{params.architecture}}){{#params.spot}}, Spot{{/params.spot}}
+- **Cluster:** `{{dependencies.cluster.name}}`, {{dependencies.cluster.region}}
+- **Acts as:** the Massdriver service account `{{params.md_metadata.name_prefix}}`
+- **Git identity:** {{#params.git_name}}{{params.git_name}}{{#params.git_email}}, {{params.git_email}}{{/params.git_email}}{{/params.git_name}}{{^params.git_name}}not set{{/params.git_name}}
+- **Ports open to the VPC:** {{#params.vpn_ports}}`{{.}}` {{/params.vpn_ports}}{{^params.vpn_ports}}none{{/params.vpn_ports}}
+- **Home directory backups:** {{#params.home_backups}}on{{/params.home_backups}}{{^params.home_backups}}off{{/params.home_backups}}
+- **Logs:** `/ecs/{{params.md_metadata.name_prefix}}`, days kept: {{params.log_retention_days}}
+
+## Get in
+
+You need AWS credentials for this account and the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). Then run the **Get in** command.
 
 You land in `/home/dev` as `dev`. `claude`, `opencode`, `mass`, `git` and `mise` are on the PATH. `mass` and the Massdriver MCP server are signed in as the service account `{{params.md_metadata.name_prefix}}`.
 

@@ -4,6 +4,17 @@ templating: mustache
 # Valkey Cache
 
 {{#resources.cache}}
+- **Endpoint:** `{{resources.cache.hostname}}:{{resources.cache.port}}`, TLS only
+- **Region:** {{resources.cache.region}}
+{{/resources.cache}}
+- **Version:** Valkey {{params.major_engine_version}}
+- **Limits:** {{params.max_data_storage_gb}} GB of data, {{params.max_ecpu_per_second}} ECPU per second
+{{#dependencies.network}}
+- **VPC:** `{{dependencies.network.id}}`
+{{/dependencies.network}}
+- **Snapshots:** days kept: {{params.snapshot_retention_days}}
+
+{{#resources.cache}}
 ## Connect from an ECS task
 
 The cache only accepts connections from the client security group, so connect from a task that has it. Open a shell in a running task with ECS Exec:

@@ -3,6 +3,18 @@ templating: mustache
 ---
 # HTTP API
 
+{{#resources.api.endpoint}}
+**URL:** {{resources.api.endpoint}}
+
+{{/resources.api.endpoint}}
+- **Region:** {{params.region}}
+{{#resources.api}}
+- **API ID:** `{{resources.api.id}}`
+{{/resources.api}}
+- **Limits:** {{params.throttle_rate}} requests per second, bursts of {{params.throttle_burst}}
+- **CORS origins:** {{#params.cors_allowed_origins}}`{{.}}` {{/params.cors_allowed_origins}}{{^params.cors_allowed_origins}}none{{/params.cors_allowed_origins}}
+- **Access log:** `/aws/apigateway/{{params.md_metadata.name_prefix}}`, days kept: {{params.access_log_retention_days}}
+
 {{#resources.api}}
 ## Call it
 

@@ -4,6 +4,13 @@ templating: mustache
 # S3 Bucket
 
 {{#resources.bucket}}
+- **Bucket:** `{{resources.bucket.name}}`, {{resources.bucket.region}}
+{{/resources.bucket}}
+- **Versioning:** {{#params.versioning}}on, days old versions are kept: {{params.noncurrent_version_expiration_days}}{{/params.versioning}}{{^params.versioning}}off{{/params.versioning}}
+- **Encryption:** `{{params.encryption}}`
+- **CORS origins:** {{#params.cors_allowed_origins}}`{{.}}` {{/params.cors_allowed_origins}}{{^params.cors_allowed_origins}}none{{/params.cors_allowed_origins}}
+
+{{#resources.bucket}}
 ## Look at what's there
 
 ```bash
