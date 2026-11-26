@@ -110,6 +110,8 @@ Before it touches AWS it lists the account, everything it will create and roughl
 5. Applies [bootstrap.tf](bootstrap.tf): projects, environments, components, links, groups, policies and the AWS credentials.
 6. Deploys dev, then builds and ships each app.
 
+To read costs from tags in the report itself, run in the AWS management (payer) account with `COST_ALLOCATION_TAGS=md-instance`. AWS only accepts it once the tag shows up in billing data, up to a day after the first deploy, so rerun `./deploy.sh costs` with it then. Keep it set on later runs of `costs` or `all`; without it they turn the tags back off.
+
 For a separate prod account, make a role there from the AWS IAM Role credential's instructions and set `PROD_ROLE_ARN`. The apps then answer at `visits.dev.<domain>`, `care.dev.<domain>` and `billing.dev.<domain>`.
 
 Run `./deploy.sh` alone to see the individual steps. `./deploy.sh teardown` removes all of it again: it decommissions every instance, then undoes bootstrap, the cost report and the IAM role. Published bundles stay.
