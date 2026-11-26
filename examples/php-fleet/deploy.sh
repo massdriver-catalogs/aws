@@ -13,7 +13,8 @@
 # mass (signed in), tofu, jq, python3 with PyYAML, docker, and AWS CLI credentials for the
 # account the platform runs in.
 #
-#   YES=1    skip the confirmation before anything changes in AWS
+#   YES=1        skip the confirmation before anything changes in AWS
+#   REPUBLISH=1  publish every version in versions.txt again, e.g. after changing a guide
 
 set -euo pipefail
 
@@ -73,6 +74,14 @@ runtime_constraint() {
   esac
 }
 
+# runtime_label <constraint>: the runtime version an app built with it runs on.
+runtime_label() {
+  case "$1" in
+    *@*) echo "$RUNTIME ${1#*@}" ;;
+    *) echo "$RUNTIME $(tags "$RUNTIME" | grep -v -- -dev | sort -V | tail -1)" ;;
+  esac
+}
+
 # published <app> <version>: the newest development release of that version, if any.
 published() { tags "$(bundle_name "$1")" | grep "^$2-dev\." | sort | tail -1 || true; }
 
@@ -93,17 +102,21 @@ cmd_runtimes() {
 }
 
 cmd_publish() {
-  local app version runtime tmp
+  local app version runtime constraint tmp
   while read -r app version runtime _; do
-    if [ -n "$(published "$app" "$version")" ]; then
+    if [ -z "${REPUBLISH:-}" ] && [ -n "$(published "$app" "$version")" ]; then
       log "skip $app $version, already published"
       continue
     fi
     log "publish $app $version on $runtime"
+    constraint=$(runtime_constraint "$runtime")
     tmp=$(mktemp -d)
-    cp "$HERE/applications/$app/massdriver.yaml" "$tmp/"
-    sed -i.bak -e "s/^version: .*/version: $version/" \
-      -e "s|^  runtime: .*|  runtime: $(runtime_constraint "$runtime")|" "$tmp/massdriver.yaml"
+    cp "$HERE/applications/$app/massdriver.yaml" "$HERE/applications/$app/operator.md" "$tmp/"
+    sed -i.bak -e "s/^version: .*/version: $version/" -e "s|^  runtime: .*|  runtime: $constraint|" "$tmp/massdriver.yaml"
+    # The guide can't read the bundle's version or runtime, so they're written in.
+    sed -i.bak -e "s/^- \*\*Version:\*\* .*/- **Version:** $version/" \
+      -e "s/^- \*\*Built on:\*\* .*/- **Built on:** $(runtime_label "$constraint")/" "$tmp/operator.md"
+    rm "$tmp"/*.bak
     mass bundle publish --development --bundle-directory "$tmp"
     rm -rf "$tmp"
   done < <(versions)
@@ -251,5 +264,5 @@ case "${1:-}" in
   deploy) cmd_deploy ;;
   all) cmd_runtimes && cmd_bootstrap && cmd_deploy ;;
   teardown) cmd_teardown ;;
-  *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
