@@ -25,6 +25,8 @@
 #                     apps go back to the placeholder until shipped again
 #   COST_ALLOCATION_TAGS  md-instance, md-package or both, comma-separated: activate them as AWS
 #                     cost allocation tags so the report carries them      (costs; payer account only)
+#   ANTHROPIC_API_KEY the key Jimmy, the SRE agent, calls Claude with   (provision dev)
+#   AGENT_IMAGE       Jimmy's image; default: built and pushed to his registry (provision dev)
 
 set -euo pipefail
 
@@ -421,6 +423,32 @@ automations() {
   python3 -c 'import sys, yaml; print("\n".join(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml"
 }
 
+# build_agent_image: builds bundles/ecs-agent/image into Jimmy's registry and
+# prints the image.
+build_agent_image() {
+  local registry url region image
+  registry=$(mass resource get sreagent-jimmy-registry.repository -o json)
+  url=$(jq -r '.payload.url' <<<"$registry")
+  region=$(jq -r '.payload.region' <<<"$registry")
+  image="$url:$(git -C "$CATALOG" rev-parse --short HEAD)"
+  log "build and push $image"
+  aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}" >&2
+  docker logout public.ecr.aws >/dev/null 2>&1 || true
+  docker build --platform linux/arm64 --provenance=false -t "$image" "$CATALOG/bundles/ecs-agent/image" >&2
+  docker push "$image" >&2
+  echo "$image"
+}
+
+# jimmy_params: Jimmy's name, group, goal and image, over the preset.
+jimmy_params() {
+  echo ". + $(jq -n -c --argjson ids "$(cd "$HERE" && tofu output -json group_ids)" --arg image "$AGENT_IMAGE" '{
+    service_account_name: "Jimmy",
+    groups: [$ids["SRE Agents"]],
+    image_uri: $image,
+    goal: "Keep Tendwell healthy. In dev, look for failed deployments, firing alarms and instances that drifted from their last deploy; find the cause from the deployment logs, the instance params and what it connects to, and fix it by changing params and deploying. In prod, never deploy: when you find the same kind of problem, propose the fix for a person to approve. Write down what you found, even when nothing is wrong."
+  }')"
+}
+
 cmd_provision() {
   local stage
   stage=$(stage_arg "${1:-}")
@@ -498,6 +526,22 @@ cmd_provision() {
         set_secret "$instance" COST_EXPLORER_PASSWORD "$(cd "$HERE" && tofu output -raw cost_explorer_password)"
       deploy "$instance" "massdriver-$automation-ecs" "$stage" "$(automation_params "$automation")"
     done
+
+    log "sreagent-jimmy"
+    for field in network.network dns.zone cluster.cluster; do
+      share "platform-$stage-$field" --condition "md-project=sreagent"
+      mass environment default sreagent-jimmy "platform-$stage-$field" >/dev/null
+    done
+    if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+      log "skip sreagent-jimmy-agent: set ANTHROPIC_API_KEY to deploy Jimmy"
+    else
+      deploy sreagent-jimmy-registry ecr-repository dev
+      deploy sreagent-jimmy-codebase codebase dev '.share_with_project = false'
+      [ -n "${AGENT_IMAGE:-}" ] || AGENT_IMAGE=$(build_agent_image)
+      connect sreagent-jimmy-agent massdriver "$(cd "$HERE" && tofu output -raw sre_agent_credential)"
+      set_secret sreagent-jimmy-agent ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
+      deploy sreagent-jimmy-agent ecs-agent "$stage" "$(jimmy_params)"
+    fi
   fi
 
   log "done. Ship real images with: ./deploy.sh ship <app> $stage"
@@ -631,8 +675,10 @@ cmd_teardown() {
       for automation in $(automations); do
         mass instance remote-reference remove "automations-main-${automation//-/}" service_account >/dev/null 2>&1 || true
       done
+      decommission sreagent-jimmy
+      mass instance remote-reference remove sreagent-jimmy-agent massdriver >/dev/null 2>&1 || true
     fi
-    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}" automations-main
+    release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}" automations-main sreagent-jimmy
     decommission "platform-$stage"
   done
   for app in "${APPS[@]}"; do
