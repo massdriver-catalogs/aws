@@ -12,3 +12,6 @@ crash.log
 !*.tfvars.example
 
 .DS_Store
+
+# automations.sh audit-archiver
+examples/telehealth/audit-log/

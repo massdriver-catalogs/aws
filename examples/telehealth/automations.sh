@@ -16,7 +16,7 @@ set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=${AUTOMATIONS_SRC:-$HERE/../../../massdriver-automations}
 INSPECTOR=${NGROK_INSPECTOR:-127.0.0.1:4040}
-DEFAULT=(statuspage drift autodeploy-downstream rollback-on-failure freeze-guard router sandbox-on-join)
+DEFAULT=(statuspage drift autodeploy-downstream rollback-on-failure freeze-guard router sandbox-on-join audit-archiver)
 
 log() { printf '==> %s\n' "$*" >&2; }
 die() {
@@ -41,6 +41,9 @@ destination_flags() {
     rollback-on-failure)
       flags=(--event-type deployment.failed --attribute md-environment=dev
         --condition '.data.metadata.deployment_action == "PROVISION" and .data.attributes["autorollback"] == "true"') ;;
+    audit-archiver)
+      # Every event: an attribute filter would drop the ones without attributes.
+      flags=() ;;
     freeze-guard)
       flags=(--event-type group.created --event-type group.updated --event-type group.deleted) ;;
     router)
@@ -54,15 +57,13 @@ destination_flags() {
   esac
 }
 
-# automation_env <name>: settings beyond the common ones.
+# automation_env <name>: settings beyond the common ones. Each automation reads
+# automations/<name>.yaml.
 automation_env() {
+  echo "CONFIG_FILE=$HERE/automations/$1.yaml STATE_DIR=$work/state/$1"
   case $1 in
-    statuspage) echo "STATUSPAGE_CONFIG=$HERE/automations/statuspage.yaml STATE_DIR=$work/state/statuspage" ;;
-    drift) echo "DRIFT_CONFIG=$HERE/automations/drift.yaml DRIFT_RUN_TOKEN=$drift_token STATE_DIR=$work/state/drift" ;;
-    freeze-guard) echo "FREEZE_WINDOWS_FILE=$HERE/automations/freeze-guard.yaml FREEZE_ADMIN_TOKEN=$admin_token STATE_DIR=$work/state/freeze-guard" ;;
-    autodeploy-downstream) echo "AUTODEPLOY_CONFIG=$HERE/automations/autodeploy.yaml" ;;
-    router) echo "ROUTER_CONFIG=$HERE/automations/router.yaml" ;;
-    sandbox-on-join) echo "SANDBOX_CONFIG=$HERE/automations/sandboxes.yaml" ;;
+    drift) echo "DRIFT_RUN_TOKEN=$drift_token" ;;
+    freeze-guard) echo "FREEZE_ADMIN_TOKEN=$admin_token" ;;
   esac
 }
 
@@ -140,7 +141,7 @@ for name in "${names[@]}"; do
     while read -r stale; do mass event destination delete "$stale" --force >/dev/null; done
 
   destination_flags "$name"
-  created=$(mass event destination create --name "$destination" --url "$tunnel/$name/hooks/massdriver" "${flags[@]}")
+  created=$(mass event destination create --name "$destination" --url "$tunnel/$name/hooks/massdriver" ${flags[@]+"${flags[@]}"})
   id=$(sed -n 's/.*(ID: \([^)]*\)).*/\1/p' <<<"$created")
   secret=$(sed -n 's/.*Signing secret: \(whsec_[^ ]*\).*/\1/p' <<<"$created")
   [ -n "$id" ] && [ -n "$secret" ] || die "couldn't create the $name event destination"
@@ -149,6 +150,7 @@ for name in "${names[@]}"; do
   mkdir -p "$work/state/$name"
   prefix="[$name]"
   [ "$log_format" = json ] || prefix=$(printf '\033[%sm[%s]\033[0m' "${colors[$(((port - 18081) % ${#colors[@]}))]}" "$name")
+  cd "$HERE"
   # shellcheck disable=SC2046 # automation_env returns KEY=value words without spaces
   env MASSDRIVER_ORGANIZATION_ID="$org" MASSDRIVER_API_KEY="$api_key" MASSDRIVER_SIGNING_SECRET="$secret" \
     PORT="$port" LOG_FORMAT="${LOG_FORMAT:-$log_format}" $(automation_env "$name") \
