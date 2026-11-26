@@ -3,6 +3,20 @@ templating: mustache
 ---
 # Tendwell Care
 
+{{#resources.care.url}}
+**URL:** {{resources.care.url}}
+
+{{/resources.care.url}}
+- **Built on:** ecs-service
+- **Size:** {{params.size}} ({{params.architecture}}), {{params.desired_count}} to {{params.max_count}} tasks{{#params.spot}}, Spot{{/params.spot}}
+- **Cluster:** `{{dependencies.cluster.name}}`, {{dependencies.cluster.region}}
+- **Service and log group:** `{{params.md_metadata.name_prefix}}`, `/ecs/{{params.md_metadata.name_prefix}}`
+- **Charts database:** `{{dependencies.postgres.hostname}}`
+- **Sessions cache:** `{{dependencies.cache.hostname}}`
+- **Documents bucket:** `{{dependencies.bucket.name}}`
+- **Visits API:** {{dependencies.visits.url}}
+- **Image:** `{{params.image_uri}}`
+
 {{#resources.care}}
 ## Close an encounter by hand
 

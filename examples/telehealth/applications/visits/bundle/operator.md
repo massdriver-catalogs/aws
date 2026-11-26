@@ -3,7 +3,19 @@ templating: mustache
 ---
 # Tendwell Visits
 
-This bundle runs twice: **Visits** answers the booking API, and **Reminder Sender** reads the reminders queue. They share one image.
+{{#resources.visits.url}}
+**URL:** {{resources.visits.url}}
+
+{{/resources.visits.url}}
+- **Built on:** lambda-function
+- **Job:** {{#params.consume_queue}}Reminder Sender. It reads the reminders queue.{{/params.consume_queue}}{{^params.consume_queue}}Visits. It answers the booking API.{{/params.consume_queue}} Both run the same image.
+- **Routes:** {{#params.routes}}`{{.}}` {{/params.routes}}{{^params.routes}}none{{/params.routes}}
+- **Memory:** {{params.memory_mb}} MB, timeout {{params.timeout_seconds}} seconds
+- **Region:** {{dependencies.api.region}}
+- **Function and log group:** `{{params.md_metadata.name_prefix}}`, `/aws/lambda/{{params.md_metadata.name_prefix}}`
+- **Slots table:** `{{dependencies.table.name}}`
+- **Reminders queue:** `{{dependencies.queue.name}}`
+- **Image:** `{{params.image_uri}}`
 
 {{#resources.visits}}
 ## Book a visit by hand

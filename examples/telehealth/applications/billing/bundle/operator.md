@@ -3,6 +3,19 @@ templating: mustache
 ---
 # Tendwell Billing
 
+{{#resources.billing.url}}
+**URL:** {{resources.billing.url}}
+
+{{/resources.billing.url}}
+- **Built on:** ecs-service
+- **Size:** {{params.size}} ({{params.architecture}}), {{params.desired_count}} to {{params.max_count}} tasks{{#params.spot}}, Spot{{/params.spot}}
+- **Cluster:** `{{dependencies.cluster.name}}`, {{dependencies.cluster.region}}
+- **Service and log group:** `{{params.md_metadata.name_prefix}}`, `/ecs/{{params.md_metadata.name_prefix}}`
+- **Ledger database:** `{{dependencies.mariadb.hostname}}`
+- **Claims bucket:** `{{dependencies.bucket.name}}`
+- **Care API:** {{dependencies.care.url}}
+- **Image:** `{{params.image_uri}}`
+
 {{#resources.billing}}
 ## Run claims now
 
