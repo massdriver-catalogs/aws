@@ -28,7 +28,7 @@ params:
       timeout_seconds: 29
       environment: []
       consume_queue: false
-      log_retention_days: 30
+      log_retention_days: 365
   required:
     - image_uri
     - routes
@@ -143,6 +143,12 @@ resources: {}
 steps:
   - path: src
     provisioner: opentofu:1.10
+    config:
+      checkov:
+        # The environment is the second part of the instance slug, <project>-<environment>-<component>.
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] | . == "prod" or . == "production"'
+        # With md-environment in the organization's default tags:
+        # halt_on_failure: '.params.md_metadata.default_tags["md-environment"] | . == "prod" or . == "production"'
 
 ui:
   ui:order:

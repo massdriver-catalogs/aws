@@ -1,0 +1,14 @@
+skip-check:
+  # The alarm topic only carries alarm state changes to Massdriver. CloudWatch
+  # can't publish to a topic encrypted with the AWS-managed SNS key, so
+  # encrypting it means a customer managed key just for alarms.
+  - CKV_AWS_26
+
+  # The NAT instance forwards the private subnets' traffic to the internet, so
+  # it needs a public address and must let traffic out to any address.
+  - CKV_AWS_88
+  - CKV_AWS_382
+
+  # The NAT instance is the low-cost egress. Its status-check alarm already
+  # reports a failure; one-minute metrics would add about a third to its cost.
+  - CKV_AWS_126

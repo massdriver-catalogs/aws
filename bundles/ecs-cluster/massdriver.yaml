@@ -16,7 +16,7 @@ params:
     - __name: Production
       container_insights: enabled
       access_logs: true
-      access_log_retention_days: 90
+      access_log_retention_days: 365
       deletion_protection: true
       waf: true
   required:
@@ -68,8 +68,8 @@ params:
       title: Block common attacks
       description: >-
         A web application firewall in front of the load balancer with AWS's managed rules for
-        common exploits and known bad inputs. Blocked requests get a 403.
-        ***~$7/month plus $0.60 per million requests.***
+        common exploits, known bad inputs such as Log4j, and Tor and other anonymizing proxies.
+        Blocked requests get a 403. ***~$8/month plus $0.60 per million requests.***
       type: boolean
       default: false
 
@@ -94,7 +94,10 @@ steps:
     provisioner: opentofu:1.10
     config:
       checkov:
-        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] == "prod"'
+        # The environment is the second part of the instance slug, <project>-<environment>-<component>.
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] | . == "prod" or . == "production"'
+        # With md-environment in the organization's default tags:
+        # halt_on_failure: '.params.md_metadata.default_tags["md-environment"] | . == "prod" or . == "production"'
 
 ui:
   ui:order:

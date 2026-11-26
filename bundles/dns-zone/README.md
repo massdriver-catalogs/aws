@@ -13,6 +13,7 @@ The domain for one environment, such as dev.example.com. Deploy one in each envi
 - An ACM certificate for the domain and for `*.domain`, in the region you pick. It covers names one level under the domain, such as api.dev.example.com, but not a.b.dev.example.com.
 - The DNS records that prove to ACM that you own the domain. ACM uses them again to renew the certificate every year, so leave them in place.
 - An alarm when the certificate is less than 30 days from expiry, which means renewal is failing.
+- With **Sign the zone (DNSSEC)** on, a KMS signing key in us-east-1 and a key-signing key for the new zone. The parent zone or registrar needs the zone's `DS` record before resolvers check the signatures.
 
 ## A new zone needs delegation
 

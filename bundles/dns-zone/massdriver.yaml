@@ -12,12 +12,14 @@ params:
       region: us-east-1
       hosted_zone:
         source: create
+        dnssec: false
       validation_timeout_minutes: 30
     - __name: Production
       domain: example.com
       region: us-east-1
       hosted_zone:
         source: create
+        dnssec: true
       validation_timeout_minutes: 30
   required:
     - domain
@@ -79,6 +81,15 @@ params:
             - properties:
                 source:
                   const: create
+                dnssec:
+                  title: Sign the zone (DNSSEC)
+                  description: >-
+                    Resolvers can check that answers from this zone weren't forged. It takes effect
+                    once the parent zone or registrar has the zone's DS record. Before turning it
+                    off, remove that DS record and wait a day, or the domain stops resolving.
+                    ***A KMS key, ~$1/month.***
+                  type: boolean
+                  default: false
             - required:
                 - zone_id
               properties:
@@ -117,6 +128,12 @@ resources:
 steps:
   - path: src
     provisioner: opentofu:1.10
+    config:
+      checkov:
+        # The environment is the second part of the instance slug, <project>-<environment>-<component>.
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] | . == "prod" or . == "production"'
+        # With md-environment in the organization's default tags:
+        # halt_on_failure: '.params.md_metadata.default_tags["md-environment"] | . == "prod" or . == "production"'
 
 ui:
   ui:order:
@@ -128,4 +145,5 @@ ui:
   hosted_zone:
     ui:order:
       - source
+      - dnssec
       - zone_id

@@ -9,6 +9,19 @@ resource "aws_kms_key" "images" {
   count               = local.kms ? 1 : 0
   description         = "${local.name} container images"
   enable_key_rotation = true
+
+  # The account's own IAM policies decide who can manage the key. ECR uses it
+  # through a grant it makes when the repository is created.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AccountIAM"
+      Effect    = "Allow"
+      Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
+      Action    = "kms:*"
+      Resource  = "*"
+    }]
+  })
 }
 
 resource "aws_ecr_repository" "main" {
