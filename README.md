@@ -42,6 +42,7 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 | `github-repo` | The app's GitHub repository, with a pipeline that builds, pushes and deploys | `source-repository` |
 | `massdriver-project` | The app's Massdriver project, its environments, and a group its pipeline deploys with | `app-project` |
 | `codebase` | Where an app's images come from: its registry and, optionally, its repository. Runtimes connect to it | `aws-codebase` |
+| `massdriver-automations` | [Massdriver automations](https://github.com/massdriver-cloud/massdriver-automations) on the cluster: status page, drift checks, freeze windows, auto-deploys and more | none |
 
 ### Credentials
 
@@ -49,7 +50,7 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 |---|---|
 | AWS IAM Role (`aws-iam-role`) | Every AWS bundle |
 | GitHub App (`github-app`) | `github-repo` |
-| Massdriver Service Account (`massdriver-service-account`, from [massdriver-resource-types](https://github.com/massdriver-cloud/massdriver-resource-types)) | `massdriver-project`, `github-repo`, `codebase` |
+| Massdriver Service Account (`massdriver-service-account`, from [massdriver-resource-types](https://github.com/massdriver-cloud/massdriver-resource-types)) | `massdriver-project`, `github-repo`, `codebase`, `massdriver-automations` |
 
 The onboarding bundles create projects, groups and service accounts, and share resources, so their Massdriver service account must be in Organization Admin. The type has no environment default: import the service account as a resource and set it as a remote reference on each bundle's **massdriver** slot.
 

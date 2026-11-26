@@ -389,6 +389,24 @@ onboard() {
   connect "apps-$app-repo" massdriver "$credential"
 }
 
+# automations_params: the platform's automations, from the same config files
+# automations.sh runs locally. router prints to a terminal and audit-archiver
+# writes to local disk, so they stay local.
+automations_params() {
+  local filter name key
+  # Every automation needs its settings, on or off.
+  filter='. + {audit_archiver: {enabled: false, config: ""}, bundle_scanner: {enabled: false, config: "", attributes: {}},
+    github_deployments: {enabled: false, config: ""}, proposal_chatops: {enabled: false, config: "", attributes: {}},
+    release_notes: {enabled: false, config: ""}, router: {enabled: false, config: "", scripts: {}},
+    autodeploy_downstream: {attributes: {}}, drift: {attributes: {}}, rollback_on_failure: {attributes: {}},
+    statuspage: {attributes: {}}}'
+  for name in statuspage drift autodeploy-downstream rollback-on-failure freeze-guard sandbox-on-join; do
+    key=${name//-/_}
+    filter+=" | .$key = (.$key // {}) + {enabled: true, config: $(jq -Rs . <"$HERE/automations/$name.yaml")}"
+  done
+  echo "$filter"
+}
+
 cmd_provision() {
   local stage
   stage=$(stage_arg "${1:-}")
@@ -450,6 +468,14 @@ cmd_provision() {
   deploy "billing-$stage-claims" s3-bucket "$stage"
   connect "billing-$stage-app" care "care-$stage-app.care"
   deploy "billing-$stage-app" ecs-service "$stage" '.subdomain = "billing" | .health_check_path = "/health"'
+
+  # One set of automations serves the whole organization. Tendwell always runs
+  # dev, so they run there.
+  if [ "$stage" = dev ]; then
+    log "platform-$stage automations"
+    connect "platform-$stage-automations" service_account "$(cd "$HERE" && tofu output -raw automations_credential)"
+    deploy "platform-$stage-automations" massdriver-automations "$stage" "$(automations_params)"
+  fi
 
   log "done. Ship real images with: ./deploy.sh ship <app> $stage"
 }

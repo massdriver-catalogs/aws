@@ -1,0 +1,549 @@
+name: massdriver-automations
+description: >-
+  Runs Massdriver automations on Amazon ECS with Fargate. Each enabled automation gets an ECS service, a host on the
+  cluster's load balancer, and an event destination that sends it only the events it uses.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/massdriver-automations
+version: 0.0.0
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+
+params:
+  examples:
+    - __name: Development
+      image: {repository: ghcr.io/massdriver-cloud/massdriver-automations, tag: latest}
+      ingress: {dns_records: true}
+      logs: {retention_days: 7}
+    - __name: Production
+      image: {repository: ghcr.io/massdriver-cloud/massdriver-automations, tag: latest}
+      ingress: {dns_records: true}
+      logs: {retention_days: 90}
+  required:
+    - image
+    - ingress
+    - logs
+    - audit_archiver
+    - autodeploy_downstream
+    - bundle_scanner
+    - drift
+    - freeze_guard
+    - github_deployments
+    - proposal_chatops
+    - release_notes
+    - rollback_on_failure
+    - router
+    - sandbox_on_join
+    - statuspage
+  properties:
+    image:
+      type: object
+      title: Image
+      required:
+        - repository
+        - tag
+      properties:
+        repository:
+          type: string
+          title: Repository
+          description: >-
+            The automations image. bundle-scanner uses the same repository with `-scanner` after the tag, and router
+            with `-scripts` when it runs commands.
+          default: ghcr.io/massdriver-cloud/massdriver-automations
+        tag:
+          type: string
+          title: Tag
+          description: The image tag, such as `1.2.0`. Pin a version so that a redeploy runs the same code.
+          default: latest
+          pattern: ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,100}$
+          message:
+            pattern: Must be a valid image tag.
+    ingress:
+      type: object
+      title: Ingress
+      required:
+        - dns_records
+      properties:
+        domain:
+          type: string
+          title: Domain
+          description: >-
+            Each automation is served at `<automation>.<domain>`, such as `freeze-guard.automations.acme.com`.
+            Empty uses the base domain of the cluster's hosted zone. The load balancer's HTTPS listener needs a
+            certificate for `*.<domain>`. Massdriver sends events to `https://<automation>.<domain>/hooks/massdriver`.
+          pattern: ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$
+          message:
+            pattern: Must be a lowercase DNS name with at least one dot, such as automations.acme.com.
+        dns_records:
+          type: boolean
+          title: Create DNS records
+          description: >-
+            Creates a CNAME record to the load balancer for each host in the cluster's hosted zone. Hosts outside
+            the zone get no record.
+          default: true
+    logs:
+      type: object
+      title: Logs
+      required:
+        - retention_days
+      properties:
+        retention_days:
+          type: integer
+          title: Retention (days)
+          description: Days that CloudWatch Logs keeps the logs of each automation.
+          default: 90
+          enum: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+
+    audit_archiver:
+      type: object
+      title: audit-archiver
+      description: >-
+        Archives every event in S3, Splunk, or Datadog. The secrets hold the credentials.
+      required: [enabled, config]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of audit-archiver. Each of `s3`, `splunk`, and `datadog` that is set turns on its sink. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/audit-archiver/config.example.yaml) for every key.
+          default: |
+            s3:
+              bucket: acme-massdriver-audit
+              region: us-east-1
+
+    autodeploy_downstream:
+      type: object
+      title: autodeploy-downstream
+      description: Deploys opted-in dependents when an instance deploys.
+      required: [enabled, config, attributes]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of autodeploy-downstream: the rules that select downstream instances. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/autodeploy-downstream/config.example.yaml) for every key.
+          default: |
+            rules:
+              - name: autodeploy
+                downstream:
+                  autodeploy: "true"
+        attributes: &attributes
+          type: object
+          title: Event attributes
+          description: >-
+            Attribute values that an event's entity must have, such as `md-environment` = `prod`. Empty sends
+            events of any attributes.
+          default: {}
+          additionalProperties:
+            type: string
+
+    bundle_scanner:
+      type: object
+      title: bundle-scanner
+      description: >-
+        Scans each new bundle version with Trivy and Checkov. Results go to Slack, or to the logs only.
+      required: [enabled, config, attributes]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of bundle-scanner. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/bundle-scanner/config.example.yaml) for every key.
+          default: |
+            fail_severity: HIGH
+            slack:
+              channel: "#bundles"
+        attributes: *attributes
+
+    drift:
+      type: object
+      title: drift
+      description: >-
+        Plans the instances that match each check on a schedule, and alerts Slack about drift. Set the
+        `DRIFT_RUN_TOKEN` secret to turn on `POST https://drift.<domain>/drift/run?check=<name>`.
+      required: [enabled, config, attributes]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of drift: the checks and their Slack channels. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/drift/config.example.yaml) for every key.
+          default: |
+            slack:
+              channel: "#infra-drift"
+            checks:
+              - name: prod-nightly
+                schedule: "0 6 * * *"
+                match:
+                  md-environment: prod
+        attributes: *attributes
+
+    freeze_guard:
+      type: object
+      title: freeze-guard
+      description: >-
+        Adds deny policies for deployment actions to every custom group, except the exempt groups, during change
+        freeze windows. Set the `FREEZE_GUARD_ADMIN_TOKEN` secret to turn on
+        `POST https://freeze-guard.<domain>/freeze/lift?window=<name>`.
+      required: [enabled, config]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of freeze-guard: the windows, the exempt groups, and the Slack channels. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/freeze-guard/config.example.yaml) for every key.
+          default: |
+            timezone: UTC
+            exempt_groups: []
+            windows: []
+
+    github_deployments:
+      type: object
+      title: github-deployments
+      description: Shows Massdriver deployments as GitHub Deployments. Needs the `GITHUB_DEPLOYMENTS_TOKEN` secret.
+      required: [enabled, config]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of github-deployments. Keep `github.token_env` at its default, `GITHUB_TOKEN`, which holds the secret. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/github-deployments/config.example.yaml) for every key.
+          default: |
+            github:
+              repo_attribute: github_repo
+              ref_attribute: github_ref
+
+    proposal_chatops:
+      type: object
+      title: proposal-chatops
+      description: >-
+        Approve or reject proposed deployments from Slack. Needs the `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET`
+        secrets. Set the Slack app's interactivity URL to `https://proposal-chatops.<domain>/slack/interactions`.
+      required: [enabled, config, attributes]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of proposal-chatops: the channel, the channel attribute, and the allowed users. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/proposal-chatops/config.example.yaml) for every key.
+          default: |
+            slack:
+              channel: "#deploys"
+        attributes: *attributes
+
+    release_notes:
+      type: object
+      title: release-notes
+      description: >-
+        Posts new bundle versions to Slack or Teams. For Teams, set `teams.enabled` and the
+        `RELEASE_NOTES_TEAMS_WEBHOOK_URL` secret.
+      required: [enabled, config]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of release-notes. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/release-notes/config.example.yaml) for every key.
+          default: |
+            include_development: false
+            slack:
+              channel: "#releases"
+
+    rollback_on_failure:
+      type: object
+      title: rollback-on-failure
+      description: >-
+        Rolls an opted-in instance back to its last completed deployment when a deployment fails. Notices go to
+        Slack, or to the logs only.
+      required: [enabled, config, attributes]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of rollback-on-failure: the opt-in attribute and the Slack channel. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/rollback-on-failure/config.example.yaml) for every key.
+          default: |
+            attribute:
+              key: autorollback
+              value: "true"
+        attributes: *attributes
+
+    router:
+      type: object
+      title: router
+      description: >-
+        Runs HTTP requests, commands, and Massdriver API calls for the events that match its routes. The event
+        destination sends the event types of every route. The `ROUTER_ENV` secret is a JSON object of extra
+        environment variables, for `env.NAME` in jq or `{{ env "NAME" }}` in Go templates.
+      required: [enabled, config, scripts]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of router: its routes. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/router/config.example.yaml) for every key.
+          default: |
+            routes:
+              - name: log-failures
+                events: [deployment.failed]
+                do:
+                  - http:
+                      url: https://example.com/hooks/massdriver-failures
+        scripts:
+          type: object
+          title: Scripts
+          description: >-
+            Files for `exec` steps, by file name, mounted as executables in `/scripts`. A configuration with an
+            `exec` step, or any script, runs the `-scripts` image, which has `sh`, `jq`, `curl`, and `python3`.
+          default: {}
+          propertyNames:
+            pattern: ^[A-Za-z0-9][A-Za-z0-9._-]*$
+          additionalProperties:
+            type: string
+
+    sandbox_on_join:
+      type: object
+      title: sandbox-on-join
+      description: >-
+        Forks a sandbox environment for each new group member, and removes it when they leave. The event
+        destination condition is built from the groups in the rules.
+      required: [enabled, config]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of sandbox-on-join: the sandbox rules. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/sandbox-on-join/config.example.yaml) for every key.
+          default: |
+            sandboxes:
+              - group: Developers
+                project: api
+                environment: staging
+
+    statuspage:
+      type: object
+      title: statuspage
+      description: >-
+        Serves a public status page. The event destination condition is built from the environments in the
+        configuration.
+      required: [enabled, config, attributes]
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        host:
+          type: string
+          title: Host
+          description: The public host of the status site, such as `status.acme.com`. Empty uses `statuspage.<domain>`.
+        config:
+          type: string
+          title: Configuration
+          description: >-
+            The YAML config of statuspage: its pages and environments. See [config.example.yaml](https://github.com/massdriver-cloud/massdriver-automations/blob/main/automations/statuspage/config.example.yaml) for every key.
+          default: |
+            pages:
+              - title: Acme
+                environments:
+                  - id: api-prod
+                    title: Production
+        attributes: *attributes
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  cluster:
+    resource_type: aws-ecs-cluster@0.0.0
+    required: true
+  service_account:
+    resource_type: massdriver-service-account@~0.1
+    required: true
+
+resources: {}
+
+app:
+  secrets:
+    SLACK_BOT_TOKEN:
+      title: Slack bot token
+      description: >-
+        The `xoxb-` token of the Slack app. Every automation that posts to Slack uses it, with the channels in its
+        configuration.
+    SLACK_SIGNING_SECRET:
+      title: Slack signing secret
+      description: The signing secret of the Slack app. proposal-chatops checks button clicks with it.
+    SLACK_WEBHOOK_URL:
+      title: Slack webhook URL
+      description: >-
+        An incoming webhook, for a workspace without the Slack app. Every automation that posts sends to its one
+        channel. Ignored when the bot token is set.
+    AUDIT_ARCHIVER_AWS_ACCESS_KEY_ID:
+      title: audit-archiver AWS access key ID
+    AUDIT_ARCHIVER_AWS_SECRET_ACCESS_KEY:
+      title: audit-archiver AWS secret access key
+    AUDIT_ARCHIVER_SPLUNK_HEC_TOKEN:
+      title: audit-archiver Splunk HEC token
+    AUDIT_ARCHIVER_DD_API_KEY:
+      title: audit-archiver Datadog API key
+    DRIFT_RUN_TOKEN:
+      title: drift run token
+      description: >-
+        Callers of `POST /drift/run` send it as `Authorization: Bearer <token>`.
+    FREEZE_GUARD_ADMIN_TOKEN:
+      title: freeze-guard admin token
+      description: >-
+        Callers of `POST /freeze/lift` send it as `Authorization: Bearer <token>`.
+    GITHUB_DEPLOYMENTS_TOKEN:
+      title: github-deployments GitHub token
+      description: Needs `Deployments` write and `Metadata` read, or the `repo_deployment` scope.
+    RELEASE_NOTES_TEAMS_WEBHOOK_URL:
+      title: release-notes Teams webhook URL
+    ROUTER_ENV:
+      title: router environment
+      description: >-
+        A JSON object of environment variables for routes, such as `{"PAGERDUTY_ROUTING_KEY": "..."}`.
+      json: true
+
+ui:
+  ui:order:
+    - image
+    - ingress
+    - logs
+    - audit_archiver
+    - autodeploy_downstream
+    - bundle_scanner
+    - drift
+    - freeze_guard
+    - github_deployments
+    - proposal_chatops
+    - release_notes
+    - rollback_on_failure
+    - router
+    - sandbox_on_join
+    - statuspage
+    - "*"
+  image:
+    ui:order: [repository, tag]
+  ingress:
+    ui:order: [domain, dns_records]
+  logs:
+    ui:order: [retention_days]
+  audit_archiver:
+    ui:order: [enabled, config]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 12
+  autodeploy_downstream:
+    ui:order: [enabled, config, attributes]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 12
+  bundle_scanner:
+    ui:order: [enabled, config, attributes]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 8
+  drift:
+    ui:order: [enabled, config, attributes]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 16
+  freeze_guard:
+    ui:order: [enabled, config]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 12
+  github_deployments:
+    ui:order: [enabled, config]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 8
+  proposal_chatops:
+    ui:order: [enabled, config, attributes]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 8
+  release_notes:
+    ui:order: [enabled, config]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 8
+  rollback_on_failure:
+    ui:order: [enabled, config, attributes]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 8
+  router:
+    ui:order: [enabled, config, scripts]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 16
+    scripts:
+      additionalProperties:
+        ui:widget: textarea
+  sandbox_on_join:
+    ui:order: [enabled, config]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 12
+  statuspage:
+    ui:order: [enabled, host, config, attributes]
+    config:
+      ui:widget: textarea
+      ui:options:
+        rows: 16

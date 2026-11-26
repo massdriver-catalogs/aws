@@ -58,14 +58,16 @@ locals {
       team        = "platform"
       stages      = keys(local.stages)
       components = {
-        network = { bundle = "vpc", name = "Network" }
-        dns     = { bundle = "dns-zone", name = "DNS Zone" }
-        cluster = { bundle = "ecs-cluster", name = "ECS Cluster" }
-        oidc    = { bundle = "github-actions-oidc", name = "GitHub Actions OIDC" }
+        network     = { bundle = "vpc", name = "Network" }
+        dns         = { bundle = "dns-zone", name = "DNS Zone" }
+        cluster     = { bundle = "ecs-cluster", name = "ECS Cluster" }
+        oidc        = { bundle = "github-actions-oidc", name = "GitHub Actions OIDC" }
+        automations = { bundle = "massdriver-automations", name = "Automations" }
       }
       links = [
         "network.network -> cluster.network",
         "dns.zone -> cluster.dns",
+        "cluster.cluster -> automations.cluster",
       ]
     }
 
@@ -384,6 +386,28 @@ resource "massdriver_service_account_group_membership" "automations" {
   service_account_id = massdriver_service_account.automations.id
 }
 
+# The platform's automations bundle creates its event destinations and calls
+# the API with this.
+resource "massdriver_imported_resource" "automations" {
+  name          = "Massdriver Automations"
+  resource_type = "massdriver-service-account"
+  resource = jsonencode({
+    url             = var.massdriver_url
+    organization_id = var.organization_id
+    api_key         = massdriver_service_account.automations.token
+  })
+
+  # The API adds the version to the type, as with the AWS credential.
+  lifecycle {
+    ignore_changes = [resource_type]
+  }
+}
+
+resource "massdriver_resource_grant" "automations" {
+  resource_id          = massdriver_imported_resource.automations.id
+  recipient_conditions = jsonencode({ "md-project" = ["platform"] })
+}
+
 resource "massdriver_group" "platform" {
   name        = "Platform Engineering"
   description = "Owns the catalog, the platform project and app onboarding."
@@ -454,4 +478,8 @@ output "onboarding_credential" {
 output "automations_api_key" {
   value     = massdriver_service_account.automations.token
   sensitive = true
+}
+
+output "automations_credential" {
+  value = massdriver_imported_resource.automations.id
 }
