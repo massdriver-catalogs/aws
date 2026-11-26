@@ -389,12 +389,25 @@ onboard() {
   connect "apps-$app-repo" massdriver "$credential"
 }
 
-# automations_params: Tendwell's settings for the platform's automations.
-automations_params() {
-  echo ". + $(python3 -c 'import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml")
+# automation_params <automation>: its settings from automations.yaml, with
+# group names swapped for the IDs the forms take.
+automation_params() {
+  echo ". + $(python3 -c 'import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))[sys.argv[2]]))' "$HERE/automations.yaml" "$1")
     | $(cd "$HERE" && tofu output -json group_ids) as \$ids
-    | .sandbox_on_join.config.sandboxes |= map(.group = (\$ids[.group] // .group))
-    | .freeze_guard.config.exempt_groups |= map(\$ids[.] // .)"
+    | if (.config | type) == \"object\" and .config.sandboxes then .config.sandboxes |= map(.group = (\$ids[.group] // .group)) end
+    | if (.config | type) == \"object\" and .config.exempt_groups then .config.exempt_groups |= map(\$ids[.] // .) end"
+}
+
+# set_secret <instance> <name> <value>
+set_secret() {
+  graphql "$(jq -n --arg org "$(mass whoami -o json | jq -r .organization.id)" --arg id "$1" --arg n "$2" --arg v "$3" '{
+    query: "mutation($org: ID!, $id: ID!, $input: SetInstanceSecretInput!) { setInstanceSecret(organizationId: $org, id: $id, input: $input) { successful messages { message } } }",
+    variables: {org: $org, id: $id, input: {name: $n, value: $v}}
+  }')" | jq -e '.data.setInstanceSecret.successful' >/dev/null || die "couldn't set $2 on $1"
+}
+
+automations() {
+  python3 -c 'import sys, yaml; print("\n".join(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml"
 }
 
 cmd_provision() {
@@ -466,8 +479,14 @@ cmd_provision() {
       share "platform-$stage-$field" --condition "md-project=automations"
       mass environment default automations-main "platform-$stage-$field" >/dev/null
     done
-    connect automations-main-automations service_account "$(cd "$HERE" && tofu output -raw automations_credential)"
-    deploy automations-main-automations massdriver-automations-ecs "$stage" "$(automations_params)"
+    local automation instance
+    for automation in $(automations); do
+      instance=automations-main-${automation//-/}
+      connect "$instance" service_account "$(cd "$HERE" && tofu output -raw automations_credential)"
+      [ "$automation" != cost-explorer ] ||
+        set_secret "$instance" COST_EXPLORER_PASSWORD "$(cd "$HERE" && tofu output -raw cost_explorer_password)"
+      deploy "$instance" "massdriver-$automation-ecs" "$stage" "$(automation_params "$automation")"
+    done
   fi
 
   log "done. Ship real images with: ./deploy.sh ship <app> $stage"
@@ -598,7 +617,9 @@ cmd_teardown() {
     for project in billing care visits; do decommission "$project-$stage"; done
     if [ "$stage" = dev ]; then
       decommission automations-main
-      mass instance remote-reference remove automations-main-automations service_account >/dev/null 2>&1 || true
+      for automation in $(automations); do
+        mass instance remote-reference remove "automations-main-${automation//-/}" service_account >/dev/null 2>&1 || true
+      done
     fi
     release "$org" "platform-$stage-" "${APPS[@]/%/-$stage}" automations-main
     decommission "platform-$stage"

@@ -6,6 +6,10 @@ terraform {
       source  = "massdriver-cloud/massdriver"
       version = "~> 2.5"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 }
 
@@ -43,6 +47,8 @@ variable "protect_prod" {
 }
 
 locals {
+  automations = keys(yamldecode(file("${path.module}/automations.yaml")))
+
   stages = {
     dev  = { name = "Development", prod = false }
     prod = { name = "Production", prod = true }
@@ -58,10 +64,10 @@ locals {
       team        = "platform"
       stages      = keys(local.stages)
       components = {
-        network     = { bundle = "vpc", name = "Network" }
-        dns         = { bundle = "dns-zone", name = "DNS Zone" }
-        cluster     = { bundle = "ecs-cluster", name = "ECS Cluster" }
-        oidc        = { bundle = "github-actions-oidc", name = "GitHub Actions OIDC" }
+        network = { bundle = "vpc", name = "Network" }
+        dns     = { bundle = "dns-zone", name = "DNS Zone" }
+        cluster = { bundle = "ecs-cluster", name = "ECS Cluster" }
+        oidc    = { bundle = "github-actions-oidc", name = "GitHub Actions OIDC" }
       }
       links = [
         "network.network -> cluster.network",
@@ -77,11 +83,11 @@ locals {
       description = "Massdriver automations for the whole organization: status page, drift checks, change freezes, auto-deploys and more."
       team        = "platform"
       stages      = ["main"]
-      components = {
-        cluster     = { bundle = "ecs-cluster", name = "ECS Cluster" }
-        automations = { bundle = "massdriver-automations-ecs", name = "Automations" }
-      }
-      links = ["cluster.cluster -> automations.ecs_cluster"]
+      components = merge(
+        { cluster = { bundle = "ecs-cluster", name = "ECS Cluster" } },
+        { for a in local.automations : replace(a, "-", "") => { bundle = "massdriver-${a}-ecs", name = title(replace(a, "-", " ")) } },
+      )
+      links = [for a in local.automations : "cluster.cluster -> ${replace(a, "-", "")}.ecs_cluster"]
     }
 
     apps = {
@@ -201,7 +207,8 @@ locals {
 
   # The apps redeploy when what they connect to changes, and roll back when a
   # deploy fails.
-  runtimes = ["visits-app", "visits-notifier", "care-app", "billing-app"]
+  runtimes     = ["visits-app", "visits-notifier", "care-app", "billing-app"]
+  app_projects = ["visits", "care", "billing"]
 
   # Every catalog bundle is open to every project; each app's bundle only to its own.
   bundle_access = merge(
@@ -252,14 +259,18 @@ resource "massdriver_organization_settings" "this" {
   default_tags                      = [massdriver_custom_attribute.team.key, massdriver_custom_attribute.data_classification.key]
 }
 
-# The autodeploy-downstream and rollback-on-failure automations
-# act only on components that opt in with these.
+# The automations act only on components that opt in with these. Which
+# values do anything for a team is set in automations.yaml.
 resource "massdriver_custom_attribute" "automation" {
-  for_each = toset(["autodeploy", "autorollback"])
+  for_each = {
+    autodeploy   = ["upstream-changes", "hourly", "daily", "off"]
+    autorollback = ["true", "false"]
+    driftwatch   = ["drift-hourly", "drift-daily", "reconcile-proposal-hourly", "reconcile-proposal-daily", "off"]
+  }
 
   key    = each.key
   scope  = "COMPONENT"
-  values = ["true", "false"]
+  values = each.value
 }
 
 resource "massdriver_project" "this" {
@@ -312,7 +323,8 @@ resource "massdriver_component" "this" {
   bundle_name = each.value.bundle
   attributes = merge(
     { data_classification = contains(local.phi, each.key) ? "phi" : "internal" },
-    contains(local.runtimes, each.key) ? { autodeploy = "true", autorollback = "true" } : {},
+    contains(local.runtimes, each.key) ? { autodeploy = "upstream-changes", autorollback = "true" } : {},
+    contains(local.app_projects, each.value.project) ? { driftwatch = "drift-daily" } : {},
   )
 
   depends_on = [massdriver_oci_repository_grant.bundle, massdriver_custom_attribute.data_classification, massdriver_custom_attribute.automation]
@@ -485,6 +497,16 @@ output "one_account" {
 
 output "onboarding_credential" {
   value = massdriver_imported_resource.onboarding.id
+}
+
+resource "random_password" "cost_explorer" {
+  length  = 24
+  special = false
+}
+
+output "cost_explorer_password" {
+  value     = random_password.cost_explorer.result
+  sensitive = true
 }
 
 # The automations' forms pick groups by ID, which changes with each bootstrap.

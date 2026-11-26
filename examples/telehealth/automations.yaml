@@ -1,34 +1,35 @@
-# Only automations that need nothing deployed beside them are on.
+# Only automations that need nothing deployed beside them. Groups go by name
+# because their IDs change with every bootstrap.
 
-autodeploy_downstream:
-  enabled: true
+autodeploy-downstream:
   attributes: {}
   config:
-    # The apps opt in with autodeploy=true on their components (bootstrap.tf), so
-    # they pick up a changed database, queue or bucket without someone redeploying
-    # them by hand.
+    # A component opts in with autodeploy=upstream-changes. The team list is
+    # what each group is entitled to: a team outside it can set the value, and
+    # nothing happens.
     rules:
       # Dev follows its dependencies right away.
-      - name: dev-cascade
+      - name: dev-upstream-changes
         upstream:
           md-environment: dev
         downstream:
-          autodeploy: "true"
+          autodeploy: upstream-changes
           md-environment: dev
+          team: platform, patient-experience, clinical, revenue
         action: deploy
 
       # Prod gets a proposal instead, so a second person still approves every
       # change, the same as a deploy someone starts.
-      - name: prod-review
+      - name: prod-upstream-changes
         upstream:
           md-environment: prod
         downstream:
-          autodeploy: "true"
+          autodeploy: upstream-changes
           md-environment: prod
+          team: platform, patient-experience, clinical, revenue
         action: propose
 
-rollback_on_failure:
-  enabled: true
+rollback-on-failure:
   attributes: {}
   config:
     # The apps opt in with autorollback=true on their components (bootstrap.tf).
@@ -39,34 +40,109 @@ rollback_on_failure:
       value: "true"
 
 drift:
-  enabled: true
   attributes: {}
   config:
+    # A component picks its schedule with driftwatch, and with autodeploy
+    # hourly or daily to pick up new bundle releases. Each check's team list is
+    # what that group is entitled to: the platform team gets everything, and
+    # hourly runs cost plans, so other teams get them only where they matter.
     checks:
-      # Prod should only change through reviewed deploys, so drift there becomes a
-      # proposal that restores what was last deployed, for a person to approve.
-      - name: prod-nightly
+      - name: drift-hourly
+        schedule: "0 * * * *"
+        timezone: America/Los_Angeles
+        match:
+          driftwatch: drift-hourly
+          team: platform, clinical
+        mode: detect
+        resolve_with: deployed
+        max_concurrent: 3
+        summary: true
+
+      - name: drift-daily
         schedule: "0 6 * * *"
         timezone: America/Los_Angeles
         match:
-          md-environment: prod
+          driftwatch: drift-daily
+          team: platform, patient-experience, clinical, revenue
+        mode: detect
+        resolve_with: deployed
+        max_concurrent: 3
+        summary: true
+
+      # Drift becomes a proposal that restores the last deployment, for a person to approve.
+      - name: reconcile-proposal-hourly
+        schedule: "0 * * * *"
+        timezone: America/Los_Angeles
+        match:
+          driftwatch: reconcile-proposal-hourly
+          team: platform
         mode: propose
         resolve_with: deployed
         max_concurrent: 3
         summary: true
 
-      # Dev drifts all the time while people experiment; check it when asked.
-      - name: dev
+      - name: reconcile-proposal-daily
+        schedule: "0 6 * * *"
+        timezone: America/Los_Angeles
         match:
-          md-environment: dev
-        mode: detect
+          driftwatch: reconcile-proposal-daily
+          team: platform, patient-experience, clinical
+        mode: propose
         resolve_with: deployed
         max_concurrent: 3
-        notify_clean: true
         summary: true
 
-freeze_guard:
-  enabled: true
+      # Scheduled autodeploys redeploy the saved configuration, so a release on
+      # the instance's channel goes out without anyone starting it. Prod proposes.
+      - name: autodeploy-hourly-dev
+        schedule: "0 * * * *"
+        timezone: America/Los_Angeles
+        match:
+          autodeploy: hourly
+          md-environment: dev
+          team: platform
+        mode: resolve
+        resolve_with: saved
+        max_concurrent: 3
+        summary: true
+
+      - name: autodeploy-hourly-prod
+        schedule: "0 * * * *"
+        timezone: America/Los_Angeles
+        match:
+          autodeploy: hourly
+          md-environment: prod
+          team: platform
+        mode: propose
+        resolve_with: saved
+        max_concurrent: 3
+        summary: true
+
+      - name: autodeploy-daily-dev
+        schedule: "0 6 * * *"
+        timezone: America/Los_Angeles
+        match:
+          autodeploy: daily
+          md-environment: dev
+          team: platform, patient-experience, revenue
+        mode: resolve
+        resolve_with: saved
+        max_concurrent: 3
+        summary: true
+
+      - name: autodeploy-daily-prod
+        schedule: "0 6 * * *"
+        timezone: America/Los_Angeles
+        match:
+          autodeploy: daily
+          md-environment: prod
+          team: platform, patient-experience, revenue
+        mode: propose
+        resolve_with: saved
+        max_concurrent: 3
+        summary: true
+
+freeze-guard:
   config:
     # Prod changes wait for business hours on the West Coast, where Tendwell's
     # clinicians and on-call engineers are. Platform Engineering stays exempt so the
@@ -87,8 +163,7 @@ freeze_guard:
           - {from: Sat 17:00, to: Sun 08:00}
           - {from: Sun 17:00, to: Mon 08:00}
 
-sandbox_on_join:
-  enabled: true
+sandbox-on-join:
   config:
     # Each person who joins a Tendwell team gets an environment of their own in the
     # Developer Sandboxes project, forked from its empty template. Leaving the team
@@ -117,7 +192,6 @@ sandbox_on_join:
         copyEnvironmentDefaults: true
 
 statuspage:
-  enabled: true
   attributes: {}
   config:
     site:
@@ -186,8 +260,6 @@ statuspage:
           - {id: billing-prod, title: Billing, components: *billing}
 
 router:
-  enabled: true
-  scripts: {}
   config: |
       # Steps write to the container's own stdout, the router's process: the router
       # keeps a command's output for its debug logs, and these lines are for people
@@ -240,8 +312,7 @@ router:
                 - import sys; open('/proc/1/fd/1', 'w').write('' + sys.argv[1] + '\n')
                 - '\(if .type == "group_membership.added" then "+" else "-" end) \(.data.entity.account_name // .data.entity.account_email // .data.entity.service_account_name) \(if .type == "group_membership.added" then "joined" else "left" end) \(.data.entity.group_name)'
 
-audit_archiver: {enabled: false}
-bundle_scanner: {enabled: false}
-github_deployments: {enabled: false}
-proposal_chatops: {enabled: false}
-release_notes: {enabled: false}
+cost-explorer:
+  config:
+    title: Tendwell Health costs
+    dimensions: [md-project, md-environment, md-component, team]
