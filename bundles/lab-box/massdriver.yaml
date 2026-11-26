@@ -1,0 +1,204 @@
+name: lab-box
+description: >-
+  A private box where a coding agent builds browser games with a kid. One Fargate task on a shared ECS
+  cluster runs OpenCode's API and a web server for the game, both reachable only inside the VPC at a
+  stable private name. The agent's rules come from the player's age. The home directory is kept on EFS.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/lab-box
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Small
+      player_name: Player
+      player_age: 7
+      model: claude-opus-5-5
+      size: 1024/4096
+      spot: true
+      image_tag: ""
+      architecture: arm64
+      home_backups: false
+      log_retention_days: 7
+    - __name: Medium
+      player_name: Player
+      player_age: 7
+      model: claude-opus-5-5
+      size: 2048/8192
+      spot: true
+      image_tag: ""
+      architecture: arm64
+      home_backups: true
+      log_retention_days: 7
+    - __name: Large
+      player_name: Player
+      player_age: 7
+      model: claude-opus-5-5
+      size: 4096/16384
+      spot: true
+      image_tag: ""
+      architecture: arm64
+      home_backups: true
+      log_retention_days: 30
+  required:
+    - player_name
+    - player_age
+    - model
+    - size
+    - spot
+    - image_tag
+    - architecture
+    - home_backups
+    - log_retention_days
+  properties:
+    player_name:
+      title: Player's first name
+      description: What the agent calls the player. A first name or a nickname only.
+      type: string
+      default: Player
+      minLength: 1
+      maxLength: 30
+      pattern: ^[A-Za-z][A-Za-z '-]{0,29}$
+      message:
+        pattern: "Letters, spaces, hyphens and apostrophes, like Maya or Jo-Jo."
+    player_age:
+      title: Player's age
+      description: >-
+        Sets the agent's rules: how it talks, what's allowed in a game, and whether it may use the web
+        (13 and up only).
+      type: integer
+      default: 7
+      minimum: 5
+      maximum: 17
+    model:
+      title: Claude model
+      description: >-
+        The model the agent builds with. ***Billed per token by Anthropic: Opus 5.5 $4/$20, Sonnet 5.5
+        $2/$10, Haiku 5.5 $0.10/$0.50 per million tokens in/out.***
+      type: string
+      default: claude-opus-5-5
+      oneOf:
+        - const: claude-opus-5-5
+          title: Claude Opus 5.5 (best games)
+        - const: claude-sonnet-5-5
+          title: Claude Sonnet 5.5 (cheaper, still very good)
+        - const: claude-haiku-5-5
+          title: Claude Haiku 5.5 (cheapest, simple games)
+    size:
+      title: Box size
+      description: >-
+        CPU and memory. 3D games and npm installs want more. ***Per month on arm64, running all the time;
+        Spot is ~70% less.***
+      type: string
+      default: 1024/4096
+      oneOf:
+        - const: 1024/4096
+          title: 1 vCPU, 4 GB (~$34)
+        - const: 2048/8192
+          title: 2 vCPU, 8 GB (~$68)
+        - const: 4096/16384
+          title: 4 vCPU, 16 GB (~$136)
+    spot:
+      title: Run on Spot
+      description: >-
+        Spare capacity AWS can take back with two minutes' notice. ECS starts a new box and the game is
+        still there; a reply the agent was writing is lost. ***~70% cheaper.***
+      type: boolean
+      default: true
+    image_tag:
+      title: Image tag
+      description: >-
+        A tag in the codebase's image repository. Leave it empty to run the newest image pushed there;
+        each deploy picks up the newest one again.
+      type: string
+      default: ""
+      pattern: ^(|[A-Za-z0-9_][A-Za-z0-9._-]{0,127})$
+      message:
+        pattern: "An image tag like 3f2a9c1, or empty for the newest image."
+    architecture:
+      title: Architecture
+      description: The CPU type the image is built for. A mismatch fails with `exec format error`. ***arm64 is ~20% cheaper.***
+      type: string
+      default: arm64
+      oneOf:
+        - const: arm64
+          title: arm64 (Graviton)
+        - const: x86_64
+          title: x86_64 (Intel/AMD)
+    home_backups:
+      title: Back up the games
+      description: >-
+        Daily AWS Backup copies of the home directory, kept 35 days, to get back a game the agent broke or
+        deleted. ***~$0.05 per GB-month backed up.***
+      type: boolean
+      default: true
+    log_retention_days:
+      title: Log retention (days)
+      description: How long the box's startup and server logs are kept. ***Billed per GB ingested and stored.***
+      type: integer
+      default: 7
+      enum:
+        - 1
+        - 7
+        - 30
+        - 90
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  cluster:
+    resource_type: aws-ecs-cluster@0.0.0
+    required: true
+  codebase:
+    resource_type: aws-codebase@0.0.0
+    required: true
+  postgres:
+    resource_type: aws-postgres@0.0.0
+    required: false
+  cache:
+    resource_type: aws-valkey@0.0.0
+    required: false
+
+resources:
+  lab:
+    resource_type: lab-box@0.0.0
+    required: true
+
+app:
+  secrets:
+    ANTHROPIC_API_KEY:
+      title: Anthropic API key
+      description: >-
+        The key the agent calls Claude with, from the Claude Console. Use a key made for labs, with a
+        monthly spend limit.
+      required: true
+    LAB_PASSWORD:
+      title: Agent password
+      description: >-
+        The password the agent's API asks for. Whatever proxies to the box sets it; the box won't start
+        without one.
+      required: true
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+    config:
+      checkov:
+        # The environment is the second part of the instance slug, <project>-<environment>-<component>.
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] | . == "prod" or . == "production"'
+        # With md-environment in the organization's default tags:
+        # halt_on_failure: '.params.md_metadata.default_tags["md-environment"] | . == "prod" or . == "production"'
+
+ui:
+  ui:order:
+    - player_name
+    - player_age
+    - model
+    - size
+    - spot
+    - home_backups
+    - image_tag
+    - architecture
+    - log_retention_days
+    - "*"
+  player_age:
+    ui:widget: updown

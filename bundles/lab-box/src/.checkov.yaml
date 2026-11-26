@@ -1,0 +1,5 @@
+skip-check:
+  # The values are the Anthropic key and the agent's password, set in
+  # Massdriver. A deploy writes them; Secrets Manager has no rotation function
+  # for either.
+  - CKV2_AWS_57

@@ -1,0 +1,52 @@
+name: lab-box
+version: 0.0.0
+label: Lab Box
+
+ui:
+  connectionOrientation: link
+
+schema:
+  title: Lab Box
+  description: >-
+    A private machine running a coding agent with an HTTP API and a web server for what it builds.
+    Both answer only inside the VPC. The agent's API asks for HTTP basic auth with the user `opencode`
+    and the box's password, which is set on the box as a secret and never carried here.
+  type: object
+  additionalProperties: false
+  required:
+    - hostname
+    - agent_url
+    - game_url
+    - agent
+    - region
+  properties:
+    hostname:
+      title: Private hostname
+      description: Resolves inside the VPC to the box, wherever it's running now.
+      type: string
+      minLength: 1
+    agent_url:
+      title: Agent API URL
+      description: The coding agent's HTTP API, e.g. http://box.labs-maya-box.internal:4096.
+      type: string
+      pattern: ^https?://
+    game_url:
+      title: Game URL
+      description: The page the agent builds, served live, e.g. http://box.labs-maya-box.internal:8080/play/.
+      type: string
+      pattern: ^https?://
+    agent:
+      title: Agent
+      description: Which agent API answers at the agent URL.
+      type: string
+      enum:
+        - opencode
+    region:
+      title: Region
+      type: string
+      minLength: 1
+    security_group_id:
+      title: Security group ID
+      description: The box's own security group.
+      type: string
+      pattern: ^sg-[a-f0-9]+$
