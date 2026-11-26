@@ -1,5 +1,0 @@
-# Every event Massdriver records for Tendwell, one JSON file each, under
-# examples/telehealth/audit-log/YYYY/MM/DD/HH/. Relative to where
-# automations.sh runs the automations: this directory's parent.
-disk:
-  dir: audit-log

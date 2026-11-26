@@ -389,9 +389,8 @@ onboard() {
   connect "apps-$app-repo" massdriver "$credential"
 }
 
-# automations_params: the platform's automations, from the same config files
-# automations.sh runs locally. router prints to a terminal and audit-archiver
-# writes to local disk, so they stay local.
+# automations_params: the platform's automations that need no infrastructure
+# of their own, each from its config file in automations/.
 automations_params() {
   local filter name key
   # Every automation needs its settings, on or off.
@@ -400,7 +399,7 @@ automations_params() {
     release_notes: {enabled: false, config: ""}, router: {enabled: false, config: "", scripts: {}},
     autodeploy_downstream: {attributes: {}}, drift: {attributes: {}}, rollback_on_failure: {attributes: {}},
     statuspage: {attributes: {}}}'
-  for name in statuspage drift autodeploy-downstream rollback-on-failure freeze-guard sandbox-on-join; do
+  for name in statuspage drift autodeploy-downstream rollback-on-failure freeze-guard sandbox-on-join router; do
     key=${name//-/_}
     filter+=" | .$key = (.$key // {}) + {enabled: true, config: $(jq -Rs . <"$HERE/automations/$name.yaml")}"
   done

@@ -239,7 +239,7 @@ resource "massdriver_organization_settings" "this" {
   default_tags                      = [massdriver_custom_attribute.team.key, massdriver_custom_attribute.data_classification.key]
 }
 
-# automations.sh: the autodeploy-downstream and rollback-on-failure automations
+# The autodeploy-downstream and rollback-on-failure automations
 # act only on components that opt in with these.
 resource "massdriver_custom_attribute" "automation" {
   for_each = toset(["autodeploy", "autorollback"])
@@ -374,7 +374,6 @@ resource "massdriver_resource_grant" "onboarding" {
   recipient_conditions = jsonencode({ "md-project" = ["apps"] })
 }
 
-# automations.sh runs the automations locally as this service account.
 resource "massdriver_service_account" "automations" {
   name                     = "Automations"
   description              = "Runs Massdriver automations: status page, drift checks, auto-deploy and auto-rollback."
