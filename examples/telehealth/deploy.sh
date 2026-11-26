@@ -614,11 +614,14 @@ cmd_sandbox() {
   [ -z "${ANTHROPIC_API_KEY:-}" ] || set_secret "$env-workspace" ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
   [ -z "${GH_TOKEN:-}" ] || set_secret "$env-workspace" GH_TOKEN "$GH_TOKEN"
   deploy "$env-workspace" dev-workspace dev
-  local cluster
+  local cluster region service
   cluster=$(mass resource get platform-dev-cluster.cluster -o json)
+  region=$(jq -r .payload.region <<<"$cluster")
+  # Resources are named <organization>-<instance>.
+  service="$(mass whoami -o json | jq -r .organization.id)-$env-workspace"
   log "open a shell in $env with:
-  TASK=\$(aws ecs list-tasks --region $(jq -r .payload.region <<<"$cluster") --cluster $(jq -r .payload.name <<<"$cluster") --service-name $env-workspace --query 'taskArns[0]' --output text)
-  aws ecs execute-command --region $(jq -r .payload.region <<<"$cluster") --cluster $(jq -r .payload.name <<<"$cluster") --task \$TASK --container workspace --interactive --command 'workspace shell'"
+  TASK=\$(aws ecs list-tasks --region $region --cluster $(jq -r .payload.name <<<"$cluster") --service-name $service --query 'taskArns[0]' --output text)
+  aws ecs execute-command --region $region --cluster $(jq -r .payload.name <<<"$cluster") --task \$TASK --container workspace --interactive --command 'workspace shell'"
 }
 
 teardown_plan() {
