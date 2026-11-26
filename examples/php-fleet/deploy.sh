@@ -226,6 +226,8 @@ cmd_image() {
   deploy_once "$ENV-registry" ecr-repository
   deploy_once "$ENV-codebase" codebase '.share_with_project = false'
   # The apps pull their images with the codebase's policy.
+  # A resource has to be granted to an environment before it can be its default.
+  mass resource grant create "$ENV-codebase.codebase" --condition md-project=phpfleet >/dev/null 2>&1 || true
   set_default "$ENV" "$ENV-codebase.codebase"
   local runtime
   for runtime in $(versions | awk '$4 == "runs" { print $3 }' | sort -u); do
