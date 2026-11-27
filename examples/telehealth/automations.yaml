@@ -203,6 +203,12 @@ statuspage:
     deploys_as_maintenance: true
     # Short enough that the reminders dead-letter alarm shows up while you watch.
     min_duration: 1m
+    # A dot set to degraded or down on the canvas shows here too, and so does a
+    # banner that warns. The info banners on dev are for engineers, not patients.
+    stash:
+      health: true
+      banners: true
+      min_level: warning
 
     pages:
       - title: Development

@@ -139,7 +139,9 @@ deploy() {
   log "deploy $instance"
   local before
   before=$(latest_deployment "$instance")
-  preset "$bundle" "$stage" | jq "$filter" | mass instance deploy "$instance" --params - -m "deploy.sh provision $stage" --follow || true
+  # --params expands $name in every value, which empties jq variables such as
+  # log-results' $action. A patch that is the whole params is taken as written.
+  mass instance deploy "$instance" --patch "$(preset "$bundle" "$stage" | jq -c "$filter")" -m "deploy.sh provision $stage" --follow || true
   wait_for "$instance" "$before"
 }
 
