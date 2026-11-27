@@ -41,7 +41,13 @@
     "destroy": "Delete app",
     "running": "Running",
     "deploying": "Building…",
-    "empty": "You don't have any apps yet. git push something."
+    "empty": "You don't have any apps yet. git push something.",
+    "create": "Create app",
+    "open": "Open app",
+    "runtime": "Choose a language",
+    "addons": "Add-ons",
+    "failed": "Crashed",
+    "decommissioning": "Deleting…"
   },
   "css": "skin.css"
 }

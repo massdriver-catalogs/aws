@@ -58,7 +58,13 @@
     "destroy": "Delete",
     "running": "Ready",
     "deploying": "Building",
-    "empty": "Nothing here. That's fine."
+    "empty": "Nothing here. That's fine.",
+    "create": "Deploy",
+    "open": "Visit",
+    "runtime": "Runtime",
+    "addons": "Storage",
+    "failed": "Error",
+    "decommissioning": "Deleting"
   },
   "css": "skin.css"
 }

@@ -1,5 +1,5 @@
 # bin/rocketsled serve -config ../aws/examples/rocketsled/fauxroku.yaml -env-file ../aws/examples/rocketsled/.env
-# Keys marked with an issue are read once that issue ships in massdriver-cloud/rocketsled.
+# Keys still marked with an issue are not read yet; see massdriver-cloud/rocketsled.
 
 server:
   addr: ":8081"
@@ -12,21 +12,21 @@ data_dir: data/fauxroku
 
 massdriver:
   url: https://api.massdriver.cloud
-  account_mode: tenant                                # rocketsled#10
+  account_mode: tenant
   organization_id: "${MASSDRIVER_ORGANIZATION_ID}"
   # The Fauxroku Server service account: it can fork, deploy and remove
   # environments in the node, ruby and python projects and nothing else.
   api_key: "${FAUXROKU_MASSDRIVER_API_KEY}"
 
-skin: skins/fauxroku                                  # rocketsled#14
+skin: skins/fauxroku
 
-paas:                                                 # rocketsled#10
+paas:
   platform:                                           # rocketsled#15
     project: platform
     environment: main
     shares: [network.network, cluster.cluster]
 
-  runtimes:                                           # rocketsled#16
+  runtimes:
     - id: node
       name: Node.js
       project: node
@@ -46,13 +46,15 @@ paas:                                                 # rocketsled#10
       app_component: web
       image_param: image_uri
 
-  pinned:                                             # rocketsled#11
+  pinned:
     web:
       subdomain: "{{environment_id}}"
+      spot: true
     worker:
       subdomain: ""
+      spot: true
 
-  addons:                                             # rocketsled#3
+  addons:
     worker:
       title: Worker dynos
       summary: Background jobs from the same image, with PROCESS_TYPE=worker.
@@ -85,7 +87,7 @@ paas:                                                 # rocketsled#10
     param: subdomain
     target_field: url
 
-  plans:                                              # rocketsled#8
+  plans:
     web:
       Development: {price: "~$7/mo", summary: "1 dyno, 0.25 vCPU, 0.5 GB."}
       Production: {price: "~$58/mo", summary: "2 dynos, 1 vCPU, 2 GB, up to 6 when busy."}
@@ -99,13 +101,20 @@ paas:                                                 # rocketsled#10
       Development: {price: "~$6/mo", summary: "Up to 1 GB, 1,000 requests a second."}
       Production: {price: "~$65/mo", summary: "Up to 10 GB, 100,000 requests a second, snapshots."}
 
-  highlights:                                         # rocketsled#9
+  # Anyone can sign up, so each person gets a little and nothing lasts.
+  limits:
+    apps_per_person: 2
+    total_apps: 10
+    presets: [Development]
+    addons: [worker, cache]
+    ttl: 24h
+
+  highlights:
     website: [url]
     aws-postgres: [hostname, port, database, username]
     aws-valkey: [hostname, port]
 
 auth:
   providers:
-    github:
-      client_id: "${FAUXROKU_GITHUB_CLIENT_ID}"
-      client_secret: "${FAUXROKU_GITHUB_CLIENT_SECRET}"
+    # Anyone can sign up with just a name.
+    open: {}

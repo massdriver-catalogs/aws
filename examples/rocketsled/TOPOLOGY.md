@@ -98,4 +98,4 @@ Promoting staging to production copies the runtime component's config and bundle
 | Preview environments | [#6](https://github.com/massdriver-cloud/rocketsled/issues/6) |
 | Releases with deploy tokens | [#5](https://github.com/massdriver-cloud/rocketsled/issues/5) |
 
-Until they ship, `./deploy.sh fork <runtime> <id> [add-on...]` performs steps 1 to 3 above by hand.
+Rocketsled does steps 1 to 3 since #10, #16, #3 and #11. `./deploy.sh fork <runtime> <id> [add-on...]` does the same by hand.

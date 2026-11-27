@@ -85,24 +85,23 @@ Every Development preset fits in AWS's free tier or bills per request. What Verc
 
 ## The Rocketsled side
 
-[`fauxroku.yaml`](fauxroku.yaml) and [`fauxcel.yaml`](fauxcel.yaml) each stand up one Rocketsled server for one PaaS, wearing its skin from [`skins/`](skins/): Fauxroku's purple gradients and beveled buttons, Fauxcel's black, white and monospace. Most of what the configs say is waiting on Rocketsled features, tracked in [massdriver-cloud/rocketsled](https://github.com/massdriver-cloud/rocketsled/issues):
+[`fauxroku.yaml`](fauxroku.yaml) and [`fauxcel.yaml`](fauxcel.yaml) each run one Rocketsled server for one PaaS, wearing its skin from [`skins/`](skins/): Fauxroku's purple gradients and beveled buttons, Fauxcel's black, white and monospace. Anyone can sign up with just a name, pick a runtime, a plan and add-ons, and watch their app deploy. `paas.limits` keeps that cheap: two apps a person, the Development plans only, and every app removed 24 hours after it was made.
 
 | Key | What it does | Issue |
 |---|---|---|
 | `massdriver.account_mode: tenant`, `paas` | Serve forks of existing templates; no install, no customer credential | [#10](https://github.com/massdriver-cloud/rocketsled/issues/10) |
-| `skin` | Name, logo, design tokens, layout, copy and CSS, loaded at runtime | [#14](https://github.com/massdriver-cloud/rocketsled/issues/14) (subsumes [#1](https://github.com/massdriver-cloud/rocketsled/issues/1)) |
-| `paas.platform` | The shared platform, deployed once and pinned as defaults | [#15](https://github.com/massdriver-cloud/rocketsled/issues/15) |
-| `paas.runtimes` | Several templates per PaaS; an app is its own project | [#16](https://github.com/massdriver-cloud/rocketsled/issues/16) |
-| `paas.pinned` | Each environment's own subdomain, whatever the preset | [#11](https://github.com/massdriver-cloud/rocketsled/issues/11) |
-| `app_component`, `image_param` | Push to deploy: a release endpoint with deploy tokens | [#5](https://github.com/massdriver-cloud/rocketsled/issues/5) |
+| `skin` | Name, logo, design tokens, layout, copy and CSS, loaded at runtime | [#14](https://github.com/massdriver-cloud/rocketsled/issues/14) |
+| `paas.runtimes` | Several templates per PaaS; the customer picks one | [#16](https://github.com/massdriver-cloud/rocketsled/issues/16) |
+| `paas.pinned` | Params every environment gets whatever the plan, like its own subdomain | [#11](https://github.com/massdriver-cloud/rocketsled/issues/11) |
 | `paas.addons` | Deploy an add-on or don't | [#3](https://github.com/massdriver-cloud/rocketsled/issues/3) |
-| `paas.pipeline` | Stages, and promotion by copy | [#4](https://github.com/massdriver-cloud/rocketsled/issues/4) |
-| `paas.previews` | Review apps and preview deployments per pull request | [#6](https://github.com/massdriver-cloud/rocketsled/issues/6) |
-| `paas.domains` | Custom domains | [#7](https://github.com/massdriver-cloud/rocketsled/issues/7) |
 | `paas.plans` | Prices on plan cards | [#8](https://github.com/massdriver-cloud/rocketsled/issues/8) |
-| `paas.highlights` | The app's URL first on the environment page | [#9](https://github.com/massdriver-cloud/rocketsled/issues/9) |
-
-Until #10, #11 and #3 land, `./deploy.sh fork` does what the server will: fork the template, apply each picked component's cheapest preset and the environment's subdomain, pin the template's versions, and deploy only what was picked.
+| `paas.highlights` | What the app page shows from each resource | [#9](https://github.com/massdriver-cloud/rocketsled/issues/9) |
+| `paas.limits` | Apps per person and in all, allowed plans and add-ons, time to live | |
+| `paas.platform` | Not read: forks copy the platform's defaults from their template | [#15](https://github.com/massdriver-cloud/rocketsled/issues/15) |
+| `app_component`, `image_param` | Not read yet: push to deploy | [#5](https://github.com/massdriver-cloud/rocketsled/issues/5) |
+| `paas.pipeline` | Not read yet: stages, and promotion by copy | [#4](https://github.com/massdriver-cloud/rocketsled/issues/4) |
+| `paas.previews` | Not read yet: preview environments per pull request | [#6](https://github.com/massdriver-cloud/rocketsled/issues/6) |
+| `paas.domains` | Not read yet: custom domains | [#7](https://github.com/massdriver-cloud/rocketsled/issues/7) |
 
 ## Stand it up
 
@@ -117,14 +116,17 @@ DOMAIN=apps.example.com PARENT_ZONE_ID=Z0123456789 ./deploy.sh all
 
 `all` publishes every bundle as a development release, applies [`bootstrap.tf`](bootstrap.tf) (the platform project, a project and template per runtime, a service account per PaaS, the AWS credential), deploys the platform and each template's image repository and codebase (about $25 a month in all), builds the static file server, and writes `.env` with both servers' Massdriver keys. Every step asks before it touches AWS.
 
-Then, from a Rocketsled checkout next to this repository:
+Then run both websites on the platform's cluster, from a Rocketsled checkout next to this repository (about $4 a month on Spot):
 
 ```bash
-bin/rocketsled serve -config ../aws/examples/rocketsled/fauxroku.yaml -env-file ../aws/examples/rocketsled/.env
-bin/rocketsled serve -config ../aws/examples/rocketsled/fauxcel.yaml -env-file ../aws/examples/rocketsled/.env
+./deploy.sh servers        # https://fauxroku.<DOMAIN> and https://fauxcel.<DOMAIN>
 ```
 
-Each also needs a session secret, a base URL and a GitHub OAuth app in its environment (`FAUXROKU_SESSION_SECRET`, `FAUXROKU_BASE_URL`, `FAUXROKU_GITHUB_CLIENT_ID`, `FAUXROKU_GITHUB_CLIENT_SECRET`, and the same for `FAUXCEL_`).
+Or run one on your machine:
+
+```bash
+FAUXROKU_BASE_URL=http://localhost:8081 bin/rocketsled serve -config ../aws/examples/rocketsled/fauxroku.yaml -env-file ../aws/examples/rocketsled/.env
+```
 
 `./deploy.sh teardown` removes every customer environment, the templates' repositories, the platform and everything `bootstrap.tf` made.
 
@@ -136,7 +138,9 @@ bootstrap.tf                 the projects, templates, links, credential and serv
 deploy.sh                    role, publish, bootstrap, provision, fork, env, teardown
 blueprint.draft.yaml         the six canvases as files
 fauxroku.yaml, fauxcel.yaml  the Rocketsled servers
+server/                      their image: Rocketsled with these configs and skins
 skins/                       each PaaS's look: skin.json, logo.svg, skin.css
 applications/fauxroku-*      web dynos per language, and the worker, on ecs-service
 applications/fauxcel-*       functions, and the static file server, on lambda-function
+applications/rocketsled-server  the websites themselves, on ecs-service
 ```
