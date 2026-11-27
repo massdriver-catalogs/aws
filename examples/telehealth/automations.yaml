@@ -404,139 +404,139 @@ stash-sync:
       # Health comes from each bundle's own alarms. An idle dev instance's
       # error alarms have no data, which is not a problem, so only ALARM
       # changes the dot.
-      - target: {instance: care-dev-app, key: md/health}
+      - target: {instance: care-dev-app, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-care-dev-app-unhealthy}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: billing-dev-app, key: md/health}
+      - target: {instance: billing-dev-app, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-billing-dev-app-unhealthy}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: care-dev-charts, key: md/health}
+      - target: {instance: care-dev-charts, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-care-dev-charts-cpu}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: billing-dev-ledger, key: md/health}
+      - target: {instance: billing-dev-ledger, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-billing-dev-ledger-cpu}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: care-dev-sessions, key: md/health}
+      - target: {instance: care-dev-sessions, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-care-dev-sessions-storage}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: visits-dev-app, key: md/health}
+      - target: {instance: visits-dev-app, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-visits-dev-app-errors}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: visits-dev-notifier, key: md/health}
+      - target: {instance: visits-dev-notifier, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-visits-dev-notifier-errors}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: visits-dev-api, key: md/health}
+      - target: {instance: visits-dev-api, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-visits-dev-api-5xx}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: visits-dev-slots, key: md/health}
+      - target: {instance: visits-dev-slots, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-visits-dev-slots-throttles}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: platform-dev-network, key: md/health}
+      - target: {instance: platform-dev-network, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-platform-dev-network-nat-instance-status}
         text: [{below: 2, text: healthy}, {text: down}]
-      - target: {instance: platform-dev-dns, key: md/health}
+      - target: {instance: platform-dev-dns, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-platform-dev-dns-certificate-expiry}
         text: [{below: 2, text: healthy}, {text: down}]
       # Dead letters mean some reminders didn't go out; the queue still works.
-      - target: {instance: visits-dev-reminders, key: md/health}
+      - target: {instance: visits-dev-reminders, key: md/v1/health}
         cloudwatch: {alarm: tendwell-health-visits-dev-reminders-dead-letters}
         text: [{below: 2, text: healthy}, {text: degraded}]
 
-      - target: {instance: care-dev-app, key: md/usage, field: value}
+      - target: {instance: care-dev-app, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/ECS, metric: CPUUtilization, dimensions: {ClusterName: tendwell-health-platform-dev-cluster, ServiceName: tendwell-health-care-dev-app}}
-      - {target: {instance: care-dev-app, key: md/usage, field: max}, value: 100}
-      - {target: {instance: care-dev-app, key: md/usage, field: label}, value: CPU %}
-      - target: {instance: billing-dev-app, key: md/usage, field: value}
+      - {target: {instance: care-dev-app, key: md/v1/usage, field: max}, value: 100}
+      - {target: {instance: care-dev-app, key: md/v1/usage, field: label}, value: CPU %}
+      - target: {instance: billing-dev-app, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/ECS, metric: CPUUtilization, dimensions: {ClusterName: tendwell-health-platform-dev-cluster, ServiceName: tendwell-health-billing-dev-app}}
-      - {target: {instance: billing-dev-app, key: md/usage, field: max}, value: 100}
-      - {target: {instance: billing-dev-app, key: md/usage, field: label}, value: CPU %}
-      - target: {instance: care-dev-sessions, key: md/usage, field: value}
+      - {target: {instance: billing-dev-app, key: md/v1/usage, field: max}, value: 100}
+      - {target: {instance: billing-dev-app, key: md/v1/usage, field: label}, value: CPU %}
+      - target: {instance: care-dev-sessions, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/ElastiCache, metric: BytesUsedForCache, dimensions: {clusterId: tendwell-health-care-dev-sessions}, stat: Maximum, period: 5m}
         scale: 0.00000095367431640625
-      - {target: {instance: care-dev-sessions, key: md/usage, field: max}, value: 1024}
-      - {target: {instance: care-dev-sessions, key: md/usage, field: label}, value: MB of 1 GB}
-      - target: {instance: visits-dev-reminders, key: md/usage, field: value}
+      - {target: {instance: care-dev-sessions, key: md/v1/usage, field: max}, value: 1024}
+      - {target: {instance: care-dev-sessions, key: md/v1/usage, field: label}, value: MB of 1 GB}
+      - target: {instance: visits-dev-reminders, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/SQS, metric: ApproximateNumberOfMessagesVisible, dimensions: {QueueName: tendwell-health-visits-dev-reminders}, stat: Maximum}
         default: 0
-      - {target: {instance: visits-dev-reminders, key: md/usage, field: max}, value: 100}
-      - {target: {instance: visits-dev-reminders, key: md/usage, field: label}, value: reminders waiting}
+      - {target: {instance: visits-dev-reminders, key: md/v1/usage, field: max}, value: 100}
+      - {target: {instance: visits-dev-reminders, key: md/v1/usage, field: label}, value: reminders waiting}
       # The NAT instance has basic monitoring, one data point every five minutes.
-      - target: {instance: platform-dev-network, key: md/usage, field: value}
+      - target: {instance: platform-dev-network, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/EC2, metric: CPUUtilization, dimensions: {InstanceId: i-066c780cfb744f1ec}, period: 5m}
-      - {target: {instance: platform-dev-network, key: md/usage, field: max}, value: 100}
-      - {target: {instance: platform-dev-network, key: md/usage, field: label}, value: NAT CPU %}
-      - target: {instance: visits-dev-app, key: md/usage, field: value}
+      - {target: {instance: platform-dev-network, key: md/v1/usage, field: max}, value: 100}
+      - {target: {instance: platform-dev-network, key: md/v1/usage, field: label}, value: NAT CPU %}
+      - target: {instance: visits-dev-app, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/Lambda, metric: Duration, dimensions: {FunctionName: tendwell-health-visits-dev-app}, stat: p95, period: 5m}
         default: 0
-      - {target: {instance: visits-dev-app, key: md/usage, field: max}, value: 10000}
-      - {target: {instance: visits-dev-app, key: md/usage, field: label}, value: p95 ms of the 10s timeout}
-      - target: {instance: visits-dev-notifier, key: md/usage, field: value}
+      - {target: {instance: visits-dev-app, key: md/v1/usage, field: max}, value: 10000}
+      - {target: {instance: visits-dev-app, key: md/v1/usage, field: label}, value: p95 ms of the 10s timeout}
+      - target: {instance: visits-dev-notifier, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/Lambda, metric: Duration, dimensions: {FunctionName: tendwell-health-visits-dev-notifier}, stat: p95, period: 5m}
         default: 0
-      - {target: {instance: visits-dev-notifier, key: md/usage, field: max}, value: 10000}
-      - {target: {instance: visits-dev-notifier, key: md/usage, field: label}, value: p95 ms of the 10s timeout}
+      - {target: {instance: visits-dev-notifier, key: md/v1/usage, field: max}, value: 10000}
+      - {target: {instance: visits-dev-notifier, key: md/v1/usage, field: label}, value: p95 ms of the 10s timeout}
       # S3 reports object counts once a day.
-      - target: {instance: care-dev-documents, key: md/usage, field: value}
+      - target: {instance: care-dev-documents, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/S3, metric: NumberOfObjects, dimensions: {BucketName: tendwell-health-care-dev-documents-083014189801, StorageType: AllStorageTypes}, period: 24h}
         default: 0
-      - {target: {instance: care-dev-documents, key: md/usage, field: max}, value: 1000}
-      - {target: {instance: care-dev-documents, key: md/usage, field: label}, value: visit notes}
-      - target: {instance: billing-dev-claims, key: md/usage, field: value}
+      - {target: {instance: care-dev-documents, key: md/v1/usage, field: max}, value: 1000}
+      - {target: {instance: care-dev-documents, key: md/v1/usage, field: label}, value: visit notes}
+      - target: {instance: billing-dev-claims, key: md/v1/usage, field: value}
         cloudwatch: {namespace: AWS/S3, metric: NumberOfObjects, dimensions: {BucketName: tendwell-health-billing-dev-claims-083014189801, StorageType: AllStorageTypes}, period: 24h}
         default: 0
-      - {target: {instance: billing-dev-claims, key: md/usage, field: max}, value: 1000}
-      - {target: {instance: billing-dev-claims, key: md/usage, field: label}, value: claim files}
+      - {target: {instance: billing-dev-claims, key: md/v1/usage, field: max}, value: 1000}
+      - {target: {instance: billing-dev-claims, key: md/v1/usage, field: label}, value: claim files}
 
       # Traffic on the lines out of the API, the functions and the table.
-      - target: {instance: visits-dev-api, key: md/traffic, field: rps}
+      - target: {instance: visits-dev-api, key: md/v1/traffic, field: rps}
         cloudwatch: {namespace: AWS/ApiGateway, metric: Count, dimensions: {ApiId: pdoodobthc}, stat: Sum}
         scale: 0.0166667
         default: 0
-      - target: {instance: visits-dev-api, key: md/traffic, field: errors_5m}
+      - target: {instance: visits-dev-api, key: md/v1/traffic, field: errors_5m}
         cloudwatch: {namespace: AWS/ApiGateway, metric: 5xx, dimensions: {ApiId: pdoodobthc}, stat: Sum, period: 5m}
         default: 0
-      - target: {instance: visits-dev-api, key: md/traffic, field: p95_ms}
+      - target: {instance: visits-dev-api, key: md/v1/traffic, field: p95_ms}
         cloudwatch: {namespace: AWS/ApiGateway, metric: Latency, dimensions: {ApiId: pdoodobthc}, stat: p95}
-      - target: {instance: visits-dev-app, key: md/traffic, field: rps}
+      - target: {instance: visits-dev-app, key: md/v1/traffic, field: rps}
         cloudwatch: {namespace: AWS/Lambda, metric: Invocations, dimensions: {FunctionName: tendwell-health-visits-dev-app}, stat: Sum}
         scale: 0.0166667
         default: 0
-      - target: {instance: visits-dev-app, key: md/traffic, field: errors_5m}
+      - target: {instance: visits-dev-app, key: md/v1/traffic, field: errors_5m}
         cloudwatch: {namespace: AWS/Lambda, metric: Errors, dimensions: {FunctionName: tendwell-health-visits-dev-app}, stat: Sum, period: 5m}
         default: 0
-      - target: {instance: visits-dev-notifier, key: md/traffic, field: rps}
+      - target: {instance: visits-dev-notifier, key: md/v1/traffic, field: rps}
         cloudwatch: {namespace: AWS/Lambda, metric: Invocations, dimensions: {FunctionName: tendwell-health-visits-dev-notifier}, stat: Sum}
         scale: 0.0166667
         default: 0
-      - target: {instance: visits-dev-notifier, key: md/traffic, field: errors_5m}
+      - target: {instance: visits-dev-notifier, key: md/v1/traffic, field: errors_5m}
         cloudwatch: {namespace: AWS/Lambda, metric: Errors, dimensions: {FunctionName: tendwell-health-visits-dev-notifier}, stat: Sum, period: 5m}
         default: 0
       # Read capacity units approximate reads per second for small items.
-      - target: {instance: visits-dev-slots, key: md/traffic, field: rps}
+      - target: {instance: visits-dev-slots, key: md/v1/traffic, field: rps}
         cloudwatch: {namespace: AWS/DynamoDB, metric: ConsumedReadCapacityUnits, dimensions: {TableName: tendwell-health-visits-dev-slots}, stat: Sum}
         scale: 0.0166667
         default: 0
-      - target: {instance: visits-dev-slots, key: md/traffic, field: errors_5m}
+      - target: {instance: visits-dev-slots, key: md/v1/traffic, field: errors_5m}
         cloudwatch: {namespace: AWS/DynamoDB, metric: ReadThrottleEvents, dimensions: {TableName: tendwell-health-visits-dev-slots}, stat: Sum, period: 5m}
         default: 0
 
-      - target: {environment: visits-dev, key: md/banner}
+      - target: {environment: visits-dev, key: md/v1/banner}
         value: {message: "Development: new releases deploy here first and soak 15 minutes before prod gets a proposal.", level: info}
-      - target: {environment: care-dev, key: md/banner}
+      - target: {environment: care-dev, key: md/v1/banner}
         value: {message: "Development: new releases deploy here first and soak 15 minutes before prod gets a proposal.", level: info}
-      - target: {environment: billing-dev, key: md/banner}
+      - target: {environment: billing-dev, key: md/v1/banner}
         value: {message: "Development: new releases deploy here first and soak 15 minutes before prod gets a proposal.", level: info}
-      - target: {environment: visits-dev, key: md/links}
+      - target: {environment: visits-dev, key: md/v1/links}
         value:
           links:
             - {label: Booking, url: "https://visits.dev.tendwell.mdawssbx.com"}
             - {label: Status page, url: "https://statuspage.dev.tendwell.mdawssbx.com/dev/"}
-      - target: {environment: care-dev, key: md/links}
+      - target: {environment: care-dev, key: md/v1/links}
         value:
           links:
             - {label: Charting, url: "https://care.dev.tendwell.mdawssbx.com"}
             - {label: Status page, url: "https://statuspage.dev.tendwell.mdawssbx.com/dev/"}
-      - target: {environment: billing-dev, key: md/links}
+      - target: {environment: billing-dev, key: md/v1/links}
         value:
           links:
             - {label: Claims, url: "https://billing.dev.tendwell.mdawssbx.com"}

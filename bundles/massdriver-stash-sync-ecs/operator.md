@@ -34,7 +34,7 @@ aws logs tail /ecs/$SVC --region {{dependencies.ecs_cluster.region}} --since 30m
 - **Wrong instance or environment:** the rule's `target` names the identifier, such as `billing-dev-app`, not the AWS name.
 - **A dimension is wrong:** CloudWatch returns no data, not an error. Compare the rule's dimensions with the metric in the CloudWatch console. `load_balancer` and `target_group` are the end of each ARN, such as `app/name/0123456789abcdef`.
 - **The value is a few minutes old:** CloudWatch metrics lag. The automation uses the latest data point in the last three periods.
-- **The log says a value does not match the schema:** the value doesn't fit the widget, for example `md/health` text longer than 64 characters. Fix the rule and deploy.
+- **The log says a value does not match the schema:** the value doesn't fit the widget, for example `md/v1/health` text longer than 64 characters. Fix the rule and deploy.
 
 ## Errors from CloudWatch
 
