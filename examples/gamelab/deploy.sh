@@ -9,6 +9,7 @@
 #   ./deploy.sh images          build both images and push them to their registries
 #   ./deploy.sh ship            build the server's image again and deploy it
 #   ./deploy.sh password        print Gamelab's address and sign-in password
+#   ./deploy.sh costs           connect Massdriver's cost reporting to this AWS account
 #   ./deploy.sh all             role, setup, publish, bootstrap and provision
 #   ./deploy.sh teardown        remove every lab, then everything above
 #
@@ -229,6 +230,47 @@ set_secret() {
     query: "mutation($org: ID!, $id: ID!, $input: SetInstanceSecretInput!) { setInstanceSecret(organizationId: $org, id: $id, input: $input) { successful messages { message } } }",
     variables: {org: $org, id: $id, input: {name: $n, value: env.SECRET_VALUE}}
   }')" | jq -e '.data.setInstanceSecret.successful' >/dev/null || die "couldn't set $2 on $1"
+}
+
+costs_plan() {
+  cat <<PLAN
+In $(aws_target):
+  - An IAM user, massdriver-costs-<org>, that can only read the account's massdriver-costs Cost and
+    Usage Report and resource tags, and its access key.
+Then connects the AWS Cost and Usage Reports integration in your Massdriver organization with that key.
+PLAN
+}
+
+# The Terraform provider can't manage integrations, so the key goes over the API.
+# An organization has one integration per type; a rerun leaves a connected one alone.
+cmd_costs() {
+  local org status values
+  confirm "$(costs_plan)"
+  org=$(org_id)
+
+  log "read-only user for the cost and usage report"
+  (cd "$HERE/costs" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve -var "organization=$org")
+
+  status=$(graphql "$(jq -n --arg org "$org" '{
+    query: "query($org: ID!) { integration(organizationId: $org, id: \"aws-cost-and-usage-reports\") { status } }",
+    variables: {org: $org}
+  }')" | jq -r '.data.integration.status // empty')
+  if [ -n "$status" ]; then
+    log "AWS Cost and Usage Reports integration is already $status"
+    return
+  fi
+
+  log "connect the AWS Cost and Usage Reports integration"
+  values=$(cd "$HERE/costs" && tofu output -json massdriver_integration_config)
+  graphql "$(jq -n --arg org "$org" --argjson v "$values" '{
+    query: "mutation($org: ID!, $input: CreateIntegrationInput!) { createIntegration(organizationId: $org, id: \"aws-cost-and-usage-reports\", input: $input) { successful messages { message } } }",
+    variables: {org: $org, input: {
+      config: ({bucket_name: $v.bucket_name, region: $v.bucket_region} | tojson),
+      auth: ({access_key_id: $v.access_key_id, secret_access_key: $v.secret_access_key} | tojson)
+    }}
+  }')" | jq -e -r 'if .data.createIntegration.successful then "connected"
+    else error([(.data.createIntegration.messages // [])[].message, (.errors // [])[].message] | join("; ")) end' >&2 ||
+    die "couldn't connect the integration; it needs an organization admin"
 }
 
 cmd_role() {
@@ -554,6 +596,7 @@ cmd_teardown() {
 
 case "${1:-}" in
   role) cmd_role ;;
+  costs) cmd_costs ;;
   setup) cmd_setup ;;
   publish) cmd_publish ;;
   bootstrap) cmd_bootstrap ;;
@@ -579,5 +622,5 @@ $(provision_plan)"
     cmd_bootstrap
     cmd_provision
     ;;
-  *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
