@@ -184,7 +184,12 @@ publish_type() {
   name=$(awk '/^name:/ { print $2; exit }' "$1/massdriver.yaml")
   log "publish resource type $name"
   mass repository create "$name" -t resource-type >/dev/null 2>&1 || true
-  mass resource-type publish "$1"
+  local out
+  # A published version can't change, so one the organization already has is current.
+  if ! out=$(mass resource-type publish "$1" 2>&1); then
+    grep -q "already exists" <<<"$out" || die "$out"
+  fi
+  echo "$out" >&2
 }
 
 publish_bundle() {
