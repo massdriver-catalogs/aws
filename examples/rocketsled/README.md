@@ -1,6 +1,6 @@
 # Rocketsled
 
-<img src="fauxroku.svg" alt="Fauxroku" width="64"> <img src="fauxcel.svg" alt="Fauxcel" width="64">
+<img src="logo.png" alt="Rocketsled" width="96">
 
 Rocketsled builds a PaaS out of Massdriver bundles. This example builds two knock-offs on this catalog and runs them side by side in one Massdriver organization:
 
@@ -135,6 +135,8 @@ What Vercel has and this catalog doesn't: an edge cache in front of the site (no
 Until #10 and #11 land, `./deploy.sh fork` does what the server will: `mass environment preview` with the template as the base, each component's cheapest preset, the environment's subdomain, and the template's bundle versions.
 
 ## Stand it up
+
+In Massdriver, give the organization `logo.png` as its icon (**Settings → General**). Then:
 
 ```bash
 export MASSDRIVER_PROFILE=rocketsled
