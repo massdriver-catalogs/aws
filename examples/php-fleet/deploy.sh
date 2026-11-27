@@ -215,7 +215,9 @@ image() {
     aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}" >&2
     # A stale saved public.ecr.aws login turns the public base image pull into a 403.
     docker logout public.ecr.aws >/dev/null 2>&1 || true
-    docker build --platform linux/arm64 --provenance=false --build-arg "PHP_VERSION=$1" -t "$url:$tag" "$HERE/src" >&2
+    local base=public.ecr.aws/docker/library/php
+    case "$1" in 5.* | 7.0.*) base=docker.io/library/php ;; esac
+    docker build --platform linux/arm64 --provenance=false --build-arg "PHP_VERSION=$1" --build-arg "BASE=$base" -t "$url:$tag" "$HERE/src" >&2
     docker push "$url:$tag" >&2
   fi
   echo "$url:$tag"
