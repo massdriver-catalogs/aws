@@ -85,8 +85,6 @@ locals {
         cluster  = { bundle = "ecs-cluster", name = "ECS Cluster" }
         box      = { bundle = "lab-box", name = "Lab Box" }
         gamedata = { bundle = "dynamodb-table", name = "Saves & Scores" }
-        saves    = { bundle = "postgres", name = "Game Saves" }
-        scores   = { bundle = "valkey", name = "Leaderboard" }
       }
       links = [
         "registry.repository -> codebase.registry",
@@ -123,7 +121,9 @@ locals {
   # Every catalog bundle is open to every project, except the lab box, which
   # belongs in labs, and the server, which belongs in gamelab.
   bundle_access = merge(
-    # Only what Gamelab runs, so its organization holds nothing else.
+    # Only what Gamelab runs, so its organization holds nothing else. Postgres
+    # and Valkey no longer run anywhere; dropping them deletes their published
+    # releases from the organization, so that waits for someone to decide.
     { for b in ["vpc", "dns-zone", "ecs-cluster", "ecr-repository", "codebase", "ecs-service", "dynamodb-table", "postgres", "valkey"] : b => "*" },
     { (yamldecode(file("${path.module}/applications/gamelab/bundle/massdriver.yaml")).name) = "gamelab" },
     { "ecs-scaling-policy" = "gamelab" },

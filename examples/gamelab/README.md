@@ -297,7 +297,7 @@ sequenceDiagram
   server-->>page: The chat and the game, as they were
 ```
 
-A lab box nobody has used for 30 minutes goes to sleep. Using means sending a chat message, the game asking the server for anything, or a tap or key press in the game, which `lib/screen.js` reports at most once a minute. A lab page left open doesn't count, and a box never sleeps while its helper is working on a reply. Opening the lab page or the game wakes it; waking took about a minute in testing. While it sleeps, the home page says the lab is napping, and an open lab page shows a **Wake it up** button.
+A lab box nobody has used for 30 minutes goes to sleep. Using means sending a chat message, the game asking the server for anything, or a tap or key press in the game, which `lib/screen.js` reports at most once a minute. A lab page left open doesn't count, and a box never sleeps while its helper is working on a reply. Opening the lab page or the game wakes it; waking took about a minute in testing (51 seconds from opening the lab page to the game). While it sleeps, the home page says the lab is napping, and an open lab page shows a **Wake it up** button.
 
 The server scales the box's ECS service directly instead of deploying through Massdriver, which would take minutes. It keeps the last use of each lab in memory; after a restart it counts every running box as used just then. Whether a box is asleep comes from ECS, so the pages are right after a restart. The box's service ignores its desired count on deploys, so a Massdriver deploy leaves a sleeping box asleep, with the new version ready for when it wakes.
 
@@ -362,13 +362,13 @@ Keep the contract identical to bundles/lab-box, so the Gamelab server and the la
   g6.2xlarge, g6e.xlarge; x86_64 only), with a short bold-italic monthly price on each, and make spot use Spot
   instances.
 - Same dependencies: aws_authentication (aws-iam-role), cluster (aws-ecs-cluster; use its VPC, private subnets
-  and region), codebase (aws-codebase; run its newest image or image_tag), and the optional postgres
-  (aws-postgres) and cache (aws-valkey), joining their client security groups and passing PG* variables,
-  PGPASSWORD from the database's secret, and REDIS_URL exactly as lab-box does.
+  and region), codebase (aws-codebase; run its newest image or image_tag), and the optional gamedata
+  (aws-dynamodb-table), attaching its read-write policy to the task role and passing GAMELAB_TABLE and
+  GAMELAB_TABLE_REGION exactly as lab-box does.
 - Same secrets: ANTHROPIC_API_KEY and LAB_PASSWORD, both required, with the same precondition that refuses to
   deploy without LAB_PASSWORD.
 - Same resource: field "lab" of type lab-endpoint, with hostname, agent_url (port 4096), game_url (port 8080,
-  /play/), agent "opencode", region and security_group_id. Give the box a stable private DNS name the same way
+  /play/), agent "opencode", region, security_group_id, cluster_arn and service_name. Give the box a stable private DNS name the same way
   (a Cloud Map private DNS namespace), because instances are replaced.
 - Same network rules: no public IP, ports 4096 and 8080 open only to the VPC's CIDR, all egress allowed.
 - Same persistence: the player's home on EFS with the same access point (uid 10001, /player), optional AWS
@@ -376,8 +376,8 @@ Keep the contract identical to bundles/lab-box, so the Gamelab server and the la
 
 Run it as an ECS service on an EC2 capacity provider (an Auto Scaling group of one GPU instance with the ECS
 GPU-optimized AMI) in the shared cluster, so lab.sh, ECS Exec ("lab shell") and the operator guide's commands
-work unchanged; reserve the GPU for the task. Its task role can do nothing but ECS Exec and mount the home
-directory. Pass checkov cleanly, or justify skips in src/.checkov.yaml, and copy the prod halt lines from
+work unchanged; reserve the GPU for the task, and ignore desired_count changes so Gamelab can put it to sleep.
+Its task role can do nothing but ECS Exec, mount the home directory and use the gamedata table. Pass checkov cleanly, or justify skips in src/.checkov.yaml, and copy the prod halt lines from
 bundles/vpc/massdriver.yaml. Write README.md (with a cost table), an operator.md 2am runbook with templating:
 mustache front matter, and CHANGELOG.md like lab-box's. Validate with mass bundle build, tofu validate and
 mass bundle lint, but don't publish or deploy.

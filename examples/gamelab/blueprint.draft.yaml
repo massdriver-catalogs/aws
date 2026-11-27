@@ -16,6 +16,7 @@ components:
   registry: { bundle: ecr-repository, name: Image Repository }
   codebase: { bundle: codebase, name: Codebase }
   cluster:  { bundle: ecs-cluster, name: ECS Cluster }
+  power:    { bundle: ecs-scaling-policy, name: Lab Power }
   app:      { bundle: gamelab-server, name: Gamelab Server }
 defaults:
   - platform/network.network
@@ -25,6 +26,8 @@ links:
   - registry.repository -> codebase.registry
   - codebase.codebase   -> app.codebase
   - cluster.cluster     -> app.cluster
+  - cluster.cluster     -> power.cluster
+  - power.policy        -> app.lab_power
 ---
 version: 1
 project: labs
@@ -34,8 +37,7 @@ components:
   codebase: { bundle: codebase, name: Lab Codebase }
   cluster:  { bundle: ecs-cluster, name: ECS Cluster }
   box:      { bundle: lab-box, name: Lab Box }
-  saves:    { bundle: postgres, name: Game Saves }
-  scores:   { bundle: valkey, name: Leaderboard }
+  gamedata: { bundle: dynamodb-table, name: Saves & Scores }
 defaults:
   - platform/network.network
   - platform/cluster.cluster
@@ -44,5 +46,4 @@ links:
   - registry.repository -> codebase.registry
   - codebase.codebase   -> box.codebase
   - cluster.cluster     -> box.cluster
-  - saves.database      -> box.postgres
-  - scores.cache        -> box.cache
+  - gamedata.table      -> box.gamedata
