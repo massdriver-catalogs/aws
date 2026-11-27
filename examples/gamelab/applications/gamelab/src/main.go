@@ -541,10 +541,13 @@ func (s *Server) play(w http.ResponseWriter, r *http.Request) {
 	// Playing is using the lab. A game opened while its box sleeps wakes it
 	// and checks back.
 	s.power.Touch(id)
-	if s.power.Asleep(r.Context(), id) {
+	asleep := s.power.Asleep(r.Context(), id)
+	if asleep {
 		if err := s.power.Wake(r.Context(), id); err != nil {
 			slog.Error("waking lab", "lab", id, "err", err)
 		}
+	}
+	if asleep || s.power.Starting(r.Context(), id) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Retry-After", "10")
 		if strings.HasPrefix(rest, "api/") {

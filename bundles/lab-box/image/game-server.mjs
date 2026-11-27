@@ -172,14 +172,14 @@ function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
+    // Reads to the end even when it's too big, so the answer can say so
+    // instead of cutting the connection.
     req.on("data", (c) => {
       size += c.length;
-      if (size > LIMITS.body) {
-        reject(Object.assign(new Error("too big"), { code: 413 }));
-        req.destroy();
-      } else chunks.push(c);
+      if (size <= LIMITS.body) chunks.push(c);
     });
     req.on("end", () => {
+      if (size > LIMITS.body) return reject(Object.assign(new Error("too big"), { code: 413 }));
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"));
       } catch {

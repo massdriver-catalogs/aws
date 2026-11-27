@@ -79,6 +79,15 @@ func (p *Power) Asleep(ctx context.Context, lab string) bool {
 	return err == nil && managed && s.desired == 0
 }
 
+// Starting reports a box that was woken and has no task running yet.
+func (p *Power) Starting(ctx context.Context, lab string) bool {
+	if p == nil {
+		return false
+	}
+	s, _, managed, err := p.service(ctx, lab, 5*time.Second)
+	return err == nil && managed && s.desired > 0 && s.running == 0
+}
+
 // service reads the box's ECS service, or reports false for a box that
 // doesn't say which service it is (one deployed before it could sleep).
 func (p *Power) service(ctx context.Context, lab string, maxAge time.Duration) (serviceState, target, bool, error) {
