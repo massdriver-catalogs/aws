@@ -48,6 +48,7 @@ type Lab struct {
 	Age       int
 	Plan      string
 	Gamedata  bool // Saves & scores
+	Lesson    string
 	CreatedAt time.Time
 	State     string // ready, building, removing, broken, stopped; the server adds asleep and waking
 	Detail    string
@@ -60,6 +61,7 @@ type NewLab struct {
 	Age      int
 	Plan     string
 	Gamedata bool
+	Lesson   string
 	// Each lab brings its own Anthropic key, so its Claude bill and spend
 	// limit belong to whoever made it. Never kept by the server; it goes
 	// straight to the box as a secret.
@@ -222,6 +224,27 @@ func running(status string) bool {
 
 var nameRe = regexp.MustCompile(`^[A-Za-z][A-Za-z '-]{0,29}$`)
 
+// The lab-box bundle's lesson param allows the same characters, and the box
+// quotes the lesson in the helper's prompt, so it never holds a quote mark or
+// a line break.
+var lessonRe = regexp.MustCompile(`^[A-Za-z0-9 .,'!?:;()&+=/%-]*$`)
+
+const maxLesson = 200
+
+// cleanLesson tidies what a parent typed: phone keyboards' curly apostrophes
+// and dashes become plain ones, and runs of spaces one.
+func cleanLesson(s string) (string, error) {
+	s = strings.NewReplacer("\u2019", "'", "\u2018", "'", "\u2013", "-", "\u2014", "-").Replace(s)
+	s = strings.Join(strings.Fields(s), " ")
+	if len([]rune(s)) > maxLesson {
+		return "", fmt.Errorf("Keep the lesson short: %d characters at most.", maxLesson)
+	}
+	if !lessonRe.MatchString(s) {
+		return "", errors.New("Write the lesson with letters, numbers and simple punctuation, like \"counting to 20\".")
+	}
+	return s, nil
+}
+
 func (n NewLab) validate(l *Labs) error {
 	n.Player = strings.TrimSpace(n.Player)
 	if !nameRe.MatchString(n.Player) {
@@ -232,6 +255,9 @@ func (n NewLab) validate(l *Labs) error {
 	}
 	if _, ok := l.plan(n.Plan); !ok {
 		return errors.New("Pick a plan.")
+	}
+	if _, err := cleanLesson(n.Lesson); err != nil {
+		return err
 	}
 	if !strings.HasPrefix(strings.TrimSpace(n.AnthropicKey), "sk-ant-") {
 		return errors.New("Paste an Anthropic API key. It starts with sk-ant-.")
@@ -275,6 +301,7 @@ func (l *Labs) Create(ctx context.Context, in NewLab) (string, error) {
 		return "", errLocal
 	}
 	in.Player = strings.TrimSpace(in.Player)
+	in.Lesson, _ = cleanLesson(in.Lesson)
 	envs, err := l.md.Environments(ctx, l.project)
 	if err != nil {
 		return "", err
@@ -327,6 +354,10 @@ func (l *Labs) Resume(ctx context.Context, id string) error {
 	}
 	if s := e.Instance(l.instance(id, "gamedata")); s != nil && s.Status == "PROVISIONED" {
 		in.Gamedata = true
+	}
+	// The box keeps the params of its last deploy, even one that failed.
+	if in.Lesson, err = l.Lesson(ctx, id); err != nil {
+		return err
 	}
 	plan, ok := l.plan(in.Plan)
 	if !ok {
@@ -387,6 +418,7 @@ func (l *Labs) setup(id string, in NewLab, plan Plan) {
 	box := map[string]any{
 		"player_name":  in.Player,
 		"player_age":   in.Age,
+		"lesson":       in.Lesson,
 		"model":        l.model,
 		"image_tag":    "",
 		"architecture": "arm64",
@@ -403,6 +435,8 @@ func (l *Labs) setup(id string, in NewLab, plan Plan) {
 	l.setJob(id, "")
 }
 
+// deployAndWait deploys an instance unless its last deploy already finished,
+// so a resumed setup skips what's done.
 func (l *Labs) deployAndWait(ctx context.Context, instance string, params map[string]any) error {
 	e, err := l.md.Environment(ctx, instance[:strings.LastIndex(instance, "-")])
 	if err != nil {
@@ -414,7 +448,11 @@ func (l *Labs) deployAndWait(ctx context.Context, instance string, params map[st
 			return nil
 		}
 	}
-	deployment, err := l.md.Deploy(ctx, instance, params, "Gamelab")
+	return l.deployNow(ctx, instance, params, "Gamelab")
+}
+
+func (l *Labs) deployNow(ctx context.Context, instance string, params map[string]any, message string) error {
+	deployment, err := l.md.Deploy(ctx, instance, params, message)
 	if err != nil {
 		return err
 	}
@@ -441,6 +479,80 @@ func (l *Labs) deployAndWait(ctx context.Context, instance string, params map[st
 			return fmt.Errorf("deployment of %s %s; its logs are in Massdriver", instance, strings.ToLower(d.Status))
 		}
 	}
+}
+
+// Lesson reads the lab's lesson from its box's params, where Massdriver keeps it.
+func (l *Labs) Lesson(ctx context.Context, id string) (string, error) {
+	if l.local {
+		return "", nil
+	}
+	params, err := l.md.Params(ctx, l.instance(id, "box"))
+	if err != nil {
+		return "", err
+	}
+	lesson, _ := params["lesson"].(string)
+	return lesson, nil
+}
+
+// SetLesson changes a ready lab's lesson and deploys its box in the
+// background. The box restarts with it; a sleeping box stays asleep and has it
+// when it wakes.
+func (l *Labs) SetLesson(ctx context.Context, id, lesson string) error {
+	if l.local {
+		return errLocal
+	}
+	lesson, err := cleanLesson(lesson)
+	if err != nil {
+		return err
+	}
+	lab, err := l.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !lab.Ready() {
+		return errors.New("The lab is busy. Change the lesson once it's ready.")
+	}
+	box := l.instance(id, "box")
+	params, err := l.md.Params(ctx, box)
+	if err != nil {
+		return err
+	}
+	if current, _ := params["lesson"].(string); current == lesson {
+		return nil
+	}
+	// Massdriver adds md_metadata itself on every deploy.
+	delete(params, "md_metadata")
+	params["lesson"] = lesson
+
+	const label = "Giving the helper the new lesson (a few minutes)"
+	message := "Gamelab: new lesson"
+	if lesson == "" {
+		message = "Gamelab: no lesson"
+	}
+	l.setJob(id, label)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Minute)
+		l.mu.Lock()
+		l.cancels[id] = cancel
+		l.mu.Unlock()
+		defer func() {
+			cancel()
+			l.mu.Lock()
+			delete(l.cancels, id)
+			l.mu.Unlock()
+		}()
+		if err := l.deployNow(ctx, box, params, message); err != nil {
+			if errors.Is(ctx.Err(), context.Canceled) {
+				return
+			}
+			slog.Error("changing the lesson", "lab", id, "err", err)
+			l.setErr(id, "Changing the lesson didn't work: "+friendly(err))
+			return
+		}
+		slog.Info("lesson changed", "lab", id, "lesson", lesson != "")
+		l.setJob(id, "")
+	}()
+	return nil
 }
 
 // Remove decommissions a lab; the sweeper deletes the empty environment.

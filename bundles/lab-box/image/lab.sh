@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # lab         run the lab: the coding agent and the game server (the container's entrypoint)
 # lab shell   a login shell as the player, from an ECS Exec session
+# lab prompt  print the agent's prompt for this box's settings
 set -uo pipefail
 
 PLAYER=player
@@ -20,10 +21,7 @@ fi
 log() { printf '%s lab: %s\n' "$(date -u +%FT%TZ)" "$*" >&2; }
 die() { log "$*"; exit 1; }
 
-[ "$(id -u)" = 0 ] || die "start as root; the lab drops to the player itself"
-# The agent can run any command in the lab, so it never listens without a password.
-[ -n "${LAB_PASSWORD:-}" ] || die "LAB_PASSWORD is not set; refusing to start the agent without one"
-[ -n "${ANTHROPIC_API_KEY:-}" ] || log "ANTHROPIC_API_KEY is not set; the agent will answer with an error until it is"
+PROMPTS=${GAMELAB_PROMPTS:-/opt/gamelab/prompts}
 
 age=${PLAYER_AGE:-8}
 [[ "$age" =~ ^[0-9]+$ ]] || die "PLAYER_AGE must be a number, got '$age'"
@@ -37,26 +35,52 @@ fi
 name=${PLAYER_NAME:-Player}
 model=${LAB_MODEL:-claude-opus-5-5}
 
-if [ -n "${GAMELAB_TABLE:-}" ]; then
-  saves="- Saves & scores are on in this lab: what a game saves with \`lib/saves.js\` lasts, and the high-score list stays between visits.
-"
-else
-  saves="- Saves & scores are off in this lab: \`lib/saves.js\` still works, but what a game saves lasts only until the game reloads. If the player wants saves that last, tell them to ask their grown-up about Saves & scores.
-"
-fi
+# The bundle checks the lesson too; this keeps the prompt safe from a box
+# started some other way. It goes into the prompt as a quoted topic, so it
+# can't hold quotes or line breaks.
+lesson=$(printf '%s' "${LAB_LESSON:-}" | tr -s '[:space:]' ' ' | tr -cd "A-Za-z0-9 .,'!?:;()&+=/%-" | tr -s ' ' | cut -c1-200)
+lesson=${lesson# }
+lesson=${lesson% }
 
-# The prompt and settings live outside the player's home so the agent can't
-# rewrite its own rules.
-{
-  cat /opt/gamelab/prompts/base.md
+prompt() {
+  local saves
+  if [ -n "${GAMELAB_TABLE:-}" ]; then
+    saves="- Saves & scores are on in this lab: what a game saves with \`lib/saves.js\` lasts, and the high-score list stays between visits.
+"
+  else
+    saves="- Saves & scores are off in this lab: \`lib/saves.js\` still works, but what a game saves lasts only until the game reloads. If the player wants saves that last, tell them to ask their grown-up about Saves & scores.
+"
+  fi
+  cat "$PROMPTS/base.md"
   printf '\n'
-  cat "/opt/gamelab/prompts/$band.md"
+  cat "$PROMPTS/$band.md"
   printf '\n## This lab\n\n'
   printf -- '- The player is %s, age %s. Use their first name; never ask for more about them.\n' "$name" "$age"
   printf -- '- The game lives in `%s`. The Play panel shows `index.html` from there, so open it in the Play panel instead of starting a server.\n' "$GAME_DIR"
   printf -- '- Game libraries are already here and load with no internet: `lib/phaser.min.js`, `lib/kaplay.mjs`, `lib/kaplay.js` and `lib/three.module.js` (an ES module: `import * as THREE from "./lib/three.module.js"`). Load them with a relative path, like `<script src="lib/phaser.min.js"></script>`.\n'
   printf '%s' "$saves"
-} >/etc/gamelab/prompt.md
+  # After the safety and age rules, so nothing in it can come before them.
+  if [ -n "$lesson" ]; then
+    printf '\n'
+    sed '/{{LESSON}}/,$d' "$PROMPTS/lesson.md"
+    printf 'Lesson: "%s"\n' "$lesson"
+    sed '1,/{{LESSON}}/d' "$PROMPTS/lesson.md"
+  fi
+}
+
+if [ "${1:-}" = prompt ]; then
+  prompt
+  exit
+fi
+
+[ "$(id -u)" = 0 ] || die "start as root; the lab drops to the player itself"
+# The agent can run any command in the lab, so it never listens without a password.
+[ -n "${LAB_PASSWORD:-}" ] || die "LAB_PASSWORD is not set; refusing to start the agent without one"
+[ -n "${ANTHROPIC_API_KEY:-}" ] || log "ANTHROPIC_API_KEY is not set; the agent will answer with an error until it is"
+
+# The prompt and settings live outside the player's home so the agent can't
+# rewrite its own rules.
+prompt >/etc/gamelab/prompt.md || die "couldn't write the agent's prompt"
 
 # Young players don't need the web; it's where the unsafe content is.
 if [ "$age" -ge 13 ]; then web=allow; else web=deny; fi
@@ -138,7 +162,7 @@ log "game server on :$GAME_PORT"
 as_game_server node /opt/gamelab/game-server.mjs &
 game=$!
 
-log "agent ($model, rules for $band) on :$AGENT_PORT"
+log "agent ($model, rules for $band${lesson:+, with a lesson}) on :$AGENT_PORT"
 as_player env OPENCODE_SERVER_PASSWORD="$LAB_PASSWORD" \
   opencode serve --hostname 0.0.0.0 --port "$AGENT_PORT" &
 agent=$!

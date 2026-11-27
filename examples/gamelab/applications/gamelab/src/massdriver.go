@@ -299,6 +299,25 @@ func (m *Massdriver) Deployment(ctx context.Context, id string) (*Deployment, er
 	return out.Deployment, err
 }
 
+// Params reads the params an instance was last deployed with.
+func (m *Massdriver) Params(ctx context.Context, instance string) (map[string]any, error) {
+	var out struct {
+		Instance *struct {
+			Params json.RawMessage `json:"params"`
+		} `json:"instance"`
+	}
+	err := m.do(ctx, `query Params($org: ID!, $id: ID!) {
+  instance(organizationId: $org, id: $id) { params }
+}`, map[string]any{"id": instance}, &out)
+	if err != nil {
+		return nil, err
+	}
+	if out.Instance == nil {
+		return nil, fmt.Errorf("instance %s not found", instance)
+	}
+	return jsonMap(out.Instance.Params), nil
+}
+
 // Resource reads the payload of the resource an instance publishes on field.
 func (m *Massdriver) Resource(ctx context.Context, instance, field string) (map[string]any, error) {
 	var out struct {

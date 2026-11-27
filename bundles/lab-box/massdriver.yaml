@@ -18,6 +18,7 @@ params:
       architecture: arm64
       home_backups: false
       log_retention_days: 7
+      lesson: ""
     - __name: Medium
       player_name: Player
       player_age: 7
@@ -28,6 +29,7 @@ params:
       architecture: arm64
       home_backups: true
       log_retention_days: 7
+      lesson: ""
     - __name: Large
       player_name: Player
       player_age: 7
@@ -38,6 +40,7 @@ params:
       architecture: arm64
       home_backups: true
       log_retention_days: 30
+      lesson: ""
   required:
     - player_name
     - player_age
@@ -68,6 +71,17 @@ params:
       default: 7
       minimum: 5
       maximum: 17
+    lesson:
+      title: Lesson
+      description: >-
+        Something every new game teaches, like counting to 20 or the planets. Leave it empty for regular
+        games. The agent reads it only as a topic, at the player's level.
+      type: string
+      default: ""
+      maxLength: 200
+      pattern: ^[A-Za-z0-9 .,'!?:;()&+=/%-]*$
+      message:
+        pattern: "Letters, numbers, spaces and basic punctuation, like counting to 20."
     model:
       title: Claude model
       description: >-
@@ -189,6 +203,7 @@ ui:
   ui:order:
     - player_name
     - player_age
+    - lesson
     - model
     - size
     - spot

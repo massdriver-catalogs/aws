@@ -19,6 +19,14 @@
       </select>
       <p class="hint">Sets the helper's rules: simple words and gentle games for young players; the web only for 13 and up.</p>
     </div>
+    <div class="field wide">
+      <label for="lesson">Lesson <span class="muted">(optional)</span></label>
+      <input id="lesson" name="lesson" value="{{.Form.lesson}}" maxlength="200" pattern="[A-Za-z0-9 .,'!?:;\(\)&amp;+=\/%\-]*" placeholder="counting to 20" autocomplete="off">
+      <p class="hint">Something you'd like the games to teach. The helper builds it into the play, at the player's level. Leave it empty for regular games. You can change it later.</p>
+      <div class="chips" aria-label="Ideas">
+        {{range .Lessons}}{{$band := .}}{{range .Ideas}}<button type="button" class="chip" data-min="{{$band.Min}}" data-max="{{$band.Max}}" data-lesson="{{.}}" hidden>{{.}}</button>{{end}}{{end}}
+      </div>
+    </div>
     <div class="field">
       <label for="anthropic_key">Anthropic API key</label>
       <input id="anthropic_key" name="anthropic_key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..." required>
@@ -49,3 +57,4 @@
   <button type="submit" class="big">Make the lab</button>
 </form>
 {{end}}
+{{define "scripts"}}<script src="/static/new.js"></script>{{end}}

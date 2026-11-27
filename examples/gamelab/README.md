@@ -110,8 +110,8 @@ sequenceDiagram
   participant md as Massdriver
   participant aws as AWS
 
-  parent->>server: New lab: first name, age, plan, extras, Anthropic key
-  server->>server: Check the name, age 5 to 17, the plan, and a key that starts with sk-ant-
+  parent->>server: New lab: first name, age, lesson (optional), plan, extras, Anthropic key
+  server->>server: Check the name, age 5 to 17, the lesson, the plan, and a key that starts with sk-ant-
   server->>md: forkEnvironment from labs-template to labs-maya, with lab_plan and player_age
   md-->>server: The environment exists
   server-->>parent: The lab page, "Getting the lab ready"
@@ -123,13 +123,15 @@ sequenceDiagram
     md->>aws: DynamoDB table, on demand
     server->>md: Check every 15 seconds until it completes
   end
-  server->>md: createDeployment labs-maya-box: name, age, model, the plan's size
+  server->>md: createDeployment labs-maya-box: name, age, lesson, model, the plan's size
   md->>aws: Fargate task, EFS home, private name, secrets
   server->>md: Check every 15 seconds until it completes
   server-->>parent: Ready to play
 ```
 
 The server checks the form, forks the template, and shows the lab page right away. Then it sets the box's two secrets and deploys the table first, because the box connects to it when it starts. The lab's password is never stored: the server works it out again from its session secret whenever it talks to the box. The Anthropic key goes straight to Massdriver as a secret, and the server keeps no copy. Massdriver holds all the state, so if a setup stops, **Try again** runs it again and every step skips what's already done.
+
+The lesson is a param of the lab's box, so Massdriver keeps it with everything else; it isn't an attribute, since attributes take a fixed set of values. Changing it on the lab page deploys the box with the new one. The box restarts to pick it up, and a sleeping box stays asleep and has it when it wakes.
 
 Removing a lab decommissions its environment, or deletes it right away if nothing is deployed. A sweep every minute deletes environments whose box finished decommissioning.
 
@@ -231,6 +233,9 @@ The lab box is [`bundles/lab-box`](../../bundles/lab-box): [OpenCode](https://op
 | 5 to 8 | Very short sentences, no technical words, lots of encouragement. Easy games, nothing scary at all. |
 | 9 to 12 | The player is the designer. Explains one real idea at a time; mild cartoon peril is fine. |
 | 13 to 17 | A mentor who teaches as it builds. May search the web for game-making docs. |
+| With a lesson | Builds the lesson into every new game, at the player's level: collect the right answer, solve to open the door. Says in one sentence what a game practices, cheers right answers and gently shows the right one after a miss. Doesn't rewrite a game the player already has. |
+
+A lesson is a topic a parent types, like "counting to 20". It comes after every other rule in the prompt, quoted, as a topic only: letters, numbers and simple punctuation, up to 200 characters, checked by the server, the bundle and `lab.sh`. If it isn't something to teach a kid, the helper ignores it and makes regular games. A lab without a lesson has no lesson in its prompt at all.
 
 The rules are backed by settings the agent can't change. When the box starts, `lab.sh` writes the prompt and OpenCode's settings to `/etc/gamelab`, outside the player's home, and runs the agent as the player. The settings let it edit only the game folder, never its own settings. Its shell can't run `curl`, `wget`, `ssh`, `scp`, `sudo`, `git push` or tunnels. Web search and fetch are on only for players 13 and up. Sharing is off, and only Anthropic models are allowed. The box itself can still reach the internet, because Claude and npm are there.
 

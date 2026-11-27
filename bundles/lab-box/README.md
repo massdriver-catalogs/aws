@@ -39,7 +39,7 @@ The contract a replacement must keep, so a GPU box or another agent can take its
 | Needs | `cluster` | `aws-ecs-cluster` | Its VPC and private subnets; ECS runs the task there |
 | Needs | `codebase` | `aws-codebase` | The image repository holding `image/` |
 | Needs, optional | `gamedata` | `aws-dynamodb-table` | Saves & scores; the task role gets its `read-write` policy, and the game server answers `/play/api/` from it |
-| Params | `player_name`, `player_age`, `model`, `size`, `spot`, `image_tag`, `architecture`, `home_backups`, `log_retention_days` | | |
+| Params | `player_name`, `player_age`, `lesson`, `model`, `size`, `spot`, `image_tag`, `architecture`, `home_backups`, `log_retention_days` | | |
 | Secrets | `ANTHROPIC_API_KEY`, `LAB_PASSWORD` | | |
 | Makes | `lab` | `lab-endpoint` | `agent_url`, `game_url`, `hostname`, `agent`, `region`, `cluster_arn`, `service_name` |
 
@@ -69,7 +69,7 @@ Whatever proxies to the box may set the service's desired count to 0 when nobody
 
 ## The agent's rules
 
-The image holds the rules in `image/prompts/`: `base.md` for every player, and one file per age band (5 to 8, 9 to 12, 13 to 17) for how it talks and what a game may contain. At start, `lab.sh` puts them together with the player's first name and age and whether Saves & scores are on, and writes the agent's settings outside the player's home, where the agent can't edit them.
+The image holds the rules in `image/prompts/`: `base.md` for every player, and one file per age band (5 to 8, 9 to 12, 13 to 17) for how it talks and what a game may contain. At start, `lab.sh` puts them together with the player's first name and age and whether Saves & scores are on, then `lesson.md` with the lesson quoted in it when the box has one, and writes the agent's settings outside the player's home, where the agent can't edit them.
 
 What the settings enforce, beyond the prompt:
 

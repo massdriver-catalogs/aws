@@ -27,6 +27,8 @@ locals {
       GAMELAB_TABLE        = var.gamedata.name
       GAMELAB_TABLE_REGION = var.gamedata.region
     },
+    # Left out when empty, so a lab without a lesson starts exactly as before.
+    trimspace(var.lesson) == "" ? {} : { LAB_LESSON = trimspace(var.lesson) },
   )
 
   # A digest rather than a tag, so a restarted task runs the image that was

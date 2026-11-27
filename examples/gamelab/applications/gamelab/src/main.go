@@ -184,6 +184,7 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("GET /labs/{id}", s.auth(s.labPage))
 	mux.Handle("POST /labs/{id}/remove", s.auth(s.remove))
 	mux.Handle("POST /labs/{id}/resume", s.auth(s.resume))
+	mux.Handle("POST /labs/{id}/lesson", s.auth(s.setLesson))
 	mux.Handle("GET /labs/{id}/chat", s.auth(s.chat))
 	mux.Handle("POST /labs/{id}/chat", s.auth(s.send))
 	mux.Handle("POST /labs/{id}/stop", s.auth(s.stopAgent))
@@ -358,7 +359,18 @@ func (s *Server) planNames() map[string]string {
 }
 
 func (s *Server) newPage(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "new", map[string]any{"Plans": s.plans, "Form": map[string]string{"plan": "medium", "age": "7"}, "Ages": ages()})
+	s.render(w, "new", map[string]any{"Plans": s.plans, "Form": map[string]string{"plan": "medium", "age": "7"}, "Ages": ages(), "Lessons": lessonIdeas})
+}
+
+type lessonIdea struct {
+	Min, Max int
+	Ideas    []string
+}
+
+var lessonIdeas = []lessonIdea{
+	{5, 8, []string{"counting to 10", "counting to 20", "spelling three-letter words", "letter sounds", "shapes and colors", "adding small numbers"}},
+	{9, 12, []string{"times tables", "adding fractions", "the planets", "telling time", "spelling tricky words", "countries and capitals"}},
+	{13, 17, []string{"solving for x", "the periodic table", "Spanish words", "world history dates", "coordinates and graphs", "binary numbers"}},
 }
 
 func ages() []int {
@@ -376,17 +388,18 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 		Age:      age,
 		Plan:     r.PostFormValue("plan"),
 		Gamedata: r.PostFormValue("gamedata") == "on",
+		Lesson:   r.PostFormValue("lesson"),
 
 		AnthropicKey: r.PostFormValue("anthropic_key"),
 	}
 	id, err := s.labs.Create(r.Context(), in)
 	if err != nil {
-		form := map[string]string{"player": in.Player, "age": strconv.Itoa(in.Age), "plan": in.Plan}
+		form := map[string]string{"player": in.Player, "age": strconv.Itoa(in.Age), "plan": in.Plan, "lesson": in.Lesson}
 		if in.Gamedata {
 			form["gamedata"] = "on"
 		}
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		s.render(w, "new", map[string]any{"Plans": s.plans, "Form": form, "Ages": ages(), "Error": friendly(err)})
+		s.render(w, "new", map[string]any{"Plans": s.plans, "Form": form, "Ages": ages(), "Lessons": lessonIdeas, "Error": friendly(err)})
 		return
 	}
 	http.Redirect(w, r, "/labs/"+url.PathEscape(id), http.StatusSeeOther)
@@ -401,6 +414,9 @@ func (s *Server) labPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Couldn't reach Massdriver: "+friendly(err), http.StatusBadGateway)
 		return
+	}
+	if lab.Lesson, err = s.labs.Lesson(r.Context(), lab.ID); err != nil {
+		slog.Warn("reading the lesson", "lab", lab.ID, "err", err)
 	}
 	// Opening the lab is using it: a sleeping box wakes, and the page checks
 	// back until it answers.
@@ -429,6 +445,23 @@ func (s *Server) remove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *Server) setLesson(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	lesson := r.PostFormValue("lesson")
+	if r.PostFormValue("clear") != "" {
+		lesson = ""
+	}
+	if err := s.labs.SetLesson(r.Context(), id, lesson); err != nil {
+		if errors.Is(err, errNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "Couldn't change the lesson: "+friendly(err), http.StatusUnprocessableEntity)
+		return
+	}
+	http.Redirect(w, r, "/labs/"+url.PathEscape(id), http.StatusSeeOther)
 }
 
 func (s *Server) resume(w http.ResponseWriter, r *http.Request) {

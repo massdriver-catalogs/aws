@@ -7,6 +7,18 @@
       <h1>{{.Lab.Player}}'s Lab</h1>
       <span class="status"><span class="dot"></span><span id="state">Ready</span></span>
     </div>
+    <details class="lesson-edit">
+      <summary>{{with .Lab.Lesson}}<span class="muted">Lesson:</span> {{.}}{{else}}<span class="muted">No lesson.</span> Add one{{end}}</summary>
+      <form method="post" action="/labs/{{.Lab.ID}}/lesson">
+        <label for="lesson">Lesson</label>
+        <input id="lesson" name="lesson" value="{{.Lab.Lesson}}" maxlength="200" pattern="[A-Za-z0-9 .,'!?:;\(\)&amp;+=\/%\-]*" placeholder="counting to 20" autocomplete="off">
+        <p class="hint">New games will teach this. The lab restarts to pick it up, which takes a few minutes. Games already made stay as they are.</p>
+        <div class="lesson-buttons">
+          <button type="submit" class="small">Save</button>
+          {{if .Lab.Lesson}}<button type="submit" name="clear" value="1" class="small secondary" formnovalidate>Clear the lesson</button>{{end}}
+        </div>
+      </form>
+    </details>
     <div id="nap" class="nap" hidden>
       <p><strong>Your lab is taking a nap.</strong> It rests when nobody has played for a while. Your games are all still there.</p>
       <button type="button" id="wake">Wake it up</button>
@@ -41,6 +53,7 @@
   <span class="spinner" aria-hidden="true"></span>
   <h1>{{.Lab.Player}}'s Lab</h1>
   <p class="lead">{{.Lab.Detail}}</p>
+  {{with .Lab.Lesson}}<p class="muted">Lesson: {{.}}</p>{{end}}
   {{if and (ne .Lab.State "building") (ne .Lab.State "removing") (ne .Lab.State "waking")}}
   <form method="post" action="/labs/{{.Lab.ID}}/resume"><button type="submit">{{if eq .Lab.State "broken"}}Try again{{else}}Set up the lab{{end}}</button></form>
   {{end}}
