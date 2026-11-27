@@ -317,3 +317,22 @@ cost-explorer:
   config:
     title: Tendwell Health costs
     dimensions: [md-project, md-environment, md-component, team]
+
+chaos-monkey:
+  config:
+    # Dry runs only: a PLAN shows what random params would do and changes
+    # nothing. Every two hours on weekdays, one dev instance at a time, so the
+    # plans are worth reading instead of noise.
+    mode: plan
+    schedule: "17 9-17/2 * * 1-5"
+    timezone: America/Los_Angeles
+    match:
+      md-environment: dev
+    status: [PROVISIONED]
+    instances: 1
+    strategies:
+      preset: 3
+      merge: 2
+      mutate: 2
+      gibberish: 1
+

@@ -85,6 +85,8 @@ locals {
       stages      = ["main"]
       components = merge(
         { cluster = { bundle = "ecs-cluster", name = "ECS Cluster" } },
+        # Holds automation images built from branches that aren't published yet.
+        { registry = { bundle = "ecr-repository", name = "Image Repository" } },
         { for a in local.automations : replace(a, "-", "") => { bundle = "massdriver-${a}-ecs", name = title(replace(a, "-", " ")) } },
       )
       links = [for a in local.automations : "cluster.cluster -> ${replace(a, "-", "")}.ecs_cluster"]
@@ -254,7 +256,9 @@ locals {
 
   # Every catalog bundle is open to every project; each app's bundle only to its own.
   bundle_access = merge(
-    { for f in fileset("${path.module}/../../bundles", "*/massdriver.yaml") : yamldecode(file("${path.module}/../../bundles/${f}")).name => "*" },
+    # Bundles that belong to another example's organization stay out of Tendwell's.
+    { for f in fileset("${path.module}/../../bundles", "*/massdriver.yaml") : yamldecode(file("${path.module}/../../bundles/${f}")).name => "*"
+    if !contains(["lab-box", "ecs-scaling-policy"], yamldecode(file("${path.module}/../../bundles/${f}")).name) },
     { for app in ["visits", "care", "billing"] : yamldecode(file("${path.module}/applications/${app}/bundle/massdriver.yaml")).name => app },
     # A VPN into a shared VPC belongs in a developer's own sandbox, not beside prod.
     { "developer-vpn" = "sandboxes", "dev-workspace" = "sandboxes" },
