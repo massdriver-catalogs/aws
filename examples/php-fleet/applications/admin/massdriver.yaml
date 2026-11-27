@@ -5,6 +5,6 @@ source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/php-fl
 version: 3.0.0
 
 app:
-  runtime: ecs-service-php7
+  runtime: ecs-service-php
   envs:
     APP_NAME: '"admin"'

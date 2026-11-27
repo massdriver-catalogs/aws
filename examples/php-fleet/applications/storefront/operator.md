@@ -6,7 +6,7 @@ templating: mustache
 {{#params.subdomain}}**URL:** https://{{params.subdomain}}.{{dependencies.cluster.zone.domain}}{{/params.subdomain}}{{^params.subdomain}}**URL:** none; set **Subdomain** to give it one.{{/params.subdomain}}
 
 - **Version:** 1.4.0
-- **Built on:** ecs-service-php7
+- **Built on:** ecs-service-php
 - **Size:** {{params.size}} ({{params.architecture}}), tasks: {{params.desired_count}}, Spot: {{params.spot}}
 - **Cluster:** {{dependencies.cluster.name}} ({{dependencies.cluster.region}})
 - **Image:** `{{params.image_uri}}`
@@ -32,9 +32,9 @@ aws logs tail /ecs/{{params.md_metadata.name_prefix}} --region {{dependencies.cl
 
 ## Move to a newer PHP
 
-This version keeps the runtime it was built on. To move to the newest PHP 7, publish Storefront again with `app.runtime: ecs-service-php7`, then put this instance on the new version and deploy:
+This version keeps the runtime it was built on. To move to the newest PHP, publish Storefront again with `app.runtime: ecs-service-php`, then put this instance on the new version and deploy:
 
 ```bash
 mass instance version {{id}}@<new version>
-mass instance deploy {{id}} -m "Storefront on the newest PHP 7" --follow
+mass instance deploy {{id}} -m "Storefront on the newest PHP" --follow
 ```

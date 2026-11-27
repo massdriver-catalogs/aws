@@ -1,12 +1,12 @@
 # Tendwell Supply: a PHP fleet mid-upgrade
 
-Tendwell Supply is the home-health supply shop that Tendwell Health runs beside its telehealth apps. It is seven small PHP services, each its own application bundle on the `ecs-service-php7` runtime. Each runtime version is a PHP release, so the shop's move from PHP 7.3 to 7.4.33 is a runtime upgrade. Some apps are built on the newest PHP, some are still on older ones, and some instances run an older app version than their app's newest.
+Tendwell Supply is the home-health supply shop that Tendwell Health runs beside its telehealth apps. It is seven small PHP services, each its own application bundle on the `ecs-service-php` runtime. Each runtime version is a PHP release, so the shop's move from PHP 5.6 and 7.3 to 7.4.33 is a runtime upgrade, with Admin still a major version behind on PHP 5.6. Some apps are built on the newest PHP, some are still on older ones, and some instances run an older app version than their app's newest.
 
-Open **Runtimes → ecs-service-php7** in Massdriver to see the rollout.
+Open **Runtimes → ecs-service-php** in Massdriver to see the rollout.
 
 ## The runtime
 
-`ecs-service-php7` is the catalog's `ecs-service` with PHP's defaults: Apache on port 80. It has no IaC of its own. `deploy.sh runtimes` assembles each version from `bundles/ecs-service` and [runtimes/ecs-service-php7](runtimes/ecs-service-php7) at publish time, so it always runs the same code as every other ECS app, and a fix to `ecs-service` reaches it on the next publish.
+`ecs-service-php` is the catalog's `ecs-service` with PHP's defaults: Apache on port 80. It has no IaC of its own. `deploy.sh runtimes` assembles each version from `bundles/ecs-service` and [runtimes/ecs-service-php](runtimes/ecs-service-php) at publish time, so it always runs the same code as every other ECS app, and a fix to `ecs-service` reaches it on the next publish.
 
 Its version is the PHP version. An app built on `7.4.33` gets `PHP_VERSION=7.4.33`, and its image is built `FROM php:7.4.33-apache`. [runtimes.txt](runtimes.txt) lists the versions to publish. A PHP 8 runtime would be another directory next to it, `ecs-service-php8`, and shows on its own runtime page.
 
