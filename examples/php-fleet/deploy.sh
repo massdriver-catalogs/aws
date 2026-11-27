@@ -251,11 +251,13 @@ deploy_app() {
   before=$(latest_deployment "$instance")
   preset ecs-service |
     jq --arg app "$app" --arg image "$image" \
-      '.image_uri = $image | .port = 80 | .spot = true | .subdomain = $app | .health_check_path = "/"' |
+      '.image_uri = $image | .port = 80 | .spot = true | .subdomain = (env.PUBLIC // "" | if . == "1" then $app else "" end) | .health_check_path = "/"' |
     mass instance deploy "$instance" --params - -m "$MESSAGE: $app $2 on ${3/@/ }" >/dev/null || true
   wait_for "$instance" "$before"
 }
 
+# Apps stay private, with no address on the load balancer, unless PUBLIC=1:
+# a fleet mid-migration is shown in Massdriver, not to the internet.
 # The apps deploy three at a time; seven OpenTofu runs at once can time out starting providers.
 cmd_deploy() {
   cmd_image
