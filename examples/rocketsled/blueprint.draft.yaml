@@ -10,31 +10,98 @@ links:
   - dns.zone        -> cluster.dns
 ---
 version: 1
-project: fauxroku
-name: Fauxroku
+project: node
+name: Fauxroku Node.js
 components:
-  web:    { bundle: fauxroku-web, name: Web Dynos }
-  worker: { bundle: fauxroku-worker, name: Worker Dynos }
-  db:     { bundle: postgres, name: Postgres }
-  cache:  { bundle: valkey, name: Key-Value Store }
+  registry: { bundle: ecr-repository, name: Image Repository }
+  codebase: { bundle: codebase, name: Codebase }
+  web:      { bundle: fauxroku-node, name: Web Dynos }
+  worker:   { bundle: fauxroku-worker, name: Worker Dynos }
+  db:       { bundle: postgres, name: Postgres }
+  cache:    { bundle: valkey, name: Key-Value Store }
 defaults:
   - platform/network.network
   - platform/cluster.cluster
+  - node/codebase.codebase
 links:
-  - db.database -> web.database
-  - db.database -> worker.database
-  - cache.cache -> web.cache
-  - cache.cache -> worker.cache
+  - registry.repository -> codebase.registry
+  - db.database         -> web.database
+  - db.database         -> worker.database
+  - cache.cache         -> web.cache
+  - cache.cache         -> worker.cache
 ---
 version: 1
-project: fauxcel
-name: Fauxcel
+project: ruby
+name: Fauxroku Ruby
 components:
-  api:  { bundle: http-api, name: Endpoint }
-  app:  { bundle: fauxcel-app, name: Functions }
-  kv:   { bundle: dynamodb-table, name: KV }
-  blob: { bundle: s3-bucket, name: Blob }
+  registry: { bundle: ecr-repository, name: Image Repository }
+  codebase: { bundle: codebase, name: Codebase }
+  web:      { bundle: fauxroku-ruby, name: Web Dynos }
+  worker:   { bundle: fauxroku-worker, name: Worker Dynos }
+  db:       { bundle: postgres, name: Postgres }
+  cache:    { bundle: valkey, name: Key-Value Store }
+defaults:
+  - platform/network.network
+  - platform/cluster.cluster
+  - ruby/codebase.codebase
 links:
-  - api.api     -> app.api
-  - kv.table    -> app.kv
-  - blob.bucket -> app.blob
+  - registry.repository -> codebase.registry
+  - db.database         -> web.database
+  - db.database         -> worker.database
+  - cache.cache         -> web.cache
+  - cache.cache         -> worker.cache
+---
+version: 1
+project: python
+name: Fauxroku Python
+components:
+  registry: { bundle: ecr-repository, name: Image Repository }
+  codebase: { bundle: codebase, name: Codebase }
+  web:      { bundle: fauxroku-python, name: Web Dynos }
+  worker:   { bundle: fauxroku-worker, name: Worker Dynos }
+  db:       { bundle: postgres, name: Postgres }
+  cache:    { bundle: valkey, name: Key-Value Store }
+defaults:
+  - platform/network.network
+  - platform/cluster.cluster
+  - python/codebase.codebase
+links:
+  - registry.repository -> codebase.registry
+  - db.database         -> web.database
+  - db.database         -> worker.database
+  - cache.cache         -> web.cache
+  - cache.cache         -> worker.cache
+---
+version: 1
+project: functions
+name: Fauxcel Functions
+components:
+  registry: { bundle: ecr-repository, name: Image Repository }
+  codebase: { bundle: codebase, name: Codebase }
+  api:      { bundle: http-api, name: Endpoint }
+  app:      { bundle: fauxcel-functions, name: Functions }
+  kv:       { bundle: dynamodb-table, name: KV }
+  blob:     { bundle: s3-bucket, name: Blob }
+defaults:
+  - functions/codebase.codebase
+links:
+  - registry.repository -> codebase.registry
+  - api.api             -> app.api
+  - kv.table            -> app.kv
+  - blob.bucket         -> app.blob
+---
+version: 1
+project: static
+name: Fauxcel Static
+components:
+  registry: { bundle: ecr-repository, name: Image Repository }
+  codebase: { bundle: codebase, name: Codebase }
+  api:      { bundle: http-api, name: Endpoint }
+  site:     { bundle: fauxcel-static, name: Site }
+  files:    { bundle: s3-bucket, name: Files }
+defaults:
+  - static/codebase.codebase
+links:
+  - registry.repository -> codebase.registry
+  - api.api             -> site.api
+  - files.bucket        -> site.files

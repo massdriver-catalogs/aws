@@ -4,19 +4,21 @@
 #   ./deploy.sh role              make the IAM role Massdriver deploys with, in the current AWS account
 #   ./deploy.sh publish           publish the resource types and bundles both PaaSes use
 #   ./deploy.sh bootstrap         apply bootstrap.tf and set each environment's AWS credential
-#   ./deploy.sh provision         deploy Fauxroku's shared platform; pin both templates
-#   ./deploy.sh fork <paas> <id>  fork a customer environment from a template and deploy it, the
-#                                 way a Rocketsled server does, e.g. ./deploy.sh fork fauxcel demo
+#   ./deploy.sh provision         deploy the shared platform and each template's image repository
+#   ./deploy.sh fork <runtime> <id> [add-on...]
+#                                 fork a customer environment from a runtime's template and deploy
+#                                 it with the add-ons named, the way a Rocketsled server does, e.g.
+#                                 ./deploy.sh fork ruby staging db  or  ./deploy.sh fork static demo
 #   ./deploy.sh env               write .env for the Rocketsled servers (fauxroku.yaml, fauxcel.yaml)
 #   ./deploy.sh all               role, publish, bootstrap, provision and env
 #   ./deploy.sh teardown          remove every customer environment, then everything above
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
-# PyYAML, and AWS CLI credentials for the account the PaaSes deploy into.
+# PyYAML, docker, and AWS CLI credentials for the account the PaaSes deploy into.
 #
 # Settings, from the environment:
 #   DOMAIN             the DNS zone Fauxroku apps live under, e.g. apps.example.com; an app's web
-#                      dynos answer at fauxroku-<id>.<DOMAIN>                    (provision)
+#                      dynos answer at <environment id>.<DOMAIN>                    (provision)
 #   PARENT_ZONE_ID     Route 53 zone of DOMAIN's parent in the same account. When set, the zone
 #                      is delegated from it automatically; otherwise delegate by hand.
 #   ISSUER             Massdriver's token issuer host; api.massdriver.cloud unless self-hosted
@@ -30,10 +32,11 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CATALOG="$(cd "$HERE/../.." && pwd)"
-BUNDLES=(vpc dns-zone ecs-cluster ecs-service postgres valkey http-api lambda-function dynamodb-table s3-bucket)
-APPS=(fauxroku-web fauxroku-worker fauxcel-app)
+BUNDLES=(vpc dns-zone ecs-cluster ecr-repository codebase ecs-service postgres valkey http-api lambda-function dynamodb-table s3-bucket)
+APPS=(fauxroku-node fauxroku-ruby fauxroku-python fauxroku-worker fauxcel-functions fauxcel-static)
+RUNTIMES=(node ruby python functions static)
 # The bundles above reference these, even where the connection is optional.
-TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-codebase aws-postgres aws-valkey aws-http-api aws-dynamodb-table aws-s3-bucket website)
+TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-ecr-repository aws-codebase source-repository app-project aws-postgres aws-valkey aws-http-api aws-dynamodb-table aws-s3-bucket website)
 
 log() { printf '\n==> %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
@@ -70,37 +73,39 @@ PLAN
 
 provision_plan() {
   cat <<PLAN
-Deploys Fauxroku's shared platform into $(aws_target), region us-east-1, with each bundle's
-Development preset:
-  - A VPC with a NAT instance for internet egress, and flow logs.
-  - A Route 53 hosted zone for ${DOMAIN:-<DOMAIN>}, with a wildcard certificate${PARENT_ZONE_ID:+, delegated by an NS record added to zone $PARENT_ZONE_ID}.
-  - An ECS cluster and one public load balancer every Fauxroku app shares.
-Cost: about \$25/month while it runs, most of it the load balancer. Fauxcel shares nothing and
-deploys nothing here. Nothing is deployed in either template.
-Remove it with: ./deploy.sh teardown
+Deploys into $(aws_target), region us-east-1, with each bundle's Development preset:
+  - Fauxroku's shared platform: a VPC with a NAT instance and flow logs, a Route 53 hosted zone
+    for ${DOMAIN:-<DOMAIN>} with a wildcard certificate${PARENT_ZONE_ID:+ (delegated by an NS record added to zone $PARENT_ZONE_ID)},
+    an ECS cluster and one public load balancer every Fauxroku app shares.
+  - In each of the five runtime templates (node, ruby, python, functions, static): an ECR
+    repository and its codebase, so every environment of that runtime pulls from one place.
+  - The static site's file server image, built and pushed to the static template's repository.
+Cost: about \$25/month while it runs, most of it the load balancer. Nothing else in the
+templates is deployed. Remove it with: ./deploy.sh teardown
 PLAN
 }
 
 fork_plan() {
-  case "$1" in
-    fauxroku) cat <<PLAN
-Forks fauxroku-template into fauxroku-$2 and deploys it into $(aws_target), with the cheapest
-presets:
-  - Web dynos: one 0.25 vCPU, 0.5 GB Fargate Spot task at https://fauxroku-$2.<DOMAIN> (~\$2/month).
-  - Worker dynos: one more, with no address (~\$2/month).
-  - Postgres: db.t4g.micro, 20 GB, no standby (~\$15/month).
-  - Key-Value Store: ElastiCache Serverless Valkey, 1 GB limit (~\$6/month at its minimum).
-Cost: about \$25/month on top of the platform. Remove it with: ./deploy.sh teardown
-PLAN
-      ;;
-    fauxcel) cat <<PLAN
-Forks fauxcel-template into fauxcel-$2 and deploys it into $(aws_target), with the cheapest
-presets: an API Gateway HTTP API, one 256 MB arm64 Lambda function, an on-demand DynamoDB table
-and an S3 bucket.
-Cost: nothing while idle; cents per million requests. Remove it with: ./deploy.sh teardown
-PLAN
-      ;;
+  local runtime=$1 id=$2
+  shift 2
+  echo "Forks $runtime-template into $runtime-$id and deploys it into $(aws_target), with the"
+  echo "cheapest presets:"
+  case "$runtime" in
+    node | ruby | python) echo "  - Web dynos: one 0.25 vCPU, 0.5 GB Fargate Spot task at https://$runtime-$id.<DOMAIN> (~\$2/month)." ;;
+    functions) echo "  - An HTTP API and one 256 MB arm64 Lambda function: nothing while idle." ;;
+    static) echo "  - An HTTP API, the file server function and a files bucket: nothing while idle." ;;
   esac
+  local addon
+  for addon in "$@"; do
+    case "$addon" in
+      worker) echo "  - Worker dynos: one more Spot task, with no address (~\$2/month)." ;;
+      db) echo "  - Postgres: db.t4g.micro, 20 GB, no standby (~\$15/month)." ;;
+      cache) echo "  - Key-Value Store: ElastiCache Serverless Valkey, 1 GB limit (~\$6/month at its minimum)." ;;
+      kv) echo "  - KV: an on-demand DynamoDB table (per request)." ;;
+      blob) echo "  - Blob: an S3 bucket (per GB stored)." ;;
+    esac
+  done
+  echo "Remove it with: ./deploy.sh teardown"
 }
 
 bundle_dir() {
@@ -108,13 +113,6 @@ bundle_dir() {
     fauxroku-* | fauxcel-*) echo "$HERE/applications/$1/bundle" ;;
     *) echo "$CATALOG/bundles/$1" ;;
   esac
-}
-
-dev_version() {
-  local version
-  version=$(awk -v b="$1" '$1 == b { print $2 }' "$HERE/.dev-versions" 2>/dev/null)
-  [ -n "$version" ] || die "no development release of $1 recorded; run ./deploy.sh publish"
-  echo "$version"
 }
 
 # Params come from the bundle's own presets, so this script never drifts from
@@ -291,6 +289,8 @@ cmd_role() {
 # Types before the bundles that use them, and the runtimes before the apps built on them.
 cmd_publish() {
   local type bundle
+  log "publish Massdriver resource types"
+  "$CATALOG/scripts/publish-massdriver-types.sh"
   publish_type "$CATALOG/platforms/aws-iam-role"
   for type in "${TYPES[@]}"; do publish_type "$CATALOG/resource-types/$type"; done
   for bundle in "${BUNDLES[@]}" "${APPS[@]}"; do publish_bundle "$(bundle_dir "$bundle")"; done
@@ -340,6 +340,39 @@ delegate() {
   DELEGATING=$!
 }
 
+# build_image <registry instance> <directory> [tag suffix]: builds into that
+# registry and prints the image. Tags are immutable, so an image already
+# built from this commit is reused.
+build_image() {
+  local registry url region tag image
+  registry=$(mass resource get "$1.repository" -o json)
+  url=$(jq -r '.payload.url' <<<"$registry")
+  region=$(jq -r '.payload.region' <<<"$registry")
+  tag=$(git -C "$CATALOG" rev-parse --short HEAD)${3:-}
+  image="$url:$tag"
+  if aws ecr describe-images --region "$region" --repository-name "${url#*/}" --image-ids "imageTag=$tag" >/dev/null 2>&1; then
+    log "reuse $image"
+    echo "$image"
+    return
+  fi
+  log "build and push $image"
+  aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}" >&2
+  # The base images are public. Docker sends any saved public.ecr.aws login with
+  # the pull, and a stale one, or one from an account that can't pull, gets a 403.
+  docker logout public.ecr.aws >/dev/null 2>&1 || true
+  docker build --platform linux/arm64 --provenance=false -t "$image" "$2" >&2
+  docker push "$image" >&2
+  echo "$image"
+}
+
+static_image() {
+  build_image static-template-registry "$HERE/applications/fauxcel-static/src"
+}
+
+is_fauxroku() {
+  case "$1" in node | ruby | python) return 0 ;; *) return 1 ;; esac
+}
+
 cmd_provision() {
   [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=apps.example.com"
   confirm "$(provision_plan)"
@@ -351,61 +384,75 @@ cmd_provision() {
   [ -z "${DELEGATING:-}" ] || wait "$DELEGATING" || die "couldn't delegate $DOMAIN from $PARENT_ZONE_ID; see the error above"
   deploy platform-main-cluster ecs-cluster
 
-  # Forks copy the template's defaults, so every Fauxroku environment lands in
-  # the platform's VPC and behind its load balancer, connecting nothing.
-  local field part
-  for field in network.network cluster.cluster; do
-    share "platform-main-$field" --condition "md-project=fauxroku"
-    mass environment default fauxroku-template "platform-main-$field" >/dev/null
+  local runtime field instance
+  for runtime in "${RUNTIMES[@]}"; do
+    log "$runtime-template"
+    # Forks copy the template's defaults: Fauxroku environments land in the
+    # platform's VPC and behind its load balancer, and every environment pulls
+    # from its runtime's codebase, connecting nothing.
+    if is_fauxroku "$runtime"; then
+      for field in network.network cluster.cluster; do
+        share "platform-main-$field" --condition "md-project=$runtime"
+        mass environment default "$runtime-template" "platform-main-$field" >/dev/null
+      done
+    fi
+    deploy "$runtime-template-registry" ecr-repository
+    deploy "$runtime-template-codebase" codebase '.share_with_project = false'
+    share "$runtime-template-codebase.codebase" --condition "md-project=$runtime"
+    mass environment default "$runtime-template" "$runtime-template-codebase.codebase" >/dev/null
+    # Forks take the template's versions, so customers run the release just published.
+    for instance in $(mass instance list "$runtime-template" -o json | jq -r '.[].id'); do pin "$instance"; done
   done
 
-  # Forks take the template's versions, so customers run the release just published.
-  for part in web worker db cache; do pin "fauxroku-template-$part"; done
-  for part in api app kv blob; do pin "fauxcel-template-$part"; done
+  static_image >/dev/null
 }
 
-# fork_params <paas> <component> <id>: the bundle and the cheapest params a
-# customer environment starts with. Web dynos get the environment's own
-# subdomain, the one param a preset can't know (massdriver-cloud/rocketsled#11).
-fork_params() {
-  case "$1/$2" in
-    fauxroku/web) echo fauxroku-web; preset ecs-service | jq -c --arg s "fauxroku-$3" '.subdomain = $s | .spot = true' ;;
-    fauxroku/worker) echo fauxroku-worker; preset ecs-service | jq -c '.subdomain = "" | .spot = true' ;;
-    fauxroku/db) echo postgres; preset postgres | jq -c . ;;
-    fauxroku/cache) echo valkey; preset valkey | jq -c . ;;
-    fauxcel/api) echo http-api; preset http-api | jq -c '.subdomain = ""' ;;
-    fauxcel/app) echo fauxcel-app; preset lambda-function | jq -c . ;;
-    fauxcel/kv) echo dynamodb-table; preset dynamodb-table | jq -c . ;;
-    fauxcel/blob) echo s3-bucket; preset s3-bucket | jq -c . ;;
-    *) die "no component $2 in $1" ;;
+# fork_preset <runtime> <component> <id>: the bundle whose presets the
+# component uses, and the jq filter applied to its cheapest one. Web dynos get
+# the environment's own subdomain, the one param a preset can't know
+# (massdriver-cloud/rocketsled#11).
+fork_preset() {
+  case "$2" in
+    web) echo "ecs-service .subdomain=\"$1-$3\"|.spot=true" ;;
+    worker) echo 'ecs-service .subdomain=""|.spot=true' ;;
+    app) echo 'lambda-function .' ;;
+    site) echo "lambda-function .image_uri=\"$(static_image)\"" ;;
+    api) echo 'http-api .subdomain=""' ;;
+    db) echo 'postgres .' ;;
+    cache) echo 'valkey .' ;;
+    kv) echo 'dynamodb-table .' ;;
+    blob | files) echo 's3-bucket .' ;;
   esac
 }
 
-# fork <paas> <id>: what a Rocketsled server does for a customer.
+# fork <runtime> <id> [add-on...]: what a Rocketsled server does for a
+# customer. Only the runtime's own components and the add-ons named are
+# deployed; the rest stay on the canvas, linked and undeployed.
 cmd_fork() {
-  local paas=${1:-} id=${2:-} components component out bundle params instances='{}' config
-  case "$paas" in
-    fauxroku) components="web worker db cache" ;;
-    fauxcel) components="api app kv blob" ;;
-    *) die "usage: ./deploy.sh fork fauxroku|fauxcel <id>" ;;
+  local runtime=${1:-} id=${2:-} base addons addon component spec
+  shift 2 || true
+  case "$runtime" in
+    node | ruby | python) base="web" addons="worker db cache" ;;
+    functions) base="api app" addons="kv blob" ;;
+    static) base="files api site" addons="" ;;
+    *) die "usage: ./deploy.sh fork node|ruby|python|functions|static <id> [add-on...]" ;;
   esac
   [[ "$id" =~ ^[a-z0-9]{1,20}$ && "$id" != template ]] || die "the id is 1-20 lowercase letters or digits, and not template"
-  confirm "$(fork_plan "$paas" "$id")"
-
-  for component in $components; do
-    out=$(fork_params "$paas" "$component" "$id")
-    bundle=$(head -1 <<<"$out")
-    params=$(tail -1 <<<"$out")
-    instances=$(jq -c --arg c "$component" --arg v "$(dev_version "$bundle")" --argjson p "$params" \
-      '. + {($c): {version: $v, params: $p}}' <<<"$instances")
+  for addon in "$@"; do
+    [[ " $addons " == *" $addon "* ]] || die "$runtime has no add-on $addon; it has: ${addons:-none}"
   done
-  config=$(mktemp)
-  jq -n --arg p "$paas" --argjson i "$instances" \
-    '{project: $p, baseEnvironment: "template", copyEnvironmentDefaults: true, instances: $i}' >"$config"
+  confirm "$(fork_plan "$runtime" "$id" "$@")"
 
-  log "fork $paas-$id"
-  mass environment preview "$id" -f "$config" -n "$id" --follow || true
-  rm -f "$config"
+  if ! mass environment get "$runtime-$id" >/dev/null 2>&1; then
+    log "fork $runtime-template into $runtime-$id"
+    mass environment fork "$runtime-template" "$id" --name "$id" --copy-environment-defaults >/dev/null
+  fi
+  # Add-ons first: the runtime reads them when it deploys. A worker is the
+  # exception; it's a consumer like web.
+  for component in $(printf '%s\n' "$@" | grep -vx worker) $base $(printf '%s\n' "$@" | grep -x worker); do
+    spec=$(fork_preset "$runtime" "$component" "$id")
+    deploy "$runtime-$id-$component" "${spec%% *}" "${spec#* }"
+  done
 }
 
 # The Rocketsled servers read their Massdriver keys from here. The values are
@@ -425,8 +472,9 @@ cmd_env() {
 teardown_plan() {
   cat <<PLAN
 Deletes the Rocketsled example from your Massdriver organization and $(aws_target):
-  - Decommissions and deletes every Fauxroku and Fauxcel customer environment, with their
-    databases, tables and buckets. Nothing is kept.
+  - Decommissions and deletes every customer environment of every runtime, with their
+    databases, caches, tables and buckets. Nothing is kept.
+  - Decommissions each template's image repository and codebase, with their images.
   - Decommissions the shared platform.
   - Destroys what bootstrap.tf made: projects, templates, groups, policies, the servers' service
     accounts, the AWS credential and bundle grants.
@@ -487,21 +535,23 @@ release() {
 }
 
 cmd_teardown() {
-  local org account provider env paas
+  local org account provider env runtime
   confirm "$(teardown_plan)"
   org=$(org_id)
   account=$(aws sts get-caller-identity --query Account --output text)
 
-  # Rocketsled makes these, outside bootstrap.tf. Fauxroku's run on the
-  # platform, so they go before it.
-  for paas in fauxroku fauxcel; do
-    for env in $(mass environment list "$paas" -o json 2>/dev/null | jq -r --arg t "$paas-template" '(. // [])[] | select(.id != $t) | .id'); do
+  # Rocketsled makes these, outside bootstrap.tf. They pull from the templates'
+  # codebases and Fauxroku's run on the platform, so they go first.
+  for runtime in "${RUNTIMES[@]}"; do
+    for env in $(mass environment list "$runtime" -o json 2>/dev/null | jq -r --arg t "$runtime-template" '(. // [])[] | select(.id != $t) | .id'); do
       decommission "$env"
       mass environment delete "$env" --force >/dev/null
     done
+    release "$org" "$runtime-template-" "$runtime-template"
+    decommission "$runtime-template"
   done
 
-  release "$org" "platform-main-" fauxroku-template
+  release "$org" "platform-main-" node-template ruby-template python-template
   decommission platform-main
 
   log "destroy bootstrap.tf"
@@ -529,7 +579,7 @@ case "${1:-}" in
   publish) cmd_publish ;;
   bootstrap) cmd_bootstrap ;;
   provision) cmd_provision ;;
-  fork) cmd_fork "${2:-}" "${3:-}" ;;
+  fork) shift; cmd_fork "$@" ;;
   env) cmd_env ;;
   teardown) cmd_teardown ;;
   all)
@@ -537,8 +587,8 @@ case "${1:-}" in
     confirm "$(role_plan)
 
 In your Massdriver organization: publishes the bundles both PaaSes use as development releases,
-then creates the platform, fauxroku and fauxcel projects, the two templates, a group and service
-account per PaaS for its Rocketsled server, and the AWS credential.
+then creates the platform project and a project per runtime with its template, a group and
+service account per PaaS for its Rocketsled server, and the AWS credential.
 
 $(provision_plan)"
     cmd_role
@@ -547,5 +597,5 @@ $(provision_plan)"
     cmd_provision
     cmd_env
     ;;
-  *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

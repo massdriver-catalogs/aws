@@ -26,63 +26,102 @@ variable "existing_bundle_repositories" {
 }
 
 locals {
-  projects = {
-    # Shared by every Fauxroku app, like Heroku's common runtime: one VPC, one
-    # load balancer and one wildcard certificate instead of one per customer.
-    platform = {
-      name        = "Platform"
-      description = "The network, DNS zone and container cluster every Fauxroku app runs on."
-      stages      = { main = "Main" }
-      components = {
-        network = { bundle = "vpc", name = "Network" }
-        dns     = { bundle = "dns-zone", name = "DNS Zone" }
-        cluster = { bundle = "ecs-cluster", name = "Router" }
-      }
-      links = [
-        "network.network -> cluster.network",
-        "dns.zone -> cluster.dns",
-      ]
-    }
-
-    # Rocketsled forks the template once per customer environment. The
-    # template itself is never deployed.
-    fauxroku = {
-      name        = "Fauxroku"
-      description = "Heroku-style apps: web and worker dynos, with Postgres and Key-Value Store add-ons. One environment per customer environment, forked from the template by Rocketsled."
-      stages      = { template = "Template" }
-      components = {
-        web    = { bundle = "fauxroku-web", name = "Web Dynos" }
-        worker = { bundle = "fauxroku-worker", name = "Worker Dynos" }
-        db     = { bundle = "postgres", name = "Postgres" }
-        cache  = { bundle = "valkey", name = "Key-Value Store" }
-      }
-      links = [
-        "db.database -> web.database",
-        "db.database -> worker.database",
-        "cache.cache -> web.cache",
-        "cache.cache -> worker.cache",
-      ]
-    }
-
-    # Nothing shared: every environment has its own API, so it has its own URL
-    # and costs nothing while nobody calls it.
-    fauxcel = {
-      name        = "Fauxcel"
-      description = "Vercel-style sites: serverless functions behind an HTTPS endpoint, with KV and Blob storage. One environment per customer environment, forked from the template by Rocketsled."
-      stages      = { template = "Template" }
-      components = {
-        api  = { bundle = "http-api", name = "Endpoint" }
-        app  = { bundle = "fauxcel-app", name = "Functions" }
-        kv   = { bundle = "dynamodb-table", name = "KV" }
-        blob = { bundle = "s3-bucket", name = "Blob" }
-      }
-      links = [
-        "api.api -> app.api",
-        "kv.table -> app.kv",
-        "blob.bucket -> app.blob",
-      ]
-    }
+  # Fauxroku's runtimes are buildpack languages; each is a project whose
+  # template holds web and worker dynos with Postgres and Key-Value Store
+  # linked but not deployed. Fauxcel's are functions and a static site.
+  runtimes = {
+    node   = { paas = "fauxroku", name = "Fauxroku Node.js", bundle = "fauxroku-node" }
+    ruby   = { paas = "fauxroku", name = "Fauxroku Ruby", bundle = "fauxroku-ruby" }
+    python = { paas = "fauxroku", name = "Fauxroku Python", bundle = "fauxroku-python" }
   }
+
+  # The image repository and codebase are deployed in each template and become
+  # every fork's default, so all of a runtime's environments pull from one place.
+  image_components = {
+    registry = { bundle = "ecr-repository", name = "Image Repository" }
+    codebase = { bundle = "codebase", name = "Codebase" }
+  }
+
+  projects = merge(
+    {
+      # Deployed once and shared, like Heroku's common runtime: one VPC, one
+      # load balancer and one wildcard certificate for every Fauxroku app.
+      platform = {
+        name        = "Platform"
+        description = "The network, DNS zone and container cluster every Fauxroku app runs on."
+        paas        = "platform"
+        stages      = { main = "Main" }
+        components = {
+          network = { bundle = "vpc", name = "Network" }
+          dns     = { bundle = "dns-zone", name = "DNS Zone" }
+          cluster = { bundle = "ecs-cluster", name = "Router" }
+        }
+        links = [
+          "network.network -> cluster.network",
+          "dns.zone -> cluster.dns",
+        ]
+      }
+    },
+    {
+      for id, r in local.runtimes : id => {
+        name        = r.name
+        description = "${r.name} apps: web and worker dynos, with Postgres and Key-Value Store add-ons. Every environment is a fork of the template."
+        paas        = r.paas
+        stages      = { template = "Template" }
+        components = merge(local.image_components, {
+          web    = { bundle = r.bundle, name = "Web Dynos" }
+          worker = { bundle = "fauxroku-worker", name = "Worker Dynos" }
+          db     = { bundle = "postgres", name = "Postgres" }
+          cache  = { bundle = "valkey", name = "Key-Value Store" }
+        })
+        links = [
+          "registry.repository -> codebase.registry",
+          "db.database -> web.database",
+          "db.database -> worker.database",
+          "cache.cache -> web.cache",
+          "cache.cache -> worker.cache",
+        ]
+      }
+    },
+    {
+      # Nothing shared: each environment has its own endpoint, so it has its
+      # own URL and costs nothing while nobody calls it.
+      functions = {
+        name        = "Fauxcel Functions"
+        description = "Server-rendered sites and APIs: one function behind an HTTPS endpoint, with KV and Blob add-ons. Every environment is a fork of the template."
+        paas        = "fauxcel"
+        stages      = { template = "Template" }
+        components = merge(local.image_components, {
+          api  = { bundle = "http-api", name = "Endpoint" }
+          app  = { bundle = "fauxcel-functions", name = "Functions" }
+          kv   = { bundle = "dynamodb-table", name = "KV" }
+          blob = { bundle = "s3-bucket", name = "Blob" }
+        })
+        links = [
+          "registry.repository -> codebase.registry",
+          "api.api -> app.api",
+          "kv.table -> app.kv",
+          "blob.bucket -> app.blob",
+        ]
+      }
+      static = {
+        name        = "Fauxcel Static"
+        description = "Static sites: a bucket of files served over HTTPS. Every environment is a fork of the template."
+        paas        = "fauxcel"
+        stages      = { template = "Template" }
+        components = merge(local.image_components, {
+          api   = { bundle = "http-api", name = "Endpoint" }
+          site  = { bundle = "fauxcel-static", name = "Site" }
+          files = { bundle = "s3-bucket", name = "Files" }
+        })
+        links = [
+          "registry.repository -> codebase.registry",
+          "api.api -> site.api",
+          "files.bucket -> site.files",
+        ]
+      }
+    },
+  )
 
   environments = merge([
     for p, project in local.projects : {
@@ -107,15 +146,25 @@ locals {
     }
   ]...)
 
-  # Runtimes are granted too: an app bundle is published on top of its runtime.
+  # Projects of each PaaS, for grants and for what its server may touch.
+  paas_projects = {
+    for paas in ["platform", "fauxroku", "fauxcel"] : paas => sort([for p, project in local.projects : p if project.paas == paas])
+  }
+
+  # Each bundle is open only to the projects that place it. Runtimes are
+  # granted too: an app bundle is published on top of its runtime.
+  bundle_projects = {
+    for bundle in distinct([for c in values(local.components) : c.bundle]) : bundle =>
+    sort(distinct([for c in values(local.components) : c.project if c.bundle == bundle]))
+  }
   bundle_access = merge(
-    { for b in ["vpc", "dns-zone", "ecs-cluster"] : b => "platform" },
-    { for b in ["ecs-service", "postgres", "valkey", "fauxroku-web", "fauxroku-worker"] : b => "fauxroku" },
-    { for b in ["http-api", "lambda-function", "dynamodb-table", "s3-bucket", "fauxcel-app"] : b => "fauxcel" },
+    local.bundle_projects,
+    { "ecs-service" = local.paas_projects.fauxroku },
+    { "lambda-function" = local.paas_projects.fauxcel },
   )
 
-  # What a PaaS's Rocketsled server may do in its own project: fork the
-  # template into customer environments, deploy them and remove them.
+  # What a PaaS's Rocketsled server may do in its own projects: fork the
+  # templates into customer environments, deploy them and remove them.
   server_actions = [
     "project:view",
     "environment:create",
@@ -161,7 +210,7 @@ resource "massdriver_oci_repository_grant" "bundle" {
   for_each = local.bundle_access
 
   repository_id        = massdriver_oci_repository.bundle[each.key].id
-  recipient_conditions = jsonencode({ "md-project" = [each.value] })
+  recipient_conditions = jsonencode({ "md-project" = each.value })
 }
 
 resource "massdriver_environment" "this" {
@@ -214,7 +263,7 @@ resource "massdriver_group" "server" {
   for_each = local.paas
 
   name        = "${each.value} Servers"
-  description = "The ${each.value} Rocketsled server: forks, deploys and removes environments in the ${each.key} project, and nothing else."
+  description = "The ${each.value} Rocketsled server: forks, deploys and removes environments in the ${each.value} projects, and nothing else."
 }
 
 resource "massdriver_group_policy" "server" {
@@ -223,7 +272,7 @@ resource "massdriver_group_policy" "server" {
   group_id   = massdriver_group.server[each.key].id
   effect     = "ALLOW"
   actions    = local.server_actions
-  conditions = jsonencode({ "md-project" = [each.key] })
+  conditions = jsonencode({ "md-project" = local.paas_projects[each.key] })
 }
 
 # Forking copies the template's defaults, and each one must be viewable.
