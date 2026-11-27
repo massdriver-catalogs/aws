@@ -1,0 +1,19 @@
+name: fauxcel-static
+description: >-
+  A Fauxcel static site: the files in its bucket, served over HTTPS by a small function on the
+  site's endpoint, with index.html for directories and single-page apps. Deploying is uploading the
+  build. Runs on the Lambda function runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/rocketsled/applications/fauxcel-static
+version: 0.0.0
+
+dependencies:
+  files:
+    resource_type: aws-s3-bucket@0.0.0
+    required: true
+
+resources: {}
+
+app:
+  runtime: lambda-function
+  envs:
+    SITE_BUCKET: .dependencies.files.name

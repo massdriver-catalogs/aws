@@ -1,0 +1,42 @@
+name: fauxroku-ruby
+description: >-
+  Web dynos for a Fauxroku Ruby app: the app's buildpack-built image as a Fargate service behind
+  the shared router, at <environment>.<domain>. Gets DATABASE_URL and REDIS_URL from the add-ons it's
+  connected to. Runs on the ECS service runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/rocketsled/applications/fauxroku-ruby
+version: 0.0.0
+
+dependencies:
+  database:
+    resource_type: aws-postgres@0.0.0
+    required: false
+  cache:
+    resource_type: aws-valkey@0.0.0
+    required: false
+
+resources:
+  web:
+    resource_type: website@~0.1
+    required: true
+
+steps:
+  - path: src
+    resources:
+      web:
+        template: |
+          { url: .outputs.url }
+
+app:
+  runtime: ecs-service
+  envs:
+    PROCESS_TYPE: '"web"'
+    RACK_ENV: '"production"'
+    RAILS_ENV: '"production"'
+    RAILS_LOG_TO_STDOUT: '"enabled"'
+    RAILS_SERVE_STATIC_FILES: '"enabled"'
+    DATABASE_URL: >-
+      if .dependencies.database then "postgres://" + .dependencies.database.username + "@" + .dependencies.database.hostname
+      + ":" + (.dependencies.database.port | tostring) + "/" + .dependencies.database.database + "?sslmode=require" else "" end
+    PGPASSWORD: 'if .dependencies.database then .dependencies.database.secret_arn + ":password::" else "" end'
+    REDIS_URL: >-
+      if .dependencies.cache then "rediss://" + .dependencies.cache.hostname + ":" + (.dependencies.cache.port | tostring) else "" end

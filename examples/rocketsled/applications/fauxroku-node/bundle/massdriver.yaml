@@ -1,9 +1,9 @@
-name: fauxroku-web
+name: fauxroku-node
 description: >-
-  A Fauxroku app's web dynos: the customer's image as a Fargate service behind the shared router, at
-  <environment>.<domain>. Gets DATABASE_URL and REDIS_URL from the add-ons it's connected to. Runs on
-  the ECS service runtime.
-source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/rocketsled/applications/fauxroku-web
+  Web dynos for a Fauxroku Node.js app: the app's buildpack-built image as a Fargate service behind
+  the shared router, at <environment>.<domain>. Gets DATABASE_URL and REDIS_URL from the add-ons it's
+  connected to. Runs on the ECS service runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/rocketsled/applications/fauxroku-node
 version: 0.0.0
 
 dependencies:
@@ -30,6 +30,7 @@ app:
   runtime: ecs-service
   envs:
     PROCESS_TYPE: '"web"'
+    NODE_ENV: '"production"'
     DATABASE_URL: >-
       if .dependencies.database then "postgres://" + .dependencies.database.username + "@" + .dependencies.database.hostname
       + ":" + (.dependencies.database.port | tostring) + "/" + .dependencies.database.database + "?sslmode=require" else "" end

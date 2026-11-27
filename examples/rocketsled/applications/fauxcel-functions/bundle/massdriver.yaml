@@ -1,8 +1,8 @@
-name: fauxcel-app
+name: fauxcel-functions
 description: >-
   A Fauxcel site's functions: the customer's build as one Lambda function answering every route on
   its endpoint, with KV and Blob storage when they're connected. Runs on the Lambda function runtime.
-source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/rocketsled/applications/fauxcel-app
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/rocketsled/applications/fauxcel-functions
 version: 0.0.0
 
 dependencies:

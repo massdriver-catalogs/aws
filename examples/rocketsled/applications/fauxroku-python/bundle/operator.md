@@ -1,7 +1,7 @@
 ---
 templating: mustache
 ---
-# Fauxroku Web Dynos
+# Fauxroku Python Dynos
 
 {{#resources.web}}
 **Open first:** {{resources.web.url}}
