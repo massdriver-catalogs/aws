@@ -1,0 +1,101 @@
+# bin/rocketsled serve -config ../aws/examples/rocketsled/fauxroku.yaml -env-file ../aws/examples/rocketsled/.env
+# Keys marked with an issue are read once that issue ships in massdriver-cloud/rocketsled.
+
+server:
+  addr: ":8081"
+  base_url: "${FAUXROKU_BASE_URL}"
+  session_secret: "${FAUXROKU_SESSION_SECRET}"
+
+database:
+  path: data/fauxroku/rocketsled.db
+data_dir: data/fauxroku
+
+massdriver:
+  url: https://api.massdriver.cloud
+  account_mode: tenant                                # rocketsled#10
+  organization_id: "${MASSDRIVER_ORGANIZATION_ID}"
+  # The Fauxroku Server service account: it can fork, deploy and remove
+  # environments in the fauxroku project and nothing else.
+  api_key: "${FAUXROKU_MASSDRIVER_API_KEY}"
+
+brand:                                                # rocketsled#1
+  name: Fauxroku
+  tagline: Push code. Get an app.
+  logo: fauxroku.svg
+  favicon: fauxroku.svg
+  colors:
+    primary: "#6c4ab6"
+    accent: "#2ecc71"
+
+paas:                                                 # rocketsled#10
+  project: fauxroku
+  template: template
+  # Where releases land (rocketsled#5): both process types run the same image.
+  app_component: web
+  image_param: image_uri
+
+  pinned:                                             # rocketsled#11
+    web:
+      subdomain: "{{environment_id}}"
+    worker:
+      subdomain: ""
+
+  addons:                                             # rocketsled#3
+    db:
+      title: Postgres
+      summary: A managed PostgreSQL database. Sets DATABASE_URL and PGPASSWORD on your dynos.
+      default: true
+    cache:
+      title: Key-Value Store
+      summary: Redis-compatible, TLS only. Sets REDIS_URL on your dynos.
+      default: false
+    worker:
+      title: Worker dynos
+      summary: Background jobs from the same image, with PROCESS_TYPE=worker.
+      default: false
+
+  pipeline:                                           # rocketsled#4
+    stages:
+      - id: development
+        name: Development
+        presets: {web: Development, worker: Development, db: Development, cache: Development}
+      - id: staging
+        name: Staging
+        presets: {web: Development, worker: Development, db: Development, cache: Development}
+      - id: production
+        name: Production
+        presets: {web: Production, worker: Production, db: Production, cache: Production}
+
+  previews:                                           # rocketsled#6
+    presets: {web: Development, db: Development}
+    ttl: 72h
+
+  domains:                                            # rocketsled#7
+    component: web
+    param: subdomain
+    target_field: url
+
+  plans:                                              # rocketsled#8
+    web:
+      Development: {price: "~$7/mo", summary: "1 dyno, 0.25 vCPU, 0.5 GB."}
+      Production: {price: "~$58/mo", summary: "2 dynos, 1 vCPU, 2 GB, up to 6 when busy."}
+    worker:
+      Development: {price: "~$7/mo", summary: "1 worker, 0.25 vCPU, 0.5 GB."}
+      Production: {price: "~$58/mo", summary: "2 workers, 1 vCPU, 2 GB, up to 6 when busy."}
+    db:
+      Development: {price: "~$15/mo", summary: "db.t4g.micro, 20 GB, 1 day of backups."}
+      Production: {price: "~$285/mo", summary: "db.m7g.large with a standby, 100 GB, 14 days of backups."}
+    cache:
+      Development: {price: "~$6/mo", summary: "Up to 1 GB, 1,000 requests a second."}
+      Production: {price: "~$65/mo", summary: "Up to 10 GB, 100,000 requests a second, snapshots."}
+
+  highlights:                                         # rocketsled#9
+    website: [url]
+    aws-postgres: [hostname, port, database, username]
+    aws-valkey: [hostname, port]
+
+auth:
+  providers:
+    github:
+      client_id: "${FAUXROKU_GITHUB_CLIENT_ID}"
+      client_secret: "${FAUXROKU_GITHUB_CLIENT_SECRET}"

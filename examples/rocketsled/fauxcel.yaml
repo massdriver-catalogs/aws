@@ -1,0 +1,87 @@
+# bin/rocketsled serve -config ../aws/examples/rocketsled/fauxcel.yaml -env-file ../aws/examples/rocketsled/.env
+# Keys marked with an issue are read once that issue ships in massdriver-cloud/rocketsled.
+
+server:
+  addr: ":8082"
+  base_url: "${FAUXCEL_BASE_URL}"
+  session_secret: "${FAUXCEL_SESSION_SECRET}"
+
+database:
+  path: data/fauxcel/rocketsled.db
+data_dir: data/fauxcel
+
+massdriver:
+  url: https://api.massdriver.cloud
+  account_mode: tenant                                # rocketsled#10
+  organization_id: "${MASSDRIVER_ORGANIZATION_ID}"
+  # The Fauxcel Server service account: it can fork, deploy and remove
+  # environments in the fauxcel project and nothing else.
+  api_key: "${FAUXCEL_MASSDRIVER_API_KEY}"
+
+brand:                                                # rocketsled#1
+  name: Fauxcel
+  tagline: Ship the frontend. Skip the servers.
+  logo: fauxcel.svg
+  favicon: fauxcel.svg
+  colors:
+    primary: "#111111"
+    accent: "#0070f3"
+
+paas:                                                 # rocketsled#10
+  project: fauxcel
+  template: template
+  app_component: app                                  # rocketsled#5
+  image_param: image_uri
+
+  pinned:                                             # rocketsled#11
+    api:
+      # No DNS zone: every environment answers on its own execute-api address.
+      subdomain: ""
+
+  addons:                                             # rocketsled#3
+    kv:
+      title: KV
+      summary: A key-value store your functions can read and write. Sets KV_TABLE.
+      default: false
+    blob:
+      title: Blob
+      summary: File storage for uploads. Sets BLOB_BUCKET.
+      default: false
+
+  pipeline:                                           # rocketsled#4
+    stages:
+      - id: preview
+        name: Preview
+        presets: {api: Development, app: Development, kv: Development, blob: Development}
+      - id: production
+        name: Production
+        presets: {api: Production, app: Production, kv: Production, blob: Production}
+
+  previews:                                           # rocketsled#6
+    presets: {api: Development, app: Development}
+    ttl: 168h
+
+  plans:                                              # rocketsled#8
+    app:
+      Development: {price: "Free tier", summary: "256 MB, 10 seconds, 1 day of logs."}
+      Production: {price: "Per request", summary: "1 GB, 29 seconds, logs kept a year."}
+    api:
+      Development: {price: "Free tier", summary: "50 requests a second."}
+      Production: {price: "$1 per million", summary: "1,000 requests a second, access logs kept a year."}
+    kv:
+      Development: {price: "Per request", summary: "On-demand, no backups."}
+      Production: {price: "Per request", summary: "On-demand, restore to any second in 35 days."}
+    blob:
+      Development: {price: "~$0.023/GB", summary: "No old versions; an overwrite is final."}
+      Production: {price: "~$0.023/GB", summary: "Old versions kept 90 days, KMS encryption."}
+
+  highlights:                                         # rocketsled#9
+    aws-http-api: [endpoint]
+    aws-dynamodb-table: [name]
+    aws-s3-bucket: [name]
+
+auth:
+  providers:
+    github:
+      client_id: "${FAUXCEL_GITHUB_CLIENT_ID}"
+      client_secret: "${FAUXCEL_GITHUB_CLIENT_SECRET}"
