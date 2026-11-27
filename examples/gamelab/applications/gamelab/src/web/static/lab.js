@@ -163,5 +163,48 @@
 
   stop.addEventListener("click", () => post("stop").catch(() => {}).finally(refresh));
 
+  // Young players talk faster than they type. Tap Talk, say it, and when they
+  // stop talking it sends on its own. Safari on iPad needs Siri and
+  // Dictation turned on, and asks once to use the microphone.
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mic = document.getElementById("mic");
+  if (Recognition) {
+    mic.hidden = false;
+    let listening = null;
+    mic.addEventListener("click", () => {
+      if (listening) {
+        listening.stop();
+        return;
+      }
+      const rec = new Recognition();
+      rec.lang = navigator.language || "en-US";
+      rec.interimResults = true;
+      rec.continuous = false;
+      const before = text.value.trim();
+      let heard = "";
+      rec.onresult = (e) => {
+        heard = Array.from(e.results).map((r) => r[0].transcript).join(" ").trim();
+        text.value = (before ? before + " " : "") + heard;
+      };
+      rec.onerror = (e) => {
+        if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+          text.placeholder = "The microphone is off. A grown-up can turn it on in Settings, or tap the 🎤 on the keyboard.";
+        }
+      };
+      rec.onend = () => {
+        listening = null;
+        mic.classList.remove("listening");
+        mic.setAttribute("aria-pressed", "false");
+        mic.textContent = "🎤 Talk";
+        if (heard && !busy) form.requestSubmit();
+      };
+      listening = rec;
+      mic.classList.add("listening");
+      mic.setAttribute("aria-pressed", "true");
+      mic.textContent = "● Listening";
+      rec.start();
+    });
+  }
+
   refresh();
 })();

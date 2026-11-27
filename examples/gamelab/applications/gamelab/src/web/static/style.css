@@ -167,6 +167,8 @@ label { font-weight: 700; display: block; margin-bottom: 6px; }
 .say { display: flex; gap: 10px; padding: 12px; border-top: 1px solid var(--line); align-items: flex-end; }
 .say textarea { resize: none; font-size: 18px; border-radius: 16px; }
 .say-buttons { display: flex; flex-direction: column; gap: 6px; }
+.mic { font-size: 20px; min-height: 56px; min-width: 96px; }
+.mic.listening { background: #e5484d; border-color: #e5484d; color: #fff; animation: pulse 1s infinite alternate; }
 .studio.busy .messages::after {
   content: "Your helper is building"; align-self: flex-start; color: var(--muted); font-style: italic;
   animation: pulse 1s infinite alternate;
