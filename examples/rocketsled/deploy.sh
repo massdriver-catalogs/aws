@@ -191,6 +191,8 @@ publish_bundle() {
   local name
   name=$(awk '/^name:/ { print $2; exit }' "$1/massdriver.yaml")
   log "publish bundle $name"
+  # A bundle publishes only into a repository that exists; bootstrap adopts it afterwards.
+  mass repository create "$name" -t bundle >/dev/null 2>&1 || true
   local out version
   out=$(mass bundle publish --development --bundle-directory "$1")
   echo "$out" >&2
@@ -300,8 +302,11 @@ cmd_bootstrap() {
   require_role
   log "apply bootstrap.tf"
   # Some mass versions fail to list repositories ("Project not found"); a new organization has none to adopt.
+  # Everything publish created is adopted too, since listing can fail.
   { mass repository list -t bundle -o json 2>/dev/null || echo '[]'; } |
-    jq '{existing_bundle_repositories: [(. // [])[].name]}' >"$HERE/existing.auto.tfvars.json"
+    jq --rawfile published <(awk '{ print $1 }' "$HERE/.dev-versions" 2>/dev/null || true) \
+      '{existing_bundle_repositories: ([(. // [])[].name] + ($published | split("\n") | map(select(. != ""))) | unique)}' \
+      >"$HERE/existing.auto.tfvars.json"
   (cd "$HERE" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve)
 
   log "set each environment's AWS credential"
