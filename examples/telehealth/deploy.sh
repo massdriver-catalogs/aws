@@ -434,7 +434,12 @@ build_automations_image() {
   aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}" >&2
   docker build --platform linux/arm64 --provenance=false -t "$image" \
     "https://github.com/massdriver-cloud/massdriver-automations.git#$1" >&2
+  # The ECS bundles' init container writes the config with the -scripts
+  # variant of the same tag, which has a shell.
+  docker build --platform linux/arm64 --provenance=false -f automations/router/Dockerfile.scripts -t "$image-scripts" \
+    "https://github.com/massdriver-cloud/massdriver-automations.git#$1" >&2
   docker push "$image" >&2
+  docker push "$image-scripts" >&2
   echo "$image"
 }
 
