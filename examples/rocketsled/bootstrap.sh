@@ -45,6 +45,24 @@ TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-ecr-repository aws-codebase sour
 log() { printf '\n==> %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+need() {
+  local tool missing=""
+  for tool in "$@"; do
+    command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+  done
+  [ -z "$missing" ] || die "not installed:$missing"
+  case " $* " in
+    *" python3 "*) python3 -c 'import yaml' 2>/dev/null || die "python3 can't import yaml; install PyYAML: pip3 install pyyaml" ;;
+  esac
+}
+
+org_id() {
+  local id
+  id=$(mass whoami -o json 2>/dev/null | jq -r '.organization.id // empty') || true
+  [ -n "$id" ] || die "mass can't reach your organization; sign in with a mass profile, or set MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID"
+  echo "$id"
+}
+
 CONFIRMED=${YES:-}
 
 # Everything here creates real, billed AWS infrastructure with administrator
@@ -161,7 +179,7 @@ latest_deployment() {
 # The log stream can end, or the API can blip, while a deployment is still
 # running. Later steps read this instance's outputs, so wait for the result.
 wait_for() {
-  local latest status
+  local latest status=unknown
   for _ in $(seq 1 240); do
     latest=$(mass deployment list "$1" -o json 2>/dev/null | jq -c '.[0] // empty') || { sleep 15; continue; }
     if [ -z "$latest" ] || [ "$(jq -r .id <<<"$latest")" = "${2:-}" ]; then
@@ -217,7 +235,7 @@ publish_bundle() {
 pin() {
   local bundle version
   bundle=$(mass instance get "$1" -o json | jq -r '.bundle.name // .bundle.id')
-  version=$(awk -v b="$bundle" '$1 == b { print $2 }' "$HERE/.dev-versions" 2>/dev/null)
+  version=$(awk -v b="$bundle" '$1 == b { print $2 }' "$HERE/.dev-versions" 2>/dev/null || true)
   [ -n "$version" ] || die "no development release of $bundle recorded; run ./bootstrap.sh publish"
   mass instance version "$1@$version" >/dev/null
 }
@@ -229,10 +247,6 @@ require_role() {
 
 tf_output() {
   (cd "$HERE" && tofu output -raw "$1")
-}
-
-org_id() {
-  mass whoami -o json | jq -r .organization.id
 }
 
 # Reads the same profile mass does, so every step talks to the same organization.
@@ -254,6 +268,7 @@ graphql() {
     *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
   esac
   local url=${MASSDRIVER_URL:-$(profile_value url)}
+  # The key and the body go on a file descriptor and stdin, so neither shows in a process list.
   printf '%s' "$1" | curl -sS -X POST "${url:-https://api.massdriver.cloud}/api/v2" \
     -H @<(printf 'Authorization: %s\n' "$auth") -H 'content-type: application/json' --data-binary @-
 }
@@ -270,7 +285,7 @@ PLAN
 # The Terraform provider can't manage integrations, so the key goes over the API.
 # An organization has one integration per type; a rerun leaves a connected one alone.
 cmd_costs() {
-  local org status values
+  local org status body
   confirm "$(costs_plan)"
   org=$(org_id)
 
@@ -287,14 +302,15 @@ cmd_costs() {
   fi
 
   log "connect the AWS Cost and Usage Reports integration"
-  values=$(cd "$HERE/costs" && tofu output -json massdriver_integration_config)
-  graphql "$(jq -n --arg org "$org" --argjson v "$values" '{
+  # The secret access key reaches jq on stdin, so it never shows in a process list.
+  body=$(cd "$HERE/costs" && tofu output -json massdriver_integration_config | jq --arg org "$org" '. as $v | {
     query: "mutation($org: ID!, $input: CreateIntegrationInput!) { createIntegration(organizationId: $org, id: \"aws-cost-and-usage-reports\", input: $input) { successful messages { message } } }",
     variables: {org: $org, input: {
       config: ({bucket_name: $v.bucket_name, region: $v.bucket_region} | tojson),
       auth: ({access_key_id: $v.access_key_id, secret_access_key: $v.secret_access_key} | tojson)
     }}
-  }')" | jq -e -r 'if .data.createIntegration.successful then "connected"
+  }')
+  graphql "$body" | jq -e -r 'if .data.createIntegration.successful then "connected"
     else error([(.data.createIntegration.messages // [])[].message, (.errors // [])[].message] | join("; ")) end' >&2 ||
     die "couldn't connect the integration; it needs an organization admin"
 }
@@ -540,9 +556,9 @@ set_secret() {
   local value
   value=$(env_value "$3")
   [ -n "$value" ] || die "no $3 in .env; run ./bootstrap.sh env"
-  graphql "$(jq -n --arg org "$(org_id)" --arg id "$1" --arg name "$2" --arg value "$value" '{
+  graphql "$(SECRET_VALUE=$value jq -n --arg org "$(org_id)" --arg id "$1" --arg name "$2" '{
     query: "mutation($org: ID!, $id: ID!, $input: SetInstanceSecretInput!) { setInstanceSecret(organizationId: $org, id: $id, input: $input) { successful messages { message } } }",
-    variables: {org: $org, id: $id, input: {name: $name, value: $value}}
+    variables: {org: $org, id: $id, input: {name: $name, value: env.SECRET_VALUE}}
   }')" | jq -e '.data.setInstanceSecret.successful' >/dev/null || die "couldn't set $2 on $1"
 }
 
@@ -737,17 +753,18 @@ cmd_teardown() {
 }
 
 case "${1:-}" in
-  role) cmd_role ;;
-  costs) cmd_costs ;;
-  publish) cmd_publish ;;
+  role) need mass jq aws; cmd_role ;;
+  costs) need mass jq python3 tofu aws curl; cmd_costs ;;
+  publish) need mass jq git; cmd_publish ;;
   # The old name, so muscle memory keeps working.
-  projects | bootstrap) cmd_projects ;;
-  provision) cmd_provision ;;
-  fork) shift; cmd_fork "$@" ;;
-  env) cmd_env ;;
-  servers) shift; cmd_servers "$@" ;;
-  teardown) cmd_teardown ;;
+  projects | bootstrap) need mass jq tofu; cmd_projects ;;
+  provision) need mass jq python3 aws docker git; cmd_provision ;;
+  fork) shift; need mass jq python3 aws docker git; cmd_fork "$@" ;;
+  env) need mass jq tofu openssl; cmd_env ;;
+  servers) shift; need mass jq python3 tofu aws docker git curl; cmd_servers "$@" ;;
+  teardown) need mass jq python3 tofu aws curl; cmd_teardown ;;
   all)
+    need mass jq python3 tofu aws docker git curl openssl
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=apps.example.com"
     confirm "$(role_plan)
 

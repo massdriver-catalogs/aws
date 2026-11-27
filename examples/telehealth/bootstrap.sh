@@ -39,6 +39,24 @@ APPS=(visits care billing)
 log() { printf '\n==> %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+need() {
+  local tool missing=""
+  for tool in "$@"; do
+    command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+  done
+  [ -z "$missing" ] || die "not installed:$missing"
+  case " $* " in
+    *" python3 "*) python3 -c 'import yaml' 2>/dev/null || die "python3 can't import yaml; install PyYAML: pip3 install pyyaml" ;;
+  esac
+}
+
+org_id() {
+  local id
+  id=$(mass whoami -o json 2>/dev/null | jq -r '.organization.id // empty') || true
+  [ -n "$id" ] || die "mass can't reach your organization; sign in with a mass profile, or set MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID"
+  echo "$id"
+}
+
 CONFIRMED=${YES:-}
 
 cost_allocation_tags() {
@@ -159,7 +177,7 @@ latest_deployment() {
 
 # wait_for <instance> <deployment id from before the deploy>
 wait_for() {
-  local latest status
+  local latest status=unknown
   for _ in $(seq 1 240); do
     latest=$(mass deployment list "$1" -o json 2>/dev/null | jq -c '.[0] // empty') || { sleep 15; continue; }
     if [ -z "$latest" ] || [ "$(jq -r .id <<<"$latest")" = "${2:-}" ]; then
@@ -190,24 +208,37 @@ connect() {
     echo "kept $instance's existing $field connection" >&2
 }
 
+# A published version can't change, so one the organization already has is current.
+publish_once() {
+  local out
+  if out=$("$@" 2>&1); then
+    echo "$out" >&2
+  elif grep -q "already exists" <<<"$out"; then
+    echo "already published" >&2
+  else
+    echo "$out" >&2
+    return 1
+  fi
+}
+
 publish_type() {
   local name
   name=$(awk '/^name:/ { print $2; exit }' "$1/massdriver.yaml")
   log "publish resource type $name"
   mass repository create "$name" -t resource-type >/dev/null 2>&1 || true
-  mass resource-type publish "$1"
+  publish_once mass resource-type publish "$1"
 }
 
 publish_bundle() {
   local name
   name=$(awk '/^name:/ { print $2; exit }' "$1/massdriver.yaml")
   log "publish bundle $name"
-  mass bundle publish --bundle-directory "$1"
+  publish_once mass bundle publish --bundle-directory "$1"
 }
 
 # bootstrap.tf names the organization in the onboarding credential.
 organization_var() {
-  TF_VAR_organization_id=$(mass whoami -o json | jq -r .organization.id)
+  TF_VAR_organization_id=$(org_id)
   export TF_VAR_organization_id
 }
 
@@ -250,7 +281,7 @@ cmd_publish() {
 cmd_role() {
   local issuer=${ISSUER:-api.massdriver.cloud} org account provider trust arn
   confirm "$(role_plan)"
-  org=$(mass whoami -o json | jq -r .organization.id)
+  org=$(org_id)
   account=$(aws sts get-caller-identity --query Account --output text)
   provider="arn:aws:iam::$account:oidc-provider/$issuer"
 
@@ -305,16 +336,17 @@ graphql() {
     *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
   esac
   local url=${MASSDRIVER_URL:-$(profile_value url)}
-  curl -sS -X POST "${url:-https://api.massdriver.cloud}/api/v2" \
-    -H "Authorization: $auth" -H 'content-type: application/json' -d "$1"
+  # The key and the body go on a file descriptor and stdin, so neither shows in a process list.
+  printf '%s' "$1" | curl -sS -X POST "${url:-https://api.massdriver.cloud}/api/v2" \
+    -H @<(printf 'Authorization: %s\n' "$auth") -H 'content-type: application/json' --data-binary @-
 }
 
 # The Terraform provider can't manage integrations, so the key goes over the API.
 # An organization has one integration per type; a rerun leaves a connected one alone.
 cmd_costs() {
-  local org status values
+  local org status body
   confirm "$(costs_plan)"
-  org=$(mass whoami -o json | jq -r .organization.id)
+  org=$(org_id)
 
   log "cost and usage report and read-only user"
   (cd "$HERE/costs" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve -var "organization=$org" -var "cost_allocation_tags=$(cost_allocation_tags)")
@@ -331,14 +363,15 @@ cmd_costs() {
   fi
 
   log "connect the AWS Cost and Usage Reports integration"
-  values=$(cd "$HERE/costs" && tofu output -json massdriver_integration_config)
-  graphql "$(jq -n --arg org "$org" --argjson v "$values" '{
+  # The secret access key reaches jq on stdin, so it never shows in a process list.
+  body=$(cd "$HERE/costs" && tofu output -json massdriver_integration_config | jq --arg org "$org" '. as $v | {
     query: "mutation($org: ID!, $input: CreateIntegrationInput!) { createIntegration(organizationId: $org, id: \"aws-cost-and-usage-reports\", input: $input) { successful messages { message } } }",
     variables: {org: $org, input: {
       config: ({bucket_name: $v.bucket_name, region: $v.bucket_region} | tojson),
       auth: ({access_key_id: $v.access_key_id, secret_access_key: $v.secret_access_key} | tojson)
     }}
-  }')" | jq -e -r 'if .data.createIntegration.successful then "connected"
+  }')
+  graphql "$body" | jq -e -r 'if .data.createIntegration.successful then "connected"
     else error([(.data.createIntegration.messages // [])[].message, (.errors // [])[].message] | join("; ")) end' >&2 ||
     # Costs are optional, and connecting them needs an organization admin.
     cat >&2 <<EOF
@@ -416,11 +449,12 @@ automation_params() {
     | if (.config | type) == \"object\" and .config.exempt_groups then .config.exempt_groups |= map(\$ids[.] // .) end"
 }
 
-# set_secret <instance> <name> <value>
+# set_secret <instance> <name> <value>. The value travels in the environment
+# and on stdin, so it never shows in a process list.
 set_secret() {
-  graphql "$(jq -n --arg org "$(mass whoami -o json | jq -r .organization.id)" --arg id "$1" --arg n "$2" --arg v "$3" '{
+  graphql "$(SECRET_VALUE=$3 jq -n --arg org "$(org_id)" --arg id "$1" --arg n "$2" '{
     query: "mutation($org: ID!, $id: ID!, $input: SetInstanceSecretInput!) { setInstanceSecret(organizationId: $org, id: $id, input: $input) { successful messages { message } } }",
-    variables: {org: $org, id: $id, input: {name: $n, value: $v}}
+    variables: {org: $org, id: $id, input: {name: $n, value: env.SECRET_VALUE}}
   }')" | jq -e '.data.setInstanceSecret.successful' >/dev/null || die "couldn't set $2 on $1"
 }
 
@@ -611,6 +645,7 @@ cmd_sandbox() {
   local name=${1:-} env
   [[ "$name" =~ ^[a-z0-9]{1,20}$ ]] || die "sandbox name must be 1-20 lowercase letters and digits"
   env="sandboxes-$name"
+  confirm "$(sandbox_plan "$name")"
   mass environment get "$env" >/dev/null 2>&1 ||
     mass environment fork sandboxes-template "$name" --name "$name" --copy-environment-defaults >/dev/null
   [ -z "${ANTHROPIC_API_KEY:-}" ] || set_secret "$env-workspace" ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
@@ -620,10 +655,18 @@ cmd_sandbox() {
   cluster=$(mass resource get platform-dev-cluster.cluster -o json)
   region=$(jq -r .payload.region <<<"$cluster")
   # Resources are named <organization>-<instance>.
-  service="$(mass whoami -o json | jq -r .organization.id)-$env-workspace"
+  service="$(org_id)-$env-workspace"
   log "open a shell in $env with:
   TASK=\$(aws ecs list-tasks --region $region --cluster $(jq -r .payload.name <<<"$cluster") --service-name $service --query 'taskArns[0]' --output text)
   aws ecs execute-command --region $region --cluster $(jq -r .payload.name <<<"$cluster") --task \$TASK --container workspace --interactive --command 'workspace shell'"
+}
+
+sandbox_plan() {
+  cat <<PLAN
+Forks sandboxes-template into sandboxes-$1 and deploys its workspace into $(aws_target):
+  - One Fargate task on the dev cluster, with Claude Code, OpenCode, mass and git.
+Remove it with: ./bootstrap.sh teardown
+PLAN
 }
 
 teardown_plan() {
@@ -713,7 +756,7 @@ release() {
 cmd_teardown() {
   local org account provider stage project status
   confirm "$(teardown_plan)"
-  org=$(mass whoami -o json | jq -r .organization.id)
+  org=$(org_id)
   account=$(aws sts get-caller-identity --query Account --output text)
 
   # sandbox-on-join forks these from the template, outside bootstrap.tf. Their
@@ -795,17 +838,18 @@ cmd_teardown() {
 }
 
 case "${1:-}" in
-  role) cmd_role ;;
-  costs) cmd_costs ;;
-  setup) cmd_setup ;;
-  publish) cmd_publish ;;
+  role) need mass jq aws; cmd_role ;;
+  costs) need mass jq python3 tofu aws curl; cmd_costs ;;
+  setup) need mass jq tofu; cmd_setup ;;
+  publish) need mass git; cmd_publish ;;
   # The old name, so muscle memory keeps working.
-  projects | bootstrap) cmd_projects ;;
-  provision) cmd_provision "${2:-}" ;;
-  ship) cmd_ship "${2:-}" "${3:-}" ;;
-  sandbox) cmd_sandbox "${2:-}" ;;
-  teardown) cmd_teardown ;;
+  projects | bootstrap) need mass jq tofu; cmd_projects ;;
+  provision) need mass jq python3 tofu aws docker git curl; cmd_provision "${2:-}" ;;
+  ship) need mass jq aws docker git; cmd_ship "${2:-}" "${3:-}" ;;
+  sandbox) need mass jq python3 aws curl; cmd_sandbox "${2:-}" ;;
+  teardown) need mass jq python3 tofu aws curl; cmd_teardown ;;
   all)
+    need mass jq python3 tofu aws docker git curl
     stage=$(stage_arg "${2:-}")
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=tendwell.example"
     confirm "$(role_plan)

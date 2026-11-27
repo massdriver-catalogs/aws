@@ -40,6 +40,24 @@ SUBDOMAIN=play
 log() { printf '\n==> %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+need() {
+  local tool missing=""
+  for tool in "$@"; do
+    command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+  done
+  [ -z "$missing" ] || die "not installed:$missing"
+  case " $* " in
+    *" python3 "*) python3 -c 'import yaml' 2>/dev/null || die "python3 can't import yaml; install PyYAML: pip3 install pyyaml" ;;
+  esac
+}
+
+org_id() {
+  local id
+  id=$(mass whoami -o json 2>/dev/null | jq -r '.organization.id // empty') || true
+  [ -n "$id" ] || die "mass can't reach your organization; sign in with a mass profile, or set MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID"
+  echo "$id"
+}
+
 CONFIRMED=${YES:-}
 
 # Everything here creates real, billed AWS infrastructure with administrator
@@ -128,7 +146,7 @@ latest_deployment() {
 # The log stream can end, or the API can blip, while a deployment is still
 # running. Later steps read this instance's outputs, so wait for the result.
 wait_for() {
-  local latest status
+  local latest status=unknown
   for _ in $(seq 1 240); do
     latest=$(mass deployment list "$1" -o json 2>/dev/null | jq -c '.[0] // empty') || { sleep 15; continue; }
     if [ -z "$latest" ] || [ "$(jq -r .id <<<"$latest")" = "${2:-}" ]; then
@@ -150,12 +168,25 @@ share() {
   mass resource grant create "$@" >/dev/null 2>&1 || true
 }
 
+# A published version can't change, so one the organization already has is current.
+publish_once() {
+  local out
+  if out=$("$@" 2>&1); then
+    echo "$out" >&2
+  elif grep -q "already exists" <<<"$out"; then
+    echo "already published" >&2
+  else
+    echo "$out" >&2
+    return 1
+  fi
+}
+
 publish_type() {
   local name
   name=$(awk '/^name:/ { print $2; exit }' "$1/massdriver.yaml")
   log "publish resource type $name"
   mass repository create "$name" -t resource-type >/dev/null 2>&1 || true
-  mass resource-type publish "$1"
+  publish_once mass resource-type publish "$1"
 }
 
 publish_bundle() {
@@ -163,7 +194,7 @@ publish_bundle() {
   name=$(awk '/^name:/ { print $2; exit }' "$1/massdriver.yaml")
   log "publish bundle $name"
   if [ -z "${DEV:-}" ]; then
-    mass bundle publish --bundle-directory "$1"
+    publish_once mass bundle publish --bundle-directory "$1"
     return
   fi
   local out version
@@ -182,7 +213,7 @@ pin() {
   [ -n "${DEV:-}" ] || return 0
   local bundle version
   bundle=$(mass instance get "$1" -o json | jq -r '.bundle.name // .bundle.id')
-  version=$(awk -v b="$bundle" '$1 == b { print $2 }' "$HERE/.dev-versions" 2>/dev/null)
+  version=$(awk -v b="$bundle" '$1 == b { print $2 }' "$HERE/.dev-versions" 2>/dev/null || true)
   [ -n "$version" ] || die "no development release of $bundle recorded; run DEV=1 ./bootstrap.sh publish"
   mass instance version "$1@$version" >/dev/null
 }
@@ -194,10 +225,6 @@ require_role() {
 
 tf_output() {
   (cd "$HERE" && tofu output -raw "$1")
-}
-
-org_id() {
-  mass whoami -o json | jq -r .organization.id
 }
 
 # Reads the same profile mass does, so every step talks to the same organization.
@@ -219,6 +246,7 @@ graphql() {
     *) auth="Basic $(printf '%s:%s' "$org" "$key" | base64 | tr -d '\n')" ;;
   esac
   local url=${MASSDRIVER_URL:-$(profile_value url)}
+  # The key and the body go on a file descriptor and stdin, so neither shows in a process list.
   printf '%s' "$1" | curl -sS -X POST "${url:-https://api.massdriver.cloud}/api/v2" \
     -H @<(printf 'Authorization: %s\n' "$auth") -H 'content-type: application/json' --data-binary @-
 }
@@ -244,7 +272,7 @@ PLAN
 # The Terraform provider can't manage integrations, so the key goes over the API.
 # An organization has one integration per type; a rerun leaves a connected one alone.
 cmd_costs() {
-  local org status values
+  local org status body
   confirm "$(costs_plan)"
   org=$(org_id)
 
@@ -261,14 +289,15 @@ cmd_costs() {
   fi
 
   log "connect the AWS Cost and Usage Reports integration"
-  values=$(cd "$HERE/costs" && tofu output -json massdriver_integration_config)
-  graphql "$(jq -n --arg org "$org" --argjson v "$values" '{
+  # The secret access key reaches jq on stdin, so it never shows in a process list.
+  body=$(cd "$HERE/costs" && tofu output -json massdriver_integration_config | jq --arg org "$org" '. as $v | {
     query: "mutation($org: ID!, $input: CreateIntegrationInput!) { createIntegration(organizationId: $org, id: \"aws-cost-and-usage-reports\", input: $input) { successful messages { message } } }",
     variables: {org: $org, input: {
       config: ({bucket_name: $v.bucket_name, region: $v.bucket_region} | tojson),
       auth: ({access_key_id: $v.access_key_id, secret_access_key: $v.secret_access_key} | tojson)
     }}
-  }')" | jq -e -r 'if .data.createIntegration.successful then "connected"
+  }')
+  graphql "$body" | jq -e -r 'if .data.createIntegration.successful then "connected"
     else error([(.data.createIntegration.messages // [])[].message, (.errors // [])[].message] | join("; ")) end' >&2 ||
     die "couldn't connect the integration; it needs an organization admin"
 }
@@ -332,7 +361,7 @@ cmd_setup() {
 
 # Types before the bundles that use them, and the runtime before the server built on it.
 cmd_publish() {
-  local dir bundle
+  local type bundle
   log "publish Massdriver resource types"
   "$CATALOG/scripts/publish-massdriver-types.sh"
   publish_type "$CATALOG/platforms/aws-iam-role"
@@ -471,7 +500,7 @@ cmd_provision() {
   server=$(build_image gamelab-main-registry "$APP/src")
   deploy_server "$server"
 
-  cmd_password
+  log "Gamelab is at https://$SUBDOMAIN.$DOMAIN. ./bootstrap.sh password prints the password."
 }
 
 cmd_ship() {
@@ -595,18 +624,19 @@ cmd_teardown() {
 }
 
 case "${1:-}" in
-  role) cmd_role ;;
-  costs) cmd_costs ;;
-  setup) cmd_setup ;;
-  publish) cmd_publish ;;
+  role) need mass jq aws; cmd_role ;;
+  costs) need mass jq python3 tofu aws curl; cmd_costs ;;
+  setup) need mass jq tofu; cmd_setup ;;
+  publish) need mass git; cmd_publish ;;
   # The old name, so muscle memory keeps working.
-  projects | bootstrap) cmd_projects ;;
-  provision) cmd_provision ;;
-  images) cmd_images >/dev/null ;;
-  ship) cmd_ship ;;
-  password) cmd_password ;;
-  teardown) cmd_teardown ;;
+  projects | bootstrap) need mass jq tofu; cmd_projects ;;
+  provision) need mass jq python3 tofu aws docker git curl; cmd_provision ;;
+  images) need mass jq aws docker git; cmd_images >/dev/null ;;
+  ship) need mass jq aws docker git; cmd_ship ;;
+  password) need mass jq tofu; cmd_password ;;
+  teardown) need mass jq python3 tofu aws curl; cmd_teardown ;;
   all)
+    need mass jq python3 tofu aws docker git curl
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=gamelab.example.com"
     confirm "$(role_plan)
 
