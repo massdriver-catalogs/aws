@@ -284,9 +284,11 @@ locals {
     "instance:deploy",
     "instance:decommission",
     "resource:export",
+    "stash:write",
+    "stash:export",
   ]
 
-  read_actions = ["project:view", "resource:view", "repo:view", "repo:pull"]
+  read_actions = ["project:view", "resource:view", "repo:view", "repo:pull", "stash:view"]
 }
 
 resource "massdriver_custom_attribute" "team" {
@@ -600,7 +602,7 @@ resource "massdriver_group_policy" "sre_agents_read" {
 resource "massdriver_group_policy" "sre_agents_tune_dev" {
   group_id   = massdriver_group.sre_agents.id
   effect     = "ALLOW"
-  actions    = ["environment:configure", "instance:configure", "instance:plan", "instance:propose", "instance:deploy"]
+  actions    = ["environment:configure", "instance:configure", "instance:plan", "instance:propose", "instance:deploy", "stash:write", "stash:export"]
   conditions = jsonencode({ "md-environment" = ["dev"] })
 }
 

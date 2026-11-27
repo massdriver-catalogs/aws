@@ -189,6 +189,9 @@ locals {
     "instance:plan",
     "instance:deploy",
     "instance:decommission",
+    "stash:view",
+    "stash:write",
+    "stash:export",
   ]
 
   paas = {
