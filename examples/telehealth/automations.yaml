@@ -541,3 +541,47 @@ stash-sync:
           links:
             - {label: Claims, url: "https://billing.dev.tendwell.mdawssbx.com"}
             - {label: Status page, url: "https://statuspage.dev.tendwell.mdawssbx.com/dev/"}
+
+log-results:
+  config: |
+    # Tendwell's bundles run OpenTofu with Checkov. Each PROVISION and PLAN
+    # shows how its step ran, what it changes, and its Checkov findings as
+    # widgets on the deployment. Every bundle has one step, src.
+    actions: [PROVISION, PLAN]
+    rules:
+      - name: opentofu-step
+        detect: (OpenTofu|Terraform) has been successfully initialized
+        patterns:
+          - (?P<tool>OpenTofu|Terraform) has been successfully initialized
+          - (?:OpenTofu|Terraform) v(?:ersion:\s*)?(?P<tool_version>\d+\.\d+\.\d+)
+          - (?P<message>(?:Apply|Destroy) complete! Resources:.*|Plan:.*|No changes\.)
+          - 'Error: (?P<error>.+)'
+        key: step/src
+        label: OpenTofu step
+        value: >-
+          {tool: (.tool | ascii_downcase), tool_version, action: $action, status: $status,
+           message: ((.error // .message) | if . then tostring | .[:280] else . end)}
+          | with_entries(select(.value != null))
+
+      - name: opentofu-changes
+        detect: (OpenTofu|Terraform) has been successfully initialized
+        patterns:
+          - (?P<tool>OpenTofu|Terraform) has been successfully initialized
+          - 'Plan: (?:(?P<imports>\d+) to import, )?(?P<add>\d+) to add, (?P<change>\d+) to change, (?P<destroy>\d+) to destroy'
+          - (?P<no_changes>No changes\.)
+        mode: sum
+        key: changes/src
+        label: OpenTofu changes
+        value: >-
+          {tool: (.tool | ascii_downcase), add: (.add // 0), change: (.change // 0), destroy: (.destroy // 0)}
+
+      - name: checkov
+        detect: 'Passed checks: \d+'
+        patterns:
+          - 'By (?:Prisma Cloud|bridgecrew\.io) \| version: (?P<tool_version>\d+\.\d+\.\d+)'
+          - 'Passed checks: (?P<passed>\d+), Failed checks: (?P<failed>\d+), Skipped checks: (?P<skipped>\d+)'
+        mode: sum
+        key: compliance/src
+        label: Checkov
+        value: >-
+          {tool: "checkov", tool_version, passed, failed, skipped} | with_entries(select(.value != null))
