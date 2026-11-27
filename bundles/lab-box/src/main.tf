@@ -149,6 +149,13 @@ resource "aws_service_discovery_service" "box" {
   }
 
   health_check_custom_config {}
+
+  # The AWS provider reads this block back differently from how it's written
+  # and plans a replacement on every deploy, which Cloud Map refuses while the
+  # task is registered.
+  lifecycle {
+    ignore_changes = [health_check_custom_config]
+  }
 }
 
 resource "aws_security_group" "task" {
