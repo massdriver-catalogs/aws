@@ -18,7 +18,11 @@ locals {
 
   app_bundles = { for app in local.apps : app => yamldecode(file("${path.module}/applications/${app}/massdriver.yaml")).name }
 
-  bundles = merge(local.app_bundles, local.runtimes)
+  # The PHP 7 runtime's releases still back the apps' older versions, and
+  # Massdriver won't delete a runtime repository that apps run on.
+  retired_runtimes = { "ecs-service-php7" = "ecs-service-php7" }
+
+  bundles = merge(local.app_bundles, local.runtimes, local.retired_runtimes)
 
   components = merge(
     {
