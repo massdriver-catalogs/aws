@@ -10,7 +10,7 @@
 #                                 it with the add-ons named, the way a Rocketsled server does, e.g.
 #                                 ./deploy.sh fork ruby staging db  or  ./deploy.sh fork static demo
 #   ./deploy.sh env               write .env for the Rocketsled servers (fauxroku.yaml, fauxcel.yaml)
-#   ./deploy.sh servers           run both websites on the platform's cluster, at fauxroku.<DOMAIN>
+#   ./deploy.sh servers [paas]    run both websites on the platform's cluster, at fauxroku.<DOMAIN>
 #                                 and fauxcel.<DOMAIN>, from a Rocketsled checkout (ROCKETSLED_DIR,
 #                                 default ../rocketsled next to this repository)
 #   ./deploy.sh costs             connect Massdriver's cost reporting to this AWS account
@@ -568,14 +568,22 @@ cmd_servers() {
   done
   mass environment default rocketsled-main "$(tf_output aws_credential)" >/dev/null
   deploy rocketsled-main-registry ecr-repository
+  # The codebase is what lets the servers' tasks pull from the registry.
+  deploy rocketsled-main-codebase codebase '.share_with_project = false'
+  share rocketsled-main-codebase.codebase --condition md-project=rocketsled
+  mass environment default rocketsled-main rocketsled-main-codebase.codebase >/dev/null
 
   log "build Rocketsled"
   docker build --platform linux/arm64 --provenance=false -t rocketsled:local "$rocketsled" >&2
   hash=$( (cd "$HERE" && tar cf - fauxroku.yaml fauxcel.yaml skins server) | shasum | cut -c1-8)
   image=$(build_server_image "$(git -C "$rocketsled" rev-parse --short HEAD)-$hash")
   site=$(static_image)
+  local welcome=() runtime
+  for runtime in node ruby python; do
+    welcome+=("$(tr a-z A-Z <<<"$runtime")_WELCOME=$(build_image "$runtime-template-registry" "$HERE/applications/fauxroku-welcome" -welcome)")
+  done
 
-  for paas in fauxroku fauxcel; do
+  for paas in ${1:-fauxroku fauxcel}; do
     instance=rocketsled-main-$paas
     upper=$(tr a-z A-Z <<<"$paas")
     port=8081
@@ -593,7 +601,7 @@ cmd_servers() {
           {name: "MASSDRIVER_ORGANIZATION_ID", value: $org},
           {name: $base_var, value: $base},
           {name: "FAUXCEL_SITE_IMAGE", value: $site}
-        ]' | mass instance deploy "$instance" --params - -m "Rocketsled $paas website, $image" --follow || true
+        ] + [$ARGS.positional[] | split("=") | {name: ("FAUXROKU_" + .[0]), value: (.[1:] | join("="))}]' --args "${welcome[@]}" | mass instance deploy "$instance" --params - -m "Rocketsled $paas website, $image" --follow || true
     wait_for "$instance" "$before"
     log "https://$paas.$domain"
   done
@@ -732,7 +740,7 @@ case "${1:-}" in
   provision) cmd_provision ;;
   fork) shift; cmd_fork "$@" ;;
   env) cmd_env ;;
-  servers) cmd_servers ;;
+  servers) shift; cmd_servers "$@" ;;
   teardown) cmd_teardown ;;
   all)
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=apps.example.com"

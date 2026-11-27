@@ -110,12 +110,11 @@ locals {
         description = "The Fauxroku and Fauxcel websites, and the image they run."
         paas        = "rocketsled"
         stages      = { main = "Main" }
-        components = {
-          registry = { bundle = "ecr-repository", name = "Image Repository" }
+        components = merge(local.image_components, {
           fauxroku = { bundle = "rocketsled-server", name = "Fauxroku" }
           fauxcel  = { bundle = "rocketsled-server", name = "Fauxcel" }
-        }
-        links = []
+        })
+        links = ["registry.repository -> codebase.registry"]
       }
       static = {
         name        = "Fauxcel Static"

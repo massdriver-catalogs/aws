@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fauxroku | Welcome to your new app!</title>
+<link rel="icon" href="logo.svg">
+<style>
+  body { margin: 0; background: #eeedf3; color: #3f3f44; font: 14px/1.6 "Lucida Grande", "Lucida Sans Unicode", Helvetica, Arial, sans-serif; }
+  header { background: linear-gradient(#7d5cc6, #5a3a9e); border-bottom: 1px solid #44297f; box-shadow: 0 2px 6px rgba(40, 20, 80, .35); }
+  header div { max-width: 760px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 10px; color: #fff; font-weight: bold; font-size: 18px; text-shadow: 0 -1px 0 rgba(0, 0, 0, .35); }
+  header img { width: 30px; height: 30px; }
+  main { max-width: 760px; margin: 40px auto; padding: 0 20px; }
+  .card { background: #fff; border: 1px solid #c4c1d6; border-radius: 4px; box-shadow: 0 1px 2px rgba(40, 20, 80, .12); }
+  .card h1 { margin: 0; padding: 14px 22px; font: bold 20px "Helvetica Neue", Helvetica, Arial, sans-serif; background: linear-gradient(#fbfaff, #efedf6); border-bottom: 1px solid #dcdae6; }
+  .card section { padding: 18px 22px; }
+  code, pre { font-family: Monaco, Menlo, Consolas, monospace; font-size: 13px; }
+  pre { background: #2b2540; color: #e9e4ff; padding: 14px 16px; border-radius: 4px; overflow-x: auto; }
+  .app { color: #6c4ab6; }
+  footer { text-align: center; color: #9a99a6; font-size: 12px; margin: 30px 0; }
+</style>
+</head>
+<body>
+<header><div><img src="logo.svg" alt=""> Fauxroku</div></header>
+<main>
+  <div class="card">
+    <h1>Welcome to your new app<span class="app" id="app"></span>!</h1>
+    <section>
+      <p>Your app is running on a web dyno. This page is here until you deploy your own code.</p>
+      <p>Build an image and push it:</p>
+      <pre>pack build my-app --builder heroku/builder:24 --publish</pre>
+      <p>Then set the image on your app's web dynos and deploy.</p>
+    </section>
+  </div>
+  <footer>Fauxroku. Cloud application platform. Allegedly.</footer>
+</main>
+<script>
+  var name = location.hostname.split(".")[0];
+  if (name) document.getElementById("app").textContent = ", " + name;
+</script>
+</body>
+</html>

@@ -33,18 +33,30 @@ paas:
       template: template
       app_component: web                              # rocketsled#5
       image_param: image_uri
+      # A welcome page from the runtime's own registry, until the app's image is pushed.
+      pinned:
+        web: {image_uri: "${FAUXROKU_NODE_WELCOME}"}
+        worker: {image_uri: "${FAUXROKU_NODE_WELCOME}"}
     - id: ruby
       name: Ruby
       project: ruby
       template: template
       app_component: web
       image_param: image_uri
+      # A welcome page from the runtime's own registry, until the app's image is pushed.
+      pinned:
+        web: {image_uri: "${FAUXROKU_RUBY_WELCOME}"}
+        worker: {image_uri: "${FAUXROKU_RUBY_WELCOME}"}
     - id: python
       name: Python
       project: python
       template: template
       app_component: web
       image_param: image_uri
+      # A welcome page from the runtime's own registry, until the app's image is pushed.
+      pinned:
+        web: {image_uri: "${FAUXROKU_PYTHON_WELCOME}"}
+        worker: {image_uri: "${FAUXROKU_PYTHON_WELCOME}"}
 
   pinned:
     web:
