@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # Stands up the Rocketsled example: Fauxroku and Fauxcel in a Massdriver organization.
 #
-#   ./deploy.sh role              make the IAM role Massdriver deploys with, in the current AWS account
-#   ./deploy.sh publish           publish the resource types and bundles both PaaSes use
-#   ./deploy.sh bootstrap         apply bootstrap.tf and set each environment's AWS credential
-#   ./deploy.sh provision         deploy the shared platform and each template's image repository
-#   ./deploy.sh fork <runtime> <id> [add-on...]
+#   ./bootstrap.sh role           make the IAM role Massdriver deploys with, in the current AWS account
+#   ./bootstrap.sh publish        publish the resource types and bundles both PaaSes use
+#   ./bootstrap.sh projects       projects, templates, the servers' access, and the AWS credential
+#   ./bootstrap.sh provision      deploy the shared platform and each template's image repository
+#   ./bootstrap.sh fork <runtime> <id> [add-on...]
 #                                 fork a customer environment from a runtime's template and deploy
 #                                 it with the add-ons named, the way a Rocketsled server does, e.g.
-#                                 ./deploy.sh fork ruby staging db  or  ./deploy.sh fork static demo
-#   ./deploy.sh env               write .env for the Rocketsled servers (fauxroku.yaml, fauxcel.yaml)
-#   ./deploy.sh servers [paas]    run both websites on the platform's cluster, at fauxroku.<DOMAIN>
+#                                 ./bootstrap.sh fork ruby staging db  or  ./bootstrap.sh fork static demo
+#   ./bootstrap.sh env            write .env for the Rocketsled servers (fauxroku.yaml, fauxcel.yaml)
+#   ./bootstrap.sh servers [paas] run both websites on the platform's cluster, at fauxroku.<DOMAIN>
 #                                 and fauxcel.<DOMAIN>, from a Rocketsled checkout (ROCKETSLED_DIR,
 #                                 default ../rocketsled next to this repository)
-#   ./deploy.sh costs             connect Massdriver's cost reporting to this AWS account
-#   ./deploy.sh all               role, publish, bootstrap, provision and env
-#   ./deploy.sh teardown          remove every customer environment, then everything above
+#   ./bootstrap.sh costs          connect Massdriver's cost reporting to this AWS account
+#   ./bootstrap.sh all            role, publish, projects, provision and env
+#   ./bootstrap.sh teardown       remove every customer environment, then everything above
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
 # PyYAML, docker, and AWS CLI credentials for the account the PaaSes deploy into.
@@ -85,7 +85,7 @@ Deploys into $(aws_target), region us-east-1, with each bundle's Development pre
     repository and its codebase, so every environment of that runtime pulls from one place.
   - The static site's file server image, built and pushed to the static template's repository.
 Cost: about \$25/month while it runs, most of it the load balancer. Nothing else in the
-templates is deployed. Remove it with: ./deploy.sh teardown
+templates is deployed. Remove it with: ./bootstrap.sh teardown
 PLAN
 }
 
@@ -109,7 +109,7 @@ fork_plan() {
       blob) echo "  - Blob: an S3 bucket (per GB stored)." ;;
     esac
   done
-  echo "Remove it with: ./deploy.sh teardown"
+  echo "Remove it with: ./bootstrap.sh teardown"
 }
 
 bundle_dir() {
@@ -144,7 +144,7 @@ deploy() {
   log "deploy $instance"
   local before
   before=$(latest_deployment "$instance")
-  preset "$bundle" | jq "$filter" | mass instance deploy "$instance" --params - -m "deploy.sh" --follow || true
+  preset "$bundle" | jq "$filter" | mass instance deploy "$instance" --params - -m "bootstrap.sh" --follow || true
   wait_for "$instance" "$before"
 }
 
@@ -218,13 +218,13 @@ pin() {
   local bundle version
   bundle=$(mass instance get "$1" -o json | jq -r '.bundle.name // .bundle.id')
   version=$(awk -v b="$bundle" '$1 == b { print $2 }' "$HERE/.dev-versions" 2>/dev/null)
-  [ -n "$version" ] || die "no development release of $bundle recorded; run ./deploy.sh publish"
+  [ -n "$version" ] || die "no development release of $bundle recorded; run ./bootstrap.sh publish"
   mass instance version "$1@$version" >/dev/null
 }
 
 require_role() {
   [ -f "$HERE/terraform.tfvars.json" ] || [ -f "$HERE/terraform.tfvars" ] || [ -n "${TF_VAR_aws_role:-}" ] ||
-    die "no AWS role; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
+    die "no AWS role; run ./bootstrap.sh role, or copy terraform.tfvars.example to terraform.tfvars"
 }
 
 tf_output() {
@@ -348,7 +348,7 @@ cmd_publish() {
   for bundle in "${BUNDLES[@]}" "${APPS[@]}"; do publish_bundle "$(bundle_dir "$bundle")"; done
 }
 
-cmd_bootstrap() {
+cmd_projects() {
   require_role
   log "apply bootstrap.tf"
   # Some mass versions fail to list repositories ("Project not found"); a new organization has none to adopt.
@@ -490,7 +490,7 @@ cmd_fork() {
     node | ruby | python) base="web" addons="worker db cache" ;;
     functions) base="api app" addons="kv blob" ;;
     static) base="files api site" addons="" ;;
-    *) die "usage: ./deploy.sh fork node|ruby|python|functions|static <id> [add-on...]" ;;
+    *) die "usage: ./bootstrap.sh fork node|ruby|python|functions|static <id> [add-on...]" ;;
   esac
   [[ "$id" =~ ^[a-z0-9]{1,20}$ && "$id" != template ]] || die "the id is 1-20 lowercase letters or digits, and not template"
   for addon in "$@"; do
@@ -539,7 +539,7 @@ env_value() {
 set_secret() {
   local value
   value=$(env_value "$3")
-  [ -n "$value" ] || die "no $3 in .env; run ./deploy.sh env"
+  [ -n "$value" ] || die "no $3 in .env; run ./bootstrap.sh env"
   graphql "$(jq -n --arg org "$(org_id)" --arg id "$1" --arg name "$2" --arg value "$value" '{
     query: "mutation($org: ID!, $id: ID!, $input: SetInstanceSecretInput!) { setInstanceSecret(organizationId: $org, id: $id, input: $input) { successful messages { message } } }",
     variables: {org: $org, id: $id, input: {name: $name, value: $value}}
@@ -642,7 +642,7 @@ Deletes the Rocketsled example from your Massdriver organization and $(aws_targe
     accounts, the AWS credential and bundle grants.
   - Deletes the massdriver-<org> role, and removes the organization from the Massdriver OIDC
     provider, deleting the provider when no other organization uses it.
-Published bundles and resource types stay, so ./deploy.sh all can stand it back up.
+Published bundles and resource types stay, so ./bootstrap.sh all can stand it back up.
 PLAN
 }
 
@@ -664,7 +664,7 @@ decommission() {
     for id in $(jq -r '.[] | select(.status == "PROVISIONED" or .status == "FAILED") | .id' <<<"$instances"); do
       latest=$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"' || true)
       [ "$latest" != "DECOMMISSION FAILED" ] ||
-        die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./deploy.sh teardown"
+        die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./bootstrap.sh teardown"
       case "$latest" in *COMPLETED | *FAILED | *ABORTED | *REJECTED) ;; *) busy=1 ;; esac
     done
     # Massdriver sometimes stops partway down a chain of links, leaving the
@@ -673,7 +673,7 @@ decommission() {
     [ "$busy" = 1 ] && idle=0 || idle=$((idle + 1))
     [ "$idle" -ge 4 ] || continue
     for id in $(jq -r '.[] | select(.status == "PROVISIONED") | .id' <<<"$instances"); do
-      mass instance destroy "$id" --force -m "deploy.sh teardown" >/dev/null 2>&1 || true
+      mass instance destroy "$id" --force -m "bootstrap.sh teardown" >/dev/null 2>&1 || true
     done
     idle=0
   done
@@ -740,7 +740,8 @@ case "${1:-}" in
   role) cmd_role ;;
   costs) cmd_costs ;;
   publish) cmd_publish ;;
-  bootstrap) cmd_bootstrap ;;
+  # The old name, so muscle memory keeps working.
+  projects | bootstrap) cmd_projects ;;
   provision) cmd_provision ;;
   fork) shift; cmd_fork "$@" ;;
   env) cmd_env ;;
@@ -757,7 +758,7 @@ service account per PaaS for its Rocketsled server, and the AWS credential.
 $(provision_plan)"
     cmd_role
     cmd_publish
-    cmd_bootstrap
+    cmd_projects
     cmd_provision
     cmd_env
     ;;

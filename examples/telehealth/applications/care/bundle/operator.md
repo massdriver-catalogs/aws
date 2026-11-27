@@ -60,5 +60,5 @@ Every page calls the Visits API and PostgreSQL. A cache miss doubles the Visits 
 ## Ship a new version
 
 ```bash
-cd examples/telehealth && ./deploy.sh ship care <environment>
+cd examples/telehealth && ./bootstrap.sh ship care <environment>
 ```

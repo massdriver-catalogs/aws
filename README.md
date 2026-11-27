@@ -106,7 +106,7 @@ Massdriver builds the app and its runtime into one bundle when the app is publis
 
 ## Use it
 
-**Stand up an example.** Each folder in [examples/](examples/) is a whole company built on this catalog. Its `deploy.sh` publishes the catalog to your organization and stands up the company: projects, environments, teams and their access, and its apps.
+**Stand up an example.** Each folder in [examples/](examples/) is a whole company built on this catalog. Its `bootstrap.sh` publishes the catalog to your organization and stands up the company: projects, environments, teams and their access, and its apps.
 
 | Example | Company |
 |---|---|
@@ -115,7 +115,7 @@ Massdriver builds the app and its runtime into one bundle when the app is publis
 
 **Sync it to your organization and build your own.** Fork this repository and connect its publish workflow:
 
-1. In Massdriver, turn on **Settings → General → Grant new bundle repositories to all projects**. Create a service account with a **1 year** token in a group allowed to publish. The examples' `deploy.sh` turns that setting off and grants each repository itself, so turn it back on after running one.
+1. In Massdriver, turn on **Settings → General → Grant new bundle repositories to all projects**. Create a service account with a **1 year** token in a group allowed to publish. The examples' `bootstrap.sh` turns that setting off and grants each repository itself, so turn it back on after running one.
 2. In the fork's **Settings → Secrets and variables → Actions**, add its key as the secret `MASSDRIVER_API_KEY` and your organization ID as the variable `MASSDRIVER_ORG_ID`.
 3. Run **Actions → Publish → Run workflow** with *all* ticked. After that, every push to `main` publishes what changed: credentials and resource types first, then bundles.
 

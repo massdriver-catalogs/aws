@@ -12,7 +12,7 @@ terraform {
 provider "massdriver" {}
 
 variable "aws_role" {
-  description = "The IAM role Massdriver deploys with, from the aws-iam-role credential's instructions. deploy.sh role makes it."
+  description = "The IAM role Massdriver deploys with, from the aws-iam-role credential's instructions. bootstrap.sh role makes it."
   type = object({
     arn         = string
     token_level = optional(string, "organization")

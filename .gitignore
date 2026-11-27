@@ -13,7 +13,7 @@ crash.log
 
 .DS_Store
 
-# deploy.sh DEV=1 records the development releases it published
+# bootstrap.sh DEV=1 records the development releases it published
 examples/*/.dev-versions
-# deploy.sh env writes the Rocketsled servers' Massdriver keys here
+# bootstrap.sh env writes the Rocketsled servers' Massdriver keys here
 examples/*/.env

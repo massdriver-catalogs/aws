@@ -16,13 +16,13 @@ A telehealth company built on this catalog. Patients book video visits, clinicia
 
 `platform`, `visits`, `care` and `billing` have `dev` and `prod`. `apps` has one environment per app, where the platform team onboards it: an image registry and a codebase, shared with the app's project and set as the default in its dev and prod, so both run the same images. Prod deploys need a second person's approval.
 
-The `apps` canvas also has `github-repo` and `massdriver-project`, which `deploy.sh` leaves undeployed. Deploying them gives an app a GitHub repository with a pipeline that builds, pushes and deploys, and a Massdriver project of its own; connect both to the codebase and it carries the repository too. `bootstrap.tf` makes an App Onboarding service account in Platform Engineering, and `deploy.sh` connects both bundles to it; they also need the GitHub App credential as the environment's default. `bootstrap.tf` already makes the Visits, Care and Billing projects, so Tendwell doesn't use them.
+The `apps` canvas also has `github-repo` and `massdriver-project`, which `bootstrap.sh` leaves undeployed. Deploying them gives an app a GitHub repository with a pipeline that builds, pushes and deploys, and a Massdriver project of its own; connect both to the codebase and it carries the repository too. `bootstrap.tf` makes an App Onboarding service account in Platform Engineering, and `bootstrap.sh` connects both bundles to it; they also need the GitHub App credential as the environment's default. `bootstrap.tf` already makes the Visits, Care and Billing projects, so Tendwell doesn't use them.
 
 Each team's group can change only its own project and read the rest. Platform Engineering can change everything, and Security & Compliance can read everything and change nothing.
 
-`sreagent` has one environment per agent. Jimmy, in `jimmy`, runs on the platform's dev cluster as his own service account in SRE Agents, which can read everything and propose deploys in dev that a person approves. `deploy.sh provision dev` deploys him when `ANTHROPIC_API_KEY` and `AGENT_IMAGE` are set; [`bundles/ecs-agent`](../../bundles/ecs-agent) shows how to build the image.
+`sreagent` has one environment per agent. Jimmy, in `jimmy`, runs on the platform's dev cluster as his own service account in SRE Agents, which can read everything and propose deploys in dev that a person approves. `bootstrap.sh provision dev` deploys him when `ANTHROPIC_API_KEY` and `AGENT_IMAGE` are set; [`bundles/ecs-agent`](../../bundles/ecs-agent) shows how to build the image.
 
-`sandboxes` has a `template`, and sandbox-on-join forks it for each person who joins a team. The template deploys the workspace image's registry and codebase once; `deploy.sh provision dev` builds [`bundles/dev-workspace/image`](../../bundles/dev-workspace) into it and sets the codebase, the dev cluster and VPC, and a Sandbox Provisioner credential as the template's defaults, which every fork copies. In a fork, the developer deploys **Workspace** for a shell with Claude Code, OpenCode, `mass` and git, and **Developer VPN** to reach the dev VPC from their laptop. `./deploy.sh sandbox <name>` does the same by hand and prints the command to get in.
+`sandboxes` has a `template`, and sandbox-on-join forks it for each person who joins a team. The template deploys the workspace image's registry and codebase once; `bootstrap.sh provision dev` builds [`bundles/dev-workspace/image`](../../bundles/dev-workspace) into it and sets the codebase, the dev cluster and VPC, and a Sandbox Provisioner credential as the template's defaults, which every fork copies. In a fork, the developer deploys **Workspace** for a shell with Claude Code, OpenCode, `mass` and git, and **Developer VPN** to reach the dev VPC from their laptop. `./bootstrap.sh sandbox <name>` does the same by hand and prints the command to get in.
 
 ```mermaid
 flowchart LR
@@ -104,7 +104,7 @@ You need an organization with a service account in the Organization Admin group,
 export MASSDRIVER_API_KEY=... MASSDRIVER_ORG_ID=...
 export DOMAIN=tendwell.example PARENT_ZONE_ID=Z0123456789ABCDEFGHIJ
 
-./deploy.sh all dev
+./bootstrap.sh all dev
 ```
 
 Before it touches AWS it lists the account, everything it will create and roughly what it costs, and waits for you to type `yes`. Then it:
@@ -116,8 +116,8 @@ Before it touches AWS it lists the account, everything it will create and roughl
 5. Applies [bootstrap.tf](bootstrap.tf): projects, environments, components, links, groups, policies and the AWS credentials.
 6. Deploys dev, then builds and ships each app.
 
-To read costs from tags in the report itself, run in the AWS management (payer) account with `COST_ALLOCATION_TAGS=md-instance`. AWS only accepts it once the tag shows up in billing data, up to a day after the first deploy, so rerun `./deploy.sh costs` with it then. Keep it set on later runs of `costs` or `all`; without it they turn the tags back off.
+To read costs from tags in the report itself, run in the AWS management (payer) account with `COST_ALLOCATION_TAGS=md-instance`. AWS only accepts it once the tag shows up in billing data, up to a day after the first deploy, so rerun `./bootstrap.sh costs` with it then. Keep it set on later runs of `costs` or `all`; without it they turn the tags back off.
 
 For a separate prod account, make a role there from the AWS IAM Role credential's instructions and set `PROD_ROLE_ARN`. The apps then answer at `visits.dev.<domain>`, `care.dev.<domain>` and `billing.dev.<domain>`.
 
-Run `./deploy.sh` alone to see the individual steps. `./deploy.sh teardown` removes all of it again: it decommissions every instance, then undoes bootstrap, the cost report and the IAM role. Published bundles stay.
+Run `./bootstrap.sh` alone to see the individual steps. `./bootstrap.sh teardown` removes all of it again: it decommissions every instance, then undoes bootstrap.tf, the cost report and the IAM role. Published bundles stay.

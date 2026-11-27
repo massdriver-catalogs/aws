@@ -34,7 +34,7 @@ aws logs tail /ecs/{{params.md_metadata.name_prefix}} --region {{dependencies.cl
 ```
 
 - **`LAB_PASSWORD is not set`** in the log, or the deploy failed on **Set the LAB_PASSWORD secret**: the box never runs without one. Gamelab sets it when it makes the lab; press **Try again** on the lab in Gamelab, or set the secret on this instance and deploy.
-- **`CannotPullContainerError`**: the image is gone from the codebase's repository. Push a new one (`./deploy.sh images` in `examples/gamelab`) and deploy.
+- **`CannotPullContainerError`**: the image is gone from the codebase's repository. Push a new one (`./bootstrap.sh images` in `examples/gamelab`) and deploy.
 - **`exec format error`**: the image is built for the wrong CPU. Rebuild for **{{params.architecture}}**.
 - **`ResourceInitializationError: failed to invoke EFS utils`** or **`mount.nfs4: Connection timed out`**: the task can't reach its home directory. Deploy again.
 - **Exit code 137** or `OutOfMemoryError`: raise **Box size**.

@@ -60,5 +60,5 @@ Run claims is the only heavy request. Raise **Task size** if memory alarms durin
 ## Ship a new version
 
 ```bash
-cd examples/telehealth && ./deploy.sh ship billing <environment>
+cd examples/telehealth && ./bootstrap.sh ship billing <environment>
 ```

@@ -59,5 +59,5 @@ For anyone else, the Reminder Sender's logs say why it failed. After fixing the 
 ## Ship a new version
 
 ```bash
-cd examples/telehealth && ./deploy.sh ship visits <environment>
+cd examples/telehealth && ./bootstrap.sh ship visits <environment>
 ```

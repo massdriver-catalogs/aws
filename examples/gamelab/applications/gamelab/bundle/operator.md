@@ -15,7 +15,7 @@ templating: mustache
 
 ## Nobody can sign in
 
-- **"That's not the password."** The password is the `GAMELAB_PASSWORD` secret on this instance. Set a new one and deploy. From the example's folder, `./deploy.sh password` prints the one bootstrap made.
+- **"That's not the password."** The password is the `GAMELAB_PASSWORD` secret on this instance. Set a new one and deploy. From the example's folder, `./bootstrap.sh password` prints the one bootstrap.tf made.
 - **"Too many tries."** Wrong passwords lock sign-in for up to a minute. Wait, then try once.
 - **Signed out right after signing in.** `SESSION_SECRET` changed, or two tasks have different ones. Deploy so every task reads the same secret.
 
@@ -23,8 +23,8 @@ templating: mustache
 
 The message after the colon is Massdriver's answer.
 
-- **`unauthorized` / HTTP 401:** the `MASSDRIVER_API_KEY` secret is wrong or the token was deleted. Rerun `./deploy.sh bootstrap` to remake the service account, then `./deploy.sh provision` to set the new token.
-- **`forbidden` / not allowed:** the Gamelab Server service account lost its group or policies. Rerun `./deploy.sh bootstrap`.
+- **`unauthorized` / HTTP 401:** the `MASSDRIVER_API_KEY` secret is wrong or the token was deleted. Rerun `./bootstrap.sh projects` to remake the service account, then `./bootstrap.sh provision` to set the new token.
+- **`forbidden` / not allowed:** the Gamelab Server service account lost its group or policies. Rerun `./bootstrap.sh projects`.
 - **A timeout:** the task can't reach the internet. Check the VPC's egress.
 
 ## A lab is stuck or says a deploy failed
@@ -70,5 +70,5 @@ Every lab setup step logs a line with `"lab":"labs-<name>"`; failures say which 
 ## Ship a new version
 
 ```bash
-cd examples/gamelab && ./deploy.sh ship
+cd examples/gamelab && ./bootstrap.sh ship
 ```

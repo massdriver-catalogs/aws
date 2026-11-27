@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Stands up Tendwell Health in a Massdriver organization.
 #
-#   ./deploy.sh role                    make the IAM role Massdriver deploys with, in the current AWS account
-#   ./deploy.sh costs                   send the AWS account's costs to Massdriver, per instance
-#   ./deploy.sh setup                   custom attributes, organization settings, bundle repositories and grants
-#   ./deploy.sh publish                 publish the catalog, then the example apps
-#   ./deploy.sh bootstrap               apply bootstrap.tf and set each environment's AWS credential
-#   ./deploy.sh provision <stage>       deploy the platform, then every app, into dev or prod
-#   ./deploy.sh ship <app> <stage>      build an app's image, push it and deploy it
-#   ./deploy.sh sandbox <name>          fork a developer sandbox from the template and deploy its workspace
-#   ./deploy.sh all <stage>             role, costs, setup, publish, bootstrap, provision and ship every app
-#   ./deploy.sh teardown                decommission everything, then undo bootstrap, costs and role
+#   ./bootstrap.sh role                 make the IAM role Massdriver deploys with, in the current AWS account
+#   ./bootstrap.sh costs                send the AWS account's costs to Massdriver, per instance
+#   ./bootstrap.sh setup                custom attributes, organization settings, bundle repositories and grants
+#   ./bootstrap.sh publish              publish the catalog, then the example apps
+#   ./bootstrap.sh projects             projects, environments, teams and their access, and AWS credentials
+#   ./bootstrap.sh provision <stage>    deploy the platform, then every app, into dev or prod
+#   ./bootstrap.sh ship <app> <stage>   build an app's image, push it and deploy it
+#   ./bootstrap.sh sandbox <name>       fork a developer sandbox from the template and deploy its workspace
+#   ./bootstrap.sh all <stage>          role, costs, setup, publish, projects, provision and ship every app
+#   ./bootstrap.sh teardown             decommission everything, then undo bootstrap.tf, costs and role
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
 # PyYAML, docker, and AWS CLI credentials for the account the apps deploy into.
@@ -103,7 +103,7 @@ Deploys the $stage stage into $(aws_target), region us-east-1:
   - In dev, an ECR repository for the developer sandboxes' workspace image, and the image.
   - IAM roles and security groups for all of it.
 Cost: $cost.
-Remove it with: ./deploy.sh teardown
+Remove it with: ./bootstrap.sh teardown
 PLAN
 }
 
@@ -141,7 +141,7 @@ deploy() {
   before=$(latest_deployment "$instance")
   # --params expands $name in every value, which empties jq variables such as
   # log-results' $action. A patch that is the whole params is taken as written.
-  mass instance deploy "$instance" --patch "$(preset "$bundle" "$stage" | jq -c "$filter")" -m "deploy.sh provision $stage" --follow || true
+  mass instance deploy "$instance" --patch "$(preset "$bundle" "$stage" | jq -c "$filter")" -m "bootstrap.sh provision $stage" --follow || true
   wait_for "$instance" "$before"
 }
 
@@ -213,7 +213,7 @@ organization_var() {
 
 require_roles() {
   [ -f "$HERE/terraform.tfvars.json" ] || [ -f "$HERE/terraform.tfvars" ] || [ -n "${TF_VAR_aws_accounts:-}" ] ||
-    die "no AWS roles; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
+    die "no AWS roles; run ./bootstrap.sh role, or copy terraform.tfvars.example to terraform.tfvars"
 }
 
 # Attributes, bundle repositories and who may use each bundle come before
@@ -348,7 +348,7 @@ warning: couldn't connect the integration; everything else carries on.
 EOF
 }
 
-cmd_bootstrap() {
+cmd_projects() {
   require_roles
   organization_var
 
@@ -484,7 +484,7 @@ cmd_provision() {
       dev) aws iam list-open-id-connect-providers --output json |
         jq '{adopt_existing_provider: any(.OpenIDConnectProviderList[]; .Arn | endswith("/token.actions.githubusercontent.com"))}' ;;
       prod) (cd "$HERE" && tofu output -json one_account) | jq '{adopt_existing_provider: .}' ;;
-    esac | mass instance deploy "platform-$stage-oidc" --params - -m "deploy.sh provision $stage" --follow || true
+    esac | mass instance deploy "platform-$stage-oidc" --params - -m "bootstrap.sh provision $stage" --follow || true
     wait_for "platform-$stage-oidc" "$before"
   fi
 
@@ -571,7 +571,7 @@ cmd_provision() {
     build_image sandboxes-template-registry dev-workspace >/dev/null
   fi
 
-  log "done. Ship real images with: ./deploy.sh ship <app> $stage"
+  log "done. Ship real images with: ./bootstrap.sh ship <app> $stage"
 }
 
 cmd_ship() {
@@ -638,7 +638,7 @@ Deletes Tendwell Health from your Massdriver organization and $(aws_target):
     and its IAM user.
   - Deletes the massdriver-<org> role, and removes the organization from the Massdriver OIDC
     provider, deleting the provider when no other organization uses it.
-Published bundles and resource types stay, so ./deploy.sh all can stand it back up.
+Published bundles and resource types stay, so ./bootstrap.sh all can stand it back up.
 PLAN
 }
 
@@ -678,7 +678,7 @@ decommission() {
     for id in $(jq -r '.[] | select(.status == "PROVISIONED" or .status == "FAILED") | .id' <<<"$instances"); do
       latest=$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"' || true)
       [ "$latest" != "DECOMMISSION FAILED" ] ||
-        die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./deploy.sh teardown"
+        die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./bootstrap.sh teardown"
       case "$latest" in *COMPLETED | *FAILED | *ABORTED | *REJECTED) ;; *) busy=1 ;; esac
     done
     # Massdriver sometimes stops partway down a chain of links, leaving the
@@ -687,7 +687,7 @@ decommission() {
     [ "$busy" = 1 ] && idle=0 || idle=$((idle + 1))
     [ "$idle" -ge 4 ] || continue
     for id in $(jq -r '.[] | select(.status == "PROVISIONED") | .id' <<<"$instances"); do
-      mass instance destroy "$id" --force -m "deploy.sh teardown" >/dev/null 2>&1 || true
+      mass instance destroy "$id" --force -m "bootstrap.sh teardown" >/dev/null 2>&1 || true
     done
     idle=0
   done
@@ -799,7 +799,8 @@ case "${1:-}" in
   costs) cmd_costs ;;
   setup) cmd_setup ;;
   publish) cmd_publish ;;
-  bootstrap) cmd_bootstrap ;;
+  # The old name, so muscle memory keeps working.
+  projects | bootstrap) cmd_projects ;;
   provision) cmd_provision "${2:-}" ;;
   ship) cmd_ship "${2:-}" "${3:-}" ;;
   sandbox) cmd_sandbox "${2:-}" ;;
@@ -824,7 +825,7 @@ Then builds the three app images with Docker, pushes them to ECR and deploys the
     cmd_costs
     cmd_setup
     cmd_publish
-    cmd_bootstrap
+    cmd_projects
     cmd_provision "$stage"
     for app in "${APPS[@]}"; do cmd_ship "$app" "$stage"; done
     ;;

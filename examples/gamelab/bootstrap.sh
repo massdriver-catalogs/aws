@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Stands up Gamelab in a Massdriver organization.
 #
-#   ./deploy.sh role            make the IAM role Massdriver deploys with, in the current AWS account
-#   ./deploy.sh setup           attributes, organization settings, bundle repositories and grants
-#   ./deploy.sh publish         publish the resource types and bundles Gamelab uses, and the server
-#   ./deploy.sh bootstrap       apply bootstrap.tf and set each environment's AWS credential
-#   ./deploy.sh provision       deploy the platform, the lab template and the Gamelab server
-#   ./deploy.sh images          build both images and push them to their registries
-#   ./deploy.sh ship            build the server's image again and deploy it
-#   ./deploy.sh password        print Gamelab's address and sign-in password
-#   ./deploy.sh costs           connect Massdriver's cost reporting to this AWS account
-#   ./deploy.sh all             role, setup, publish, bootstrap and provision
-#   ./deploy.sh teardown        remove every lab, then everything above
+#   ./bootstrap.sh role         make the IAM role Massdriver deploys with, in the current AWS account
+#   ./bootstrap.sh setup        attributes, organization settings, bundle repositories and grants
+#   ./bootstrap.sh publish      publish the resource types and bundles Gamelab uses, and the server
+#   ./bootstrap.sh projects     projects, environments, teams and their access, and the AWS credential
+#   ./bootstrap.sh provision    deploy the platform, the lab template and the Gamelab server
+#   ./bootstrap.sh images       build both images and push them to their registries
+#   ./bootstrap.sh ship         build the server's image again and deploy it
+#   ./bootstrap.sh password     print Gamelab's address and sign-in password
+#   ./bootstrap.sh costs        connect Massdriver's cost reporting to this AWS account
+#   ./bootstrap.sh all          role, setup, publish, projects and provision
+#   ./bootstrap.sh teardown     remove every lab, then everything above
 #
 # Needs: mass (signed in, or MASSDRIVER_API_KEY and MASSDRIVER_ORG_ID set), tofu, jq, python3 with
 # PyYAML, docker, and AWS CLI credentials for the account Gamelab deploys into.
@@ -82,7 +82,7 @@ Deploys Gamelab into $(aws_target), region us-east-1:
 Cost: roughly \$60/month while it runs, before any labs. Each lab adds \$13 to \$47/month
 by plan if it runs all month; labs sleep when unused, so one used two hours a day adds \$3 to \$7.
 Plus what its helper spends on Claude.
-Remove it with: ./deploy.sh teardown
+Remove it with: ./bootstrap.sh teardown
 PLAN
 }
 
@@ -111,7 +111,7 @@ deploy() {
   log "deploy $instance"
   local before
   before=$(latest_deployment "$instance")
-  preset "$bundle" | jq "$filter" | mass instance deploy "$instance" --params - -m "deploy.sh provision" --follow || true
+  preset "$bundle" | jq "$filter" | mass instance deploy "$instance" --params - -m "bootstrap.sh provision" --follow || true
   wait_for "$instance" "$before"
 }
 
@@ -183,13 +183,13 @@ pin() {
   local bundle version
   bundle=$(mass instance get "$1" -o json | jq -r '.bundle.name // .bundle.id')
   version=$(awk -v b="$bundle" '$1 == b { print $2 }' "$HERE/.dev-versions" 2>/dev/null)
-  [ -n "$version" ] || die "no development release of $bundle recorded; run DEV=1 ./deploy.sh publish"
+  [ -n "$version" ] || die "no development release of $bundle recorded; run DEV=1 ./bootstrap.sh publish"
   mass instance version "$1@$version" >/dev/null
 }
 
 require_role() {
   [ -f "$HERE/terraform.tfvars.json" ] || [ -f "$HERE/terraform.tfvars" ] || [ -n "${TF_VAR_aws_role:-}" ] ||
-    die "no AWS role; run ./deploy.sh role, or copy terraform.tfvars.example to terraform.tfvars"
+    die "no AWS role; run ./bootstrap.sh role, or copy terraform.tfvars.example to terraform.tfvars"
 }
 
 tf_output() {
@@ -341,7 +341,7 @@ cmd_publish() {
   publish_bundle "$APP/bundle"
 }
 
-cmd_bootstrap() {
+cmd_projects() {
   require_role
   log "apply bootstrap.tf"
   (cd "$HERE" && tofu init -input=false >/dev/null && tofu apply -input=false -auto-approve)
@@ -499,7 +499,7 @@ Deletes Gamelab from your Massdriver organization and $(aws_target):
     service account, the AWS credential, bundle grants and attributes.
   - Deletes the massdriver-<org> role, and removes the organization from the Massdriver OIDC
     provider, deleting the provider when no other organization uses it.
-Published bundles and resource types stay, so ./deploy.sh all can stand it back up.
+Published bundles and resource types stay, so ./bootstrap.sh all can stand it back up.
 PLAN
 }
 
@@ -521,7 +521,7 @@ decommission() {
     for id in $(jq -r '.[] | select(.status == "PROVISIONED" or .status == "FAILED") | .id' <<<"$instances"); do
       latest=$(mass deployment list "$id" -o json 2>/dev/null | jq -r '.[0] | "\(.action) \(.status)"' || true)
       [ "$latest" != "DECOMMISSION FAILED" ] ||
-        die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./deploy.sh teardown"
+        die "$id failed to decommission; see mass deployment logs, fix it, and rerun ./bootstrap.sh teardown"
       case "$latest" in *COMPLETED | *FAILED | *ABORTED | *REJECTED) ;; *) busy=1 ;; esac
     done
     # Massdriver sometimes stops partway down a chain of links, leaving the
@@ -530,7 +530,7 @@ decommission() {
     [ "$busy" = 1 ] && idle=0 || idle=$((idle + 1))
     [ "$idle" -ge 4 ] || continue
     for id in $(jq -r '.[] | select(.status == "PROVISIONED") | .id' <<<"$instances"); do
-      mass instance destroy "$id" --force -m "deploy.sh teardown" >/dev/null 2>&1 || true
+      mass instance destroy "$id" --force -m "bootstrap.sh teardown" >/dev/null 2>&1 || true
     done
     idle=0
   done
@@ -599,7 +599,8 @@ case "${1:-}" in
   costs) cmd_costs ;;
   setup) cmd_setup ;;
   publish) cmd_publish ;;
-  bootstrap) cmd_bootstrap ;;
+  # The old name, so muscle memory keeps working.
+  projects | bootstrap) cmd_projects ;;
   provision) cmd_provision ;;
   images) cmd_images >/dev/null ;;
   ship) cmd_ship ;;
@@ -619,7 +620,7 @@ $(provision_plan)"
     cmd_role
     cmd_setup
     cmd_publish
-    cmd_bootstrap
+    cmd_projects
     cmd_provision
     ;;
   *) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;

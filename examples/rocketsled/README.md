@@ -65,7 +65,7 @@ Three runtimes, `node`, `ruby` and `python`, each a project with a template. Eve
 | Key-Value Store, Production | up to 10 GB, snapshots | $65/month |
 | Shared platform | VPC with a NAT instance, DNS zone, load balancer | $25/month in all |
 
-`./deploy.sh fork ruby staging` makes the cheapest environment: one web dyno on Spot, about $2 a month on top of the platform. `./deploy.sh fork ruby staging db cache` adds Postgres and a Key-Value Store.
+`./bootstrap.sh fork ruby staging` makes the cheapest environment: one web dyno on Spot, about $2 a month on top of the platform. `./bootstrap.sh fork ruby staging db cache` adds Postgres and a Key-Value Store.
 
 ## Fauxcel
 
@@ -109,9 +109,9 @@ In Massdriver, give the organization `logo.png` as its icon (**Settings → Gene
 
 ```bash
 export MASSDRIVER_PROFILE=rocketsled
-DOMAIN=apps.example.com PARENT_ZONE_ID=Z0123456789 ./deploy.sh all
-./deploy.sh fork static demo         # free while idle
-./deploy.sh fork ruby staging        # about $2/month on top of the platform
+DOMAIN=apps.example.com PARENT_ZONE_ID=Z0123456789 ./bootstrap.sh all
+./bootstrap.sh fork static demo      # free while idle
+./bootstrap.sh fork ruby staging     # about $2/month on top of the platform
 ```
 
 `all` publishes every bundle as a development release, applies [`bootstrap.tf`](bootstrap.tf) (the platform project, a project and template per runtime, a service account per PaaS, the AWS credential), deploys the platform and each template's image repository and codebase (about $25 a month in all), builds the static file server, and writes `.env` with both servers' Massdriver keys. Every step asks before it touches AWS.
@@ -119,7 +119,7 @@ DOMAIN=apps.example.com PARENT_ZONE_ID=Z0123456789 ./deploy.sh all
 Then run both websites on the platform's cluster, from a Rocketsled checkout next to this repository (about $4 a month on Spot):
 
 ```bash
-./deploy.sh servers        # https://fauxroku.<DOMAIN> and https://fauxcel.<DOMAIN>
+./bootstrap.sh servers     # https://fauxroku.<DOMAIN> and https://fauxcel.<DOMAIN>
 ```
 
 Or run one on your machine:
@@ -128,14 +128,14 @@ Or run one on your machine:
 FAUXROKU_BASE_URL=http://localhost:8081 bin/rocketsled serve -config ../aws/examples/rocketsled/fauxroku.yaml -env-file ../aws/examples/rocketsled/.env
 ```
 
-`./deploy.sh teardown` removes every customer environment, the templates' repositories, the platform and everything `bootstrap.tf` made.
+`./bootstrap.sh teardown` removes every customer environment, the templates' repositories, the platform and everything `bootstrap.tf` made.
 
 ## Files
 
 ```
 TOPOLOGY.md                  platform, runtimes, environments, add-ons, promotion
 bootstrap.tf                 the projects, templates, links, credential and server accounts
-deploy.sh                    role, publish, bootstrap, provision, fork, env, teardown
+bootstrap.sh                 role, publish, projects, provision, fork, env, teardown
 blueprint.draft.yaml         the six canvases as files
 fauxroku.yaml, fauxcel.yaml  the Rocketsled servers
 server/                      their image: Rocketsled with these configs and skins

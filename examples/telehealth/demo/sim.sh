@@ -18,7 +18,7 @@
 #
 # Settings, from the environment:
 #   STAGE     dev (default) or prod
-#   DOMAIN    the parent domain from deploy.sh; the apps answer at <app>.<STAGE>.<DOMAIN>
+#   DOMAIN    the parent domain from bootstrap.sh; the apps answer at <app>.<STAGE>.<DOMAIN>
 #   MASS      the mass CLI, with the `alpha stash` commands (default: mass)
 #   AWS_REGION  where the alarms live (default: us-east-1)
 #

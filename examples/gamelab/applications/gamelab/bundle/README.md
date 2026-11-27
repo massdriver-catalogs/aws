@@ -41,7 +41,7 @@ It needs the `lab_power` connection, an `aws-iam-policy` from the `ecs-scaling-p
 
 - The environment's ECS cluster with a DNS zone, as an environment default.
 - The `gamelab` project's codebase, holding the image built from `src/`.
-- Secrets `GAMELAB_PASSWORD`, `SESSION_SECRET`, `MASSDRIVER_API_KEY`, and `MASSDRIVER_ORGANIZATION_ID` in **Environment variables**. `deploy.sh` sets all four.
+- Secrets `GAMELAB_PASSWORD`, `SESSION_SECRET`, `MASSDRIVER_API_KEY`, and `MASSDRIVER_ORGANIZATION_ID` in **Environment variables**. `bootstrap.sh` sets all four.
 
 ## Run it on a laptop
 

@@ -219,7 +219,7 @@ Bundles are scoped the same way. New bundles aren't granted to every project. `l
 
 Secrets are never params, so they never show in a form, a deployment's params or the API's params history.
 
-- The server's `GAMELAB_PASSWORD`, `SESSION_SECRET` and `MASSDRIVER_API_KEY` come from `bootstrap.tf`. `deploy.sh` sets them with `setInstanceSecret`, passing each value through the environment and stdin, so it never shows in a process list.
+- The server's `GAMELAB_PASSWORD`, `SESSION_SECRET` and `MASSDRIVER_API_KEY` come from `bootstrap.tf`. `bootstrap.sh` sets them with `setInstanceSecret`, passing each value through the environment and stdin, so it never shows in a process list.
 - A box's `LAB_PASSWORD` and `ANTHROPIC_API_KEY` are set by the server with `setInstanceSecret`. The bundle writes them to Secrets Manager under the box's own KMS key, and ECS reads them when the task starts. The box refuses to deploy, and the agent refuses to start, without `LAB_PASSWORD`.
 - A fork copies no secrets, so one lab never gets another's key.
 
@@ -243,14 +243,14 @@ The rules are backed by settings the agent can't change. When the box starts, `l
 
 ```mermaid
 flowchart LR
-  publish["deploy.sh publish<br>resource types, bundles<br>and the server's bundle"]
-  bootstrap["deploy.sh bootstrap<br>bootstrap.tf: projects, canvases,<br>groups, policies, service account,<br>AWS credential"]
-  provision["deploy.sh provision<br>platform, then the lab image,<br>then the server"]
+  publish["bootstrap.sh publish<br>resource types, bundles<br>and the server's bundle"]
+  projects["bootstrap.sh projects<br>bootstrap.tf: projects, canvases,<br>groups, policies, service account,<br>AWS credential"]
+  provision["bootstrap.sh provision<br>platform, then the lab image,<br>then the server"]
   forks["The server forks labs<br>on the template's versions"]
-  publish --> bootstrap --> provision --> forks
+  publish --> projects --> provision --> forks
 ```
 
-`deploy.sh` publishes every bundle first, then `bootstrap.tf` builds the projects and permissions around them, then `provision` deploys the platform, the lab template's image repository and codebase, and the server. With `DEV=1`, it publishes development releases, records the exact version of each, and pins every instance to that version, including the template's Lab Box and Saves & Scores. Forks take the template's versions, so every lab runs the same releases. `./deploy.sh ship` rebuilds only the server's image and deploys it.
+`bootstrap.sh` publishes every bundle first, then `bootstrap.tf` builds the projects and permissions around them, then `provision` deploys the platform, the lab template's image repository and codebase, and the server. With `DEV=1`, it publishes development releases, records the exact version of each, and pins every instance to that version, including the template's Lab Box and Saves & Scores. Forks take the template's versions, so every lab runs the same releases. `./bootstrap.sh ship` rebuilds only the server's image and deploys it.
 
 Every bundle runs Checkov on each deploy. In an environment named `prod` or `production`, a failed check stops the deploy. Anywhere else, it reports and goes on. Lab Box skips one check, Secrets Manager rotation, because its secrets are an Anthropic key and a password that only a deploy changes.
 
@@ -334,8 +334,8 @@ You need a Massdriver organization and an API key for a service account in its *
 export MASSDRIVER_API_KEY=... MASSDRIVER_ORG_ID=...
 export DOMAIN=gamelab.example.com PARENT_ZONE_ID=Z0123456789ABCDEFGHIJ
 
-./deploy.sh all
-./deploy.sh password
+./bootstrap.sh all
+./bootstrap.sh password
 ```
 
 Before it touches AWS it lists what it will create and roughly what it costs, and waits for you to type `yes`. Then it:
@@ -346,11 +346,11 @@ Before it touches AWS it lists what it will create and roughly what it costs, an
 4. Applies [bootstrap.tf](bootstrap.tf): projects, environments, components, links, groups, policies, the Gamelab Server service account, the AWS credential, and a sign-in password and session secret.
 5. Deploys the platform, the lab template's image repository and the server's, builds both images (about 10 minutes the first time) and pushes them and deploys the server with its secrets.
 
-`./deploy.sh password` prints the address and the password. Sign in, press **New lab**, and the first lab is ready in about five minutes.
+`./bootstrap.sh password` prints the address and the password. Sign in, press **New lab**, and the first lab is ready in about five minutes.
 
 Add your own Massdriver account to **Gamelab Admins** to see and fix everything in the UI.
 
-Run `./deploy.sh` alone to see the individual steps. `./deploy.sh ship` builds the server again and deploys it. `./deploy.sh teardown` removes every lab and then everything above. Published bundles stay.
+Run `./bootstrap.sh` alone to see the individual steps. `./bootstrap.sh ship` builds the server again and deploys it. `./bootstrap.sh teardown` removes every lab and then everything above. Published bundles stay.
 
 ## Make it GPU-backed
 
@@ -398,7 +398,7 @@ Swapping a lab's box is then a component change on the `labs` canvas: remove **L
 ```
 bootstrap.tf                 projects, environments, canvases, groups, attributes, the server's service account
 blueprint.draft.yaml         the three canvases as files
-deploy.sh                    stands it up and tears it down
+bootstrap.sh                 stands it up and tears it down
 applications/gamelab/src     the Gamelab server (Go) and its Dockerfile
 applications/gamelab/bundle  its bundle, on the ecs-service runtime
 ../../bundles/lab-box        the lab box bundle and its image, with the helper's rules

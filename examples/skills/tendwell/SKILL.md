@@ -21,16 +21,16 @@ Never print a secret. Keys and tokens go into instance secrets, never into files
 ```bash
 cd examples/telehealth
 export DOMAIN=example.com PARENT_ZONE_ID=Z123...   # PARENT_ZONE_ID delegates each stage's zone for you
-./deploy.sh all dev                                # role, costs, setup, publish, bootstrap, provision, ship
+./bootstrap.sh all dev                             # role, costs, setup, publish, projects, provision, ship
 ```
 
-Or one step at a time: `role`, `costs`, `setup`, `publish`, `bootstrap`, `provision dev`, `ship <app> dev`. `./deploy.sh` with no arguments lists them. `teardown` removes everything.
+Or one step at a time: `role`, `costs`, `setup`, `publish`, `projects`, `provision dev`, `ship <app> dev`. `./bootstrap.sh` with no arguments lists them. `teardown` removes everything.
 
 Deploy at most three instances at a time. More than that overloads the runners, and deployments fail with "timeout while waiting for plugin to start".
 
 ## Automations
 
-Automations come from [massdriver-automations](https://github.com/massdriver-cloud/massdriver-automations). Tendwell runs them in the `automations` project, one instance each, configured in `examples/telehealth/automations.yaml`. A key there turns an automation on, and its `config` is that automation's config file. `deploy.sh provision dev` deploys them and creates their event destinations.
+Automations come from [massdriver-automations](https://github.com/massdriver-cloud/massdriver-automations). Tendwell runs them in the `automations` project, one instance each, configured in `examples/telehealth/automations.yaml`. A key there turns an automation on, and its `config` is that automation's config file. `bootstrap.sh provision dev` deploys them and creates their event destinations.
 
 Secrets an automation needs (a run token, a GitHub token) are set on its instance with the `setInstanceSecret` GraphQL mutation, never in `automations.yaml`.
 

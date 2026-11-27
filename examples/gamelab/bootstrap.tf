@@ -16,7 +16,7 @@ terraform {
 provider "massdriver" {}
 
 variable "aws_role" {
-  description = "The IAM role Massdriver deploys with, from the aws-iam-role credential's instructions. deploy.sh role makes it."
+  description = "The IAM role Massdriver deploys with, from the aws-iam-role credential's instructions. bootstrap.sh role makes it."
   type = object({
     arn         = string
     token_level = optional(string, "organization")
@@ -48,7 +48,7 @@ locals {
 
     # The cluster stays undeployed; the server runs on the platform's cluster,
     # its environment default. Source Repository stays undeployed until the
-    # server moves to its own GitHub repository; until then deploy.sh pushes
+    # server moves to its own GitHub repository; until then bootstrap.sh pushes
     # its image straight to the registry. Lab Power is the server's permission
     # to put lab boxes to sleep and wake them.
     gamelab = {

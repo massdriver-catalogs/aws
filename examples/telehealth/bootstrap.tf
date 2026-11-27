@@ -24,7 +24,7 @@ variable "aws_accounts" {
 }
 
 variable "organization_id" {
-  description = "The organization's identifier, e.g. tendwell-health. deploy.sh sets it from mass whoami."
+  description = "The organization's identifier, e.g. tendwell-health. bootstrap.sh sets it from mass whoami."
   type        = string
 }
 
@@ -107,7 +107,7 @@ locals {
         agent    = { bundle = "ecs-agent", name = "Agent" }
       }
       # repo stays undeployed until the agent's image moves to its own
-      # repository; until then deploy.sh pushes it straight to the registry.
+      # repository; until then bootstrap.sh pushes it straight to the registry.
       links = [
         "registry.repository -> repo.registry",
         "repo.repository -> codebase.repository",
