@@ -77,7 +77,7 @@ paas:
       Development: {price: "~$0.023/GB", summary: "No old versions; an overwrite is final."}
       Production: {price: "~$0.023/GB", summary: "Old versions kept 90 days, KMS encryption."}
 
-  # Anyone can sign up, so each person gets a little and nothing lasts.
+  # Each person gets a little, and nothing lasts.
   limits:
     apps_per_person: 2
     total_apps: 20
@@ -92,5 +92,6 @@ paas:
 
 auth:
   providers:
-    # Anyone can sign up with just a name.
-    open: {}
+    # Anyone with the password signs in under the name they type, and sees only that name's apps.
+    password:
+      password: "${FAUXCEL_PASSWORD}"

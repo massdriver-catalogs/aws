@@ -18,6 +18,6 @@ aws logs tail /ecs/{{params.md_metadata.name_prefix}} --region {{dependencies.cl
 
 The Massdriver key is wrong or expired. Set the PaaS's `_MASSDRIVER_API_KEY` secret from `./deploy.sh env` and deploy.
 
-## Everyone was signed out
+## Nobody can sign in
 
-The session secret changed. Each person's apps are still theirs only in the browser they made them in; a new sign-up starts empty.
+The password is the PaaS's `_PASSWORD` instance secret, kept in `.env` by `./deploy.sh env`. People who sign in again under the same name get their apps back.

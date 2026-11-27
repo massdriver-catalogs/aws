@@ -511,7 +511,7 @@ cmd_fork() {
 }
 
 # The Rocketsled servers read their Massdriver keys from here. The values are
-# never printed. Session secrets are kept across runs, so nobody is signed out.
+# never printed. Session secrets and passwords are kept across runs, so nobody is signed out.
 cmd_env() {
   local keys paas secret
   keys=$(cd "$HERE" && tofu output -json server_api_keys)
@@ -523,6 +523,8 @@ cmd_env() {
     for paas in FAUXROKU FAUXCEL; do
       secret=$(env_value "${paas}_SESSION_SECRET")
       echo "${paas}_SESSION_SECRET=${secret:-$(openssl rand -hex 32)}"
+      secret=$(env_value "${paas}_PASSWORD")
+      echo "${paas}_PASSWORD=${secret:-$(openssl rand -base64 12 | tr -d '/+=')}"
     done
   } >"$HERE/.env.new"
   mv "$HERE/.env.new" "$HERE/.env"
@@ -590,6 +592,7 @@ cmd_servers() {
     [ "$paas" = fauxroku ] || port=8082
     set_secret "$instance" "${upper}_MASSDRIVER_API_KEY" "${upper}_MASSDRIVER_API_KEY"
     set_secret "$instance" "${upper}_SESSION_SECRET" "${upper}_SESSION_SECRET"
+    set_secret "$instance" "${upper}_PASSWORD" "${upper}_PASSWORD"
     pin "$instance"
     log "deploy $instance"
     before=$(latest_deployment "$instance")

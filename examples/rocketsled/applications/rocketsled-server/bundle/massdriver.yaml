@@ -1,7 +1,7 @@
 name: rocketsled-server
 description: >-
   A Rocketsled server for one PaaS, Fauxroku or Fauxcel: the website customers sign in to and make
-  apps from. Its Massdriver key and session secret are instance secrets. Runs on the
+  apps from. Its Massdriver key, session secret and sign-in password are instance secrets. Runs on the
   ECS service runtime.
 source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/rocketsled/applications/rocketsled-server
 version: 0.0.0
@@ -19,9 +19,15 @@ app:
     FAUXROKU_SESSION_SECRET:
       title: Fauxroku session secret
       description: 32 or more random characters. Signs sign-ins.
+    FAUXROKU_PASSWORD:
+      title: Fauxroku sign-in password
+      description: Nobody can sign in or make apps without it.
     FAUXCEL_MASSDRIVER_API_KEY:
       title: Fauxcel Massdriver key
       description: The Fauxcel Server service account's token. Set it on the Fauxcel server only.
     FAUXCEL_SESSION_SECRET:
       title: Fauxcel session secret
       description: 32 or more random characters. Signs sign-ins.
+    FAUXCEL_PASSWORD:
+      title: Fauxcel sign-in password
+      description: Nobody can sign in or make apps without it.

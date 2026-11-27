@@ -85,7 +85,7 @@ Every Development preset fits in AWS's free tier or bills per request. What Verc
 
 ## The Rocketsled side
 
-[`fauxroku.yaml`](fauxroku.yaml) and [`fauxcel.yaml`](fauxcel.yaml) each run one Rocketsled server for one PaaS, wearing its skin from [`skins/`](skins/): Fauxroku's purple gradients and beveled buttons, Fauxcel's black, white and monospace. Anyone can sign up with just a name, pick a runtime, a plan and add-ons, and watch their app deploy. `paas.limits` keeps that cheap: two apps a person, the Development plans only, and every app removed 24 hours after it was made.
+[`fauxroku.yaml`](fauxroku.yaml) and [`fauxcel.yaml`](fauxcel.yaml) each run one Rocketsled server for one PaaS, wearing its skin from [`skins/`](skins/): Fauxroku's purple gradients and beveled buttons, Fauxcel's black, white and monospace. Anyone with the site's password signs in under a name, picks a runtime, a plan and add-ons, and watches their app deploy; each name sees only its own apps. `paas.limits` keeps that cheap: two apps a person, the Development plans only, and every app removed 24 hours after it was made.
 
 | Key | What it does | Issue |
 |---|---|---|

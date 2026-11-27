@@ -113,7 +113,7 @@ paas:
       Development: {price: "~$6/mo", summary: "Up to 1 GB, 1,000 requests a second."}
       Production: {price: "~$65/mo", summary: "Up to 10 GB, 100,000 requests a second, snapshots."}
 
-  # Anyone can sign up, so each person gets a little and nothing lasts.
+  # Each person gets a little, and nothing lasts.
   limits:
     apps_per_person: 2
     total_apps: 10
@@ -128,5 +128,6 @@ paas:
 
 auth:
   providers:
-    # Anyone can sign up with just a name.
-    open: {}
+    # Anyone with the password signs in under the name they type, and sees only that name's apps.
+    password:
+      password: "${FAUXROKU_PASSWORD}"
