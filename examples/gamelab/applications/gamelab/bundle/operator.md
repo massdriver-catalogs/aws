@@ -41,6 +41,24 @@ The server reaches each box at its private name, on ports 4096 and 8080, from in
 - **"didn't accept its password":** `SESSION_SECRET` changed since the lab was made. Press **Try again** on the lab, or deploy its box: Gamelab sets the password again.
 - Otherwise see the lab box's own guide on its instance in Massdriver.
 
+## A lab says "Waking up your lab…" for more than a few minutes
+
+The server set the box's service back to one task, and the task isn't answering. Read the box's events, then see the lab box's own guide on its instance in Massdriver:
+
+```bash
+aws ecs describe-services --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} \
+  --services $(aws ecs list-services --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} \
+  --query 'serviceArns[?contains(@, `/labs-<name>-box`)]' --output text | sed 's|.*/||') \
+  --query 'services[0].[desiredCount,runningCount,events[:5]]'
+```
+
+- **`AccessDeniedException` on `UpdateService`** in this server's log: the **Lab Power** policy isn't on the task role. Deploy Lab Power, then this server.
+- **desiredCount 1, runningCount 0** for minutes: the box can't start; the cause is in its events.
+
+## Labs never go to sleep
+
+The log line `labs sleep when unused` at start says the idle time. Without it, the task has no AWS configuration. With it but no `lab asleep` lines, look for `putting lab to sleep` errors: the **Lab Power** policy is missing or doesn't cover the box's service. A lab whose box was deployed before sleep existed needs one more deploy to say which service it is.
+
 ## Read the logs
 
 ```bash

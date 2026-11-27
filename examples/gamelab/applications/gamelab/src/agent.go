@@ -39,6 +39,9 @@ func playToken(secret []byte, id string) string {
 type target struct {
 	agent   *url.URL
 	game    *url.URL
+	cluster string // the box's ECS cluster and service, to put it to sleep and wake it
+	service string
+	region  string
 	fetched time.Time
 }
 
@@ -76,6 +79,9 @@ func (b *Boxes) target(ctx context.Context, lab string) (target, error) {
 		return target{}, fmt.Errorf("lab %s publishes no usable addresses", lab)
 	}
 	t = target{agent: a, game: g, fetched: time.Now()}
+	t.cluster, _ = payload["cluster_arn"].(string)
+	t.service, _ = payload["service_name"].(string)
+	t.region, _ = payload["region"].(string)
 	b.mu.Lock()
 	b.targets[lab] = t
 	b.mu.Unlock()
@@ -246,15 +252,28 @@ func (b *Boxes) Chat(ctx context.Context, lab string) (*Chat, error) {
 		chat.Messages = append(chat.Messages, msg)
 	}
 
+	chat.Busy, _ = b.busy(ctx, lab, sid)
+	return chat, nil
+}
+
+func (b *Boxes) busy(ctx context.Context, lab, sid string) (bool, error) {
 	var status map[string]struct {
 		Type string `json:"type"`
 	}
-	if err := b.call(ctx, lab, http.MethodGet, "/session/status", nil, &status); err == nil {
-		if s, ok := status[sid]; ok && s.Type != "idle" {
-			chat.Busy = true
-		}
+	if err := b.call(ctx, lab, http.MethodGet, "/session/status", nil, &status); err != nil {
+		return false, err
 	}
-	return chat, nil
+	s, ok := status[sid]
+	return ok && s.Type != "idle", nil
+}
+
+// Busy reports whether the helper is in the middle of a turn.
+func (b *Boxes) Busy(ctx context.Context, lab string) (bool, error) {
+	sid, err := b.session(ctx, lab)
+	if err != nil {
+		return false, err
+	}
+	return b.busy(ctx, lab, sid)
 }
 
 func describeTool(tool string, input map[string]any, status string) string {
@@ -313,9 +332,18 @@ func (b *Boxes) Stop(ctx context.Context, lab string) error {
 	return b.call(ctx, lab, http.MethodPost, "/session/"+url.PathEscape(sid)+"/abort", nil, nil)
 }
 
-// Play proxies the lab's game server. Only reads go through.
+// maxAPIBody caps what a game may send its box: a save or a score, never a file.
+const maxAPIBody = 64 << 10
+
+// Play proxies the lab's game server. Its files are read-only; only the
+// saves and scores calls under api/ may write.
 func (b *Boxes) Play(w http.ResponseWriter, r *http.Request, lab, rest string) {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+	api := strings.HasPrefix(rest, "api/")
+	switch {
+	case r.Method == http.MethodGet || r.Method == http.MethodHead:
+	case api && (r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodOptions):
+		r.Body = http.MaxBytesReader(w, r.Body, maxAPIBody)
+	default:
 		http.Error(w, "Games here are read-only.", http.StatusMethodNotAllowed)
 		return
 	}

@@ -31,9 +31,9 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CATALOG="$(cd "$HERE/../.." && pwd)"
 APP="$HERE/applications/gamelab"
-BUNDLES=(vpc dns-zone ecs-cluster ecr-repository codebase ecs-service postgres valkey lab-box)
+BUNDLES=(vpc dns-zone ecs-cluster ecr-repository codebase ecs-service ecs-scaling-policy dynamodb-table lab-box)
 # The bundles above reference these, even where the connection is optional.
-TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-ecr-repository aws-codebase aws-postgres aws-valkey lab-endpoint source-repository app-project)
+TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-ecr-repository aws-codebase aws-dynamodb-table aws-iam-policy lab-endpoint source-repository app-project)
 SUBDOMAIN=play
 
 log() { printf '\n==> %s\n' "$*" >&2; }
@@ -78,8 +78,9 @@ Deploys Gamelab into $(aws_target), region us-east-1:
   - Two ECR repositories, and the Gamelab server and lab box images built and pushed to them.
   - The Gamelab server, one small Fargate task at https://$SUBDOMAIN.${DOMAIN:-<DOMAIN>}.
   - IAM roles and security groups for all of it.
-Cost: roughly \$60/month while it runs, before any labs; each lab adds \$13 to \$105/month
-by plan and extras, plus what its helper spends on Claude.
+Cost: roughly \$60/month while it runs, before any labs. Each lab adds \$13 to \$47/month
+by plan if it runs all month; labs sleep when unused, so one used two hours a day adds \$3 to \$7.
+Plus what its helper spends on Claude.
 Remove it with: ./deploy.sh teardown
 PLAN
 }
@@ -416,11 +417,12 @@ cmd_provision() {
   mass environment default labs-template labs-template-codebase.codebase >/dev/null
   # Forks take the template's versions, so labs run the same releases.
   local part
-  for part in box saves scores; do pin "labs-template-$part"; done
+  for part in box gamedata; do pin "labs-template-$part"; done
 
   log "gamelab-main"
   deploy gamelab-main-registry ecr-repository
   deploy gamelab-main-codebase codebase '.share_with_project = false'
+  deploy gamelab-main-power ecs-scaling-policy
 
   local server
   build_image labs-template-registry "$CATALOG/bundles/lab-box/image" >/dev/null
@@ -448,7 +450,7 @@ cmd_password() {
 teardown_plan() {
   cat <<PLAN
 Deletes Gamelab from your Massdriver organization and $(aws_target):
-  - Decommissions and deletes every lab, with its games, databases and backups' source.
+  - Decommissions and deletes every lab, with its games, saves and backups' source.
     Nothing is kept.
   - Decommissions the lab template, the Gamelab server and the platform.
   - Destroys what bootstrap.tf made: projects, environments, groups, policies, the server's

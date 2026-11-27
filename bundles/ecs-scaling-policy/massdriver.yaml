@@ -1,0 +1,57 @@
+name: ecs-scaling-policy
+description: >-
+  An IAM policy that lets one app start and stop other ECS services on a cluster, by setting their task
+  count, and nothing more. It covers only services whose names start with a prefix. An app on the
+  ecs-service runtime connects it and gets it on its role.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/bundles/ecs-scaling-policy
+version: 0.0.0
+
+params:
+  examples:
+    - __name: Development
+      service_name_prefix: labs-
+    - __name: Production
+      service_name_prefix: labs-
+  required:
+    - service_name_prefix
+  properties:
+    service_name_prefix:
+      title: Service name prefix
+      description: >-
+        The policy covers services on the cluster whose names start with this, such as `labs-` for
+        every service in a project called labs. Services are named after their instance.
+      type: string
+      default: labs-
+      minLength: 2
+      maxLength: 40
+      pattern: ^[a-z0-9][a-z0-9-]*-$
+      message:
+        pattern: "Lowercase letters, digits and hyphens, ending in a hyphen, like labs-."
+
+dependencies:
+  aws_authentication:
+    resource_type: aws-iam-role@0.0.0
+    required: true
+  cluster:
+    resource_type: aws-ecs-cluster@0.0.0
+    required: true
+
+resources:
+  policy:
+    resource_type: aws-iam-policy@0.0.0
+    required: true
+
+steps:
+  - path: src
+    provisioner: opentofu:1.10
+    config:
+      checkov:
+        # The environment is the second part of the instance slug, <project>-<environment>-<component>.
+        halt_on_failure: '.params.md_metadata.default_tags["md-instance"] | split("-")[1] | . == "prod" or . == "production"'
+        # With md-environment in the organization's default tags:
+        # halt_on_failure: '.params.md_metadata.default_tags["md-environment"] | . == "prod" or . == "production"'
+
+ui:
+  ui:order:
+    - service_name_prefix
+    - "*"

@@ -8,11 +8,15 @@ locals {
     }]
   })
 
-  task_app_policies = merge([
-    for k, d in local.app_dependencies : {
-      for p in d.value.policies : "${k}-${p.name}" => p.arn if contains(local.task_policies[d.type], p.name)
-    } if contains(keys(local.task_policies), d.type)
-  ]...)
+  # An aws-iam-policy is a policy made for this app alone, so it is attached whole.
+  task_app_policies = merge(
+    merge([
+      for k, d in local.app_dependencies : {
+        for p in d.value.policies : "${k}-${p.name}" => p.arn if contains(local.task_policies[d.type], p.name)
+      } if contains(keys(local.task_policies), d.type)
+    ]...),
+    { for k, d in local.app_dependencies : "${k}-policy" => d.value.arn if d.type == "aws-iam-policy" },
+  )
 
   execution_app_policies = merge([
     for k, d in local.app_dependencies : { for p in d.value.policies : "${k}-${p.name}" => p.arn } if contains(local.execution_policies, d.type)

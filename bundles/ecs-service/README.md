@@ -35,7 +35,7 @@ ECS Exec is on, so you can open a shell in a running task. See the operator guid
 
 This bundle is a runtime. An app's own bundle sets `app.runtime: ecs-service`, declares the databases, caches, tables, buckets and queues it uses, and maps their fields to environment variables. Massdriver builds the two into one bundle when the app is published.
 
-The service gets access to the standard types the app connects. It joins the client security group of a PostgreSQL, MariaDB or Valkey. A database's policies let ECS read its password when a task starts; the app itself can't read the secret. The task's role, which the app's AWS SDK uses, gets read-write access to a DynamoDB table or S3 bucket, and can send to and consume from an SQS queue. Other types reach the app only through its environment variables. A variable that points at a Secrets Manager value, such as `.dependencies.db.secret_arn + ":password::"`, is read by ECS when a task starts and never written into the task definition.
+The service gets access to the standard types the app connects. It joins the client security group of a PostgreSQL, MariaDB or Valkey. A database's policies let ECS read its password when a task starts; the app itself can't read the secret. The task's role, which the app's AWS SDK uses, gets read-write access to a DynamoDB table or S3 bucket, and can send to and consume from an SQS queue. An `aws-iam-policy` the app connects is attached to the task's role as it is. Other types reach the app only through its environment variables. A variable that points at a Secrets Manager value, such as `.dependencies.db.secret_arn + ":password::"`, is read by ECS when a task starts and never written into the task definition.
 
 ```yaml
 dependencies:

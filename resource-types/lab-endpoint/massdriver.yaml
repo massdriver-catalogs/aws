@@ -50,3 +50,15 @@ schema:
       description: The box's own security group.
       type: string
       pattern: ^sg-[a-f0-9]+$
+    cluster_arn:
+      title: Cluster ARN
+      description: The ECS cluster the box's service runs in.
+      type: string
+      pattern: "^arn:aws[a-z-]*:ecs:"
+    service_name:
+      title: Service name
+      description: >-
+        The box's ECS service. Its desired count is 1 when the box is awake and 0 when it sleeps;
+        whatever proxies to the box may change it.
+      type: string
+      minLength: 1

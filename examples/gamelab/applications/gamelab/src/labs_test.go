@@ -35,11 +35,13 @@ func TestPlansCoverEveryBundleParam(t *testing.T) {
 				t.Errorf("plan %s: box has no %s", p.ID, k)
 			}
 		}
-		if len(p.Saves) != 14 {
-			t.Errorf("plan %s: postgres needs all 14 params, has %d", p.ID, len(p.Saves))
+		for _, k := range []string{"region", "partition_key", "sort_key", "point_in_time_recovery", "deletion_protection", "table_class", "encryption"} {
+			if _, ok := p.Gamedata[k]; !ok {
+				t.Errorf("plan %s: gamedata has no %s", p.ID, k)
+			}
 		}
-		if len(p.Leaderboard) != 4 {
-			t.Errorf("plan %s: valkey needs all 4 params, has %d", p.ID, len(p.Leaderboard))
+		if p.Monthly.Gamedata < 1 {
+			t.Errorf("plan %s: Saves & scores has no price", p.ID)
 		}
 	}
 }
@@ -72,11 +74,11 @@ func TestLabState(t *testing.T) {
 		RawAttrs: json.RawMessage(`{"lab_plan":"medium","player_age":"7"}`),
 		Instances: []Instance{
 			{ID: "labs-maya-box", Status: "PROVISIONED", LatestDeployment: &Deployment{Status: "COMPLETED", Action: "PROVISION"}},
-			{ID: "labs-maya-saves", Status: "INITIALIZED"},
+			{ID: "labs-maya-gamedata", Status: "INITIALIZED"},
 		},
 	}
 	lab := l.view(env)
-	if lab.State != "ready" || lab.Player != "Maya" || lab.Age != 7 || lab.Plan != "medium" || lab.Saves {
+	if lab.State != "ready" || lab.Player != "Maya" || lab.Age != 7 || lab.Plan != "medium" || lab.Gamedata {
 		t.Fatalf("unexpected %+v", lab)
 	}
 	env.Instances[0].LatestDeployment = &Deployment{Status: "RUNNING", Action: "DECOMMISSION"}

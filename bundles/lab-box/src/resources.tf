@@ -8,5 +8,7 @@ resource "massdriver_resource" "lab" {
     agent             = "opencode"
     region            = var.cluster.region
     security_group_id = aws_security_group.task.id
+    cluster_arn       = var.cluster.arn
+    service_name      = aws_ecs_service.main.name
   })
 }

@@ -3,46 +3,40 @@
     "id": "small",
     "name": "Small",
     "tagline": "First games: clicking, catching, jumping.",
-    "features": ["1 vCPU, 4 GB lab box", "2D games with Phaser and KAPLAY", "Tiny game-save database", "Tiny leaderboard store"],
-    "monthly": { "box": 19, "saves": 22, "leaderboard": 9 },
+    "features": ["1 vCPU, 4 GB lab box", "2D games with Phaser and KAPLAY", "Sleeps when nobody's playing"],
+    "monthly": { "box": 19, "gamedata": 1 },
     "box": { "size": "1024/4096", "spot": true, "home_backups": false, "log_retention_days": 7 },
-    "saves": {
-      "engine_version": "17", "instance_class": "db.t4g.micro", "storage_gb": 20, "storage_max_gb": 50,
-      "multi_az": false, "backup_retention_days": 1, "deletion_protection": false, "skip_final_snapshot": true,
-      "performance_insights": false, "enhanced_monitoring": false, "log_retention_days": 1,
-      "database_name": "games", "username": "lab_admin", "password_version": 1
-    },
-    "leaderboard": { "major_engine_version": "8", "max_data_storage_gb": 1, "max_ecpu_per_second": 1000, "snapshot_retention_days": 0 }
+    "gamedata": {
+      "region": "us-east-1", "partition_key": { "name": "pk", "type": "S" }, "sort_key": { "name": "sk", "type": "S" },
+      "ttl_attribute": "", "point_in_time_recovery": false, "deletion_protection": false,
+      "table_class": "STANDARD", "encryption": "AWS_OWNED"
+    }
   },
   {
     "id": "medium",
     "name": "Medium",
     "tagline": "Bigger worlds, more levels, faster builds.",
     "popular": true,
-    "features": ["2 vCPU, 8 GB lab box", "Daily backups of every game", "Small game-save database", "Small leaderboard store"],
-    "monthly": { "box": 36, "saves": 39, "leaderboard": 9 },
+    "features": ["2 vCPU, 8 GB lab box", "Daily backups of every game", "Sleeps when nobody's playing"],
+    "monthly": { "box": 36, "gamedata": 1 },
     "box": { "size": "2048/8192", "spot": true, "home_backups": true, "log_retention_days": 7 },
-    "saves": {
-      "engine_version": "17", "instance_class": "db.t4g.small", "storage_gb": 20, "storage_max_gb": 100,
-      "multi_az": false, "backup_retention_days": 1, "deletion_protection": false, "skip_final_snapshot": true,
-      "performance_insights": false, "enhanced_monitoring": false, "log_retention_days": 1,
-      "database_name": "games", "username": "lab_admin", "password_version": 1
-    },
-    "leaderboard": { "major_engine_version": "8", "max_data_storage_gb": 1, "max_ecpu_per_second": 10000, "snapshot_retention_days": 1 }
+    "gamedata": {
+      "region": "us-east-1", "partition_key": { "name": "pk", "type": "S" }, "sort_key": { "name": "sk", "type": "S" },
+      "ttl_attribute": "", "point_in_time_recovery": false, "deletion_protection": false,
+      "table_class": "STANDARD", "encryption": "AWS_OWNED"
+    }
   },
   {
     "id": "large",
     "name": "Large",
     "tagline": "3D games and big projects for older kids.",
-    "features": ["4 vCPU, 16 GB lab box", "3D games with three.js", "Daily backups of every game", "Bigger database and store"],
-    "monthly": { "box": 68, "saves": 75, "leaderboard": 10 },
+    "features": ["4 vCPU, 16 GB lab box", "3D games with three.js", "Daily backups of every game"],
+    "monthly": { "box": 68, "gamedata": 1 },
     "box": { "size": "4096/16384", "spot": true, "home_backups": true, "log_retention_days": 30 },
-    "saves": {
-      "engine_version": "17", "instance_class": "db.t4g.medium", "storage_gb": 20, "storage_max_gb": 200,
-      "multi_az": false, "backup_retention_days": 7, "deletion_protection": false, "skip_final_snapshot": true,
-      "performance_insights": false, "enhanced_monitoring": false, "log_retention_days": 7,
-      "database_name": "games", "username": "lab_admin", "password_version": 1
-    },
-    "leaderboard": { "major_engine_version": "8", "max_data_storage_gb": 5, "max_ecpu_per_second": 10000, "snapshot_retention_days": 1 }
+    "gamedata": {
+      "region": "us-east-1", "partition_key": { "name": "pk", "type": "S" }, "sort_key": { "name": "sk", "type": "S" },
+      "ttl_attribute": "", "point_in_time_recovery": true, "deletion_protection": false,
+      "table_class": "STANDARD", "encryption": "AWS_OWNED"
+    }
   }
 ]

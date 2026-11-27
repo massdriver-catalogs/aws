@@ -151,11 +151,8 @@ dependencies:
   codebase:
     resource_type: aws-codebase@0.0.0
     required: true
-  postgres:
-    resource_type: aws-postgres@0.0.0
-    required: false
-  cache:
-    resource_type: aws-valkey@0.0.0
+  gamedata:
+    resource_type: aws-dynamodb-table@0.0.0
     required: false
 
 resources:

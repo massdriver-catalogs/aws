@@ -23,26 +23,11 @@ locals {
       AGENT_PORT  = tostring(local.agent_port)
       GAME_PORT   = tostring(local.game_port)
     },
-    var.postgres == null ? {} : {
-      PGHOST     = var.postgres.hostname
-      PGPORT     = tostring(var.postgres.port)
-      PGDATABASE = var.postgres.database
-      PGUSER     = var.postgres.username
-      PGSSLMODE  = "require"
-    },
-    var.cache == null ? {} : {
-      REDIS_URL = "rediss://${var.cache.hostname}:${var.cache.port}"
+    var.gamedata == null ? {} : {
+      GAMELAB_TABLE        = var.gamedata.name
+      GAMELAB_TABLE_REGION = var.gamedata.region
     },
   )
-
-  # Read when the task starts, so the database password never lands in the
-  # task definition.
-  database_secrets = var.postgres == null ? [] : [{ name = "PGPASSWORD", valueFrom = "${var.postgres.secret_arn}:password::" }]
-
-  client_security_groups = compact([
-    try(var.postgres.client_security_group_id, ""),
-    try(var.cache.client_security_group_id, ""),
-  ])
 
   # A digest rather than a tag, so a restarted task runs the image that was
   # deployed, not whatever was pushed since.
@@ -221,15 +206,12 @@ resource "aws_ecs_task_definition" "main" {
     environment = [for k in sort(keys(local.environment)) : { name = k, value = local.environment[k] }]
     # The version id makes a new task definition when a secret changes, so
     # the task restarts with it.
-    secrets = concat(
-      [
-        for k in sort(keys(local.secret_env)) : {
-          name      = k
-          valueFrom = "${aws_secretsmanager_secret.main.arn}:${k}::${aws_secretsmanager_secret_version.main.version_id}"
-        }
-      ],
-      local.database_secrets,
-    )
+    secrets = [
+      for k in sort(keys(local.secret_env)) : {
+        name      = k
+        valueFrom = "${aws_secretsmanager_secret.main.arn}:${k}::${aws_secretsmanager_secret_version.main.version_id}"
+      }
+    ]
     portMappings = [
       { containerPort = local.agent_port, protocol = "tcp" },
       { containerPort = local.game_port, protocol = "tcp" },
@@ -278,7 +260,7 @@ resource "aws_ecs_service" "main" {
 
   network_configuration {
     subnets          = var.cluster.network.private_subnet_ids
-    security_groups  = concat([aws_security_group.task.id], local.client_security_groups)
+    security_groups  = [aws_security_group.task.id]
     assign_public_ip = false
   }
 
@@ -291,7 +273,15 @@ resource "aws_ecs_service" "main" {
     rollback = true
   }
 
-  depends_on = [aws_efs_mount_target.home]
+  # Whatever proxies to the box sets the count to 0 when nobody has used the
+  # lab for a while and back to 1 when someone opens it. A deploy leaves the
+  # box as it found it: asleep stays asleep, with the new task definition
+  # ready for when it wakes.
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
+  depends_on = [aws_efs_mount_target.home, aws_iam_role_policy_attachment.gamedata]
 }
 
 # A warning, not a failure: a VPC with endpoints can reach AWS without

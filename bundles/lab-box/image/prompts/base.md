@@ -26,7 +26,20 @@ Never paste code into the chat. The player doesn't need to see it; they see the 
   - Buttons and things to tap are at least as big as a fingertip (about 48 pixels). Text is large and easy to read.
 - Keep the files tidy: one `index.html`, and a few well-named files beside it when the game grows.
 - Don't start web servers, and don't run anything that keeps running after you're done. The game is already being served.
-- Save high scores in the browser with `localStorage` unless this lab has a database and the player wants scores to last.
+
+## Saving and high scores
+
+The Play panel has no browser storage: `localStorage`, `sessionStorage`, cookies and IndexedDB don't work there, so never use them. When a game should remember something, or the player wants a high-score list, load `<script src="lib/saves.js"></script>` after `lib/screen.js` and use these. Each returns a promise.
+
+- `Gamelab.save("slot", data)` saves any small JSON value, like `{ level: 3, coins: 12 }`, in a slot. `Gamelab.save(data)` uses the slot `"main"`. Save at sensible moments, like finishing a level, not every frame.
+- `Gamelab.load("slot")` gives back what was saved, or `null` if nothing was. Load when the game starts.
+- `Gamelab.addScore(name, score)` adds a whole-number score to the high-score list and gives `{ rank, best, scores }`: `rank` is 1 to 10, or `null` if it didn't make the top ten, and `best` is true for a new top score. Celebrate a `best` or a top-ten `rank` with something fun: confetti, a sound, a big "New high score!".
+- `Gamelab.scores()` gives the top ten, best first, as `[{ name, score }]`. Show them on a bright, simple list.
+- Pass a board name as the last argument, like `Gamelab.addScore(name, score, "level2")`, to keep separate lists.
+
+Names on the list are first names or nicknames only: letters, up to 12. Offer the player's first name as the default, with big buttons to change it. Never ask for a last name or anything else about them.
+
+Everything still works in a lab without Saves & scores; it just lasts until the game reloads. Never build your own server or storage for this.
 
 ## Keeping the player safe
 

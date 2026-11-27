@@ -36,17 +36,16 @@
       <span class="price"><span class="amount">${{.Monthly.Box}}</span>/month</span>
       <span class="tagline">{{.Tagline}}</span>
       <ul>{{range .Features}}<li>{{.}}</li>{{end}}</ul>
-      <span class="extras">Game saves +${{.Monthly.Saves}} · Leaderboard +${{.Monthly.Leaderboard}}</span>
+      <span class="extras">Saves &amp; scores +${{.Monthly.Gamedata}}</span>
     </label>
     {{end}}
   </div>
 
   <h2>Extras</h2>
   <div class="card extras-card">
-    <label class="check"><input type="checkbox" name="saves"{{if eq $.Form.saves "on"}} checked{{end}}> <span><strong>Game saves</strong> A PostgreSQL database, for games that remember things between visits.</span></label>
-    <label class="check"><input type="checkbox" name="scores"{{if eq $.Form.scores "on"}} checked{{end}}> <span><strong>Leaderboard</strong> A Valkey store, for fast high scores.</span></label>
+    <label class="check"><input type="checkbox" name="gamedata"{{if eq $.Form.gamedata "on"}} checked{{end}}> <span><strong>Saves &amp; scores</strong> Games remember where the player got to, and keep a high-score list, between visits. Without it, games start over when they reload.</span></label>
   </div>
-  <p class="hint">Monthly prices for running all month. Claude usage is billed by Anthropic on top, to the key you paste.</p>
+  <p class="hint">Monthly prices if the lab runs all month. A lab sleeps after 30 minutes with nobody playing and wakes up when it's opened, so most cost much less. Claude usage is billed by Anthropic on top, to the key you paste.</p>
   <button type="submit" class="big">Make the lab</button>
 </form>
 {{end}}

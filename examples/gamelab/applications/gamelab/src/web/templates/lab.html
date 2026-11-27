@@ -7,6 +7,10 @@
       <h1>{{.Lab.Player}}'s Lab</h1>
       <span class="status"><span class="dot"></span><span id="state">Ready</span></span>
     </div>
+    <div id="nap" class="nap" hidden>
+      <p><strong>Your lab is taking a nap.</strong> It rests when nobody has played for a while. Your games are all still there.</p>
+      <button type="button" id="wake">Wake it up</button>
+    </div>
     <ol id="messages" class="messages" aria-live="polite">
       <li class="msg assistant intro">
         <p>Hi {{.Lab.Player}}! I'm your game helper. What game should we make? You can say something like "a bunny that jumps over carrots" or "a space game with lots of stars".</p>
@@ -37,7 +41,7 @@
   <span class="spinner" aria-hidden="true"></span>
   <h1>{{.Lab.Player}}'s Lab</h1>
   <p class="lead">{{.Lab.Detail}}</p>
-  {{if and (ne .Lab.State "building") (ne .Lab.State "removing")}}
+  {{if and (ne .Lab.State "building") (ne .Lab.State "removing") (ne .Lab.State "waking")}}
   <form method="post" action="/labs/{{.Lab.ID}}/resume"><button type="submit">{{if eq .Lab.State "broken"}}Try again{{else}}Set up the lab{{end}}</button></form>
   {{end}}
 </section>

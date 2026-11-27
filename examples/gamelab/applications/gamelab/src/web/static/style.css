@@ -104,7 +104,7 @@ label { font-weight: 700; display: block; margin-bottom: 6px; }
 .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--muted); font-size: 14px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
 .state-ready .dot, .studio .dot { background: var(--ok); }
-.state-building .dot, .studio.busy .dot { background: var(--warn); animation: pulse 1s infinite alternate; }
+.state-building .dot, .state-waking .dot, .studio.busy .dot { background: var(--warn); animation: pulse 1s infinite alternate; }
 .state-broken .dot { background: var(--bad); }
 @keyframes pulse { to { opacity: .3; } }
 .confirm summary { list-style: none; }
@@ -183,3 +183,6 @@ body.covered { overflow: hidden; }
 .spinner { display: inline-block; width: 56px; height: 56px; border-radius: 50%; border: 6px solid var(--brand-soft); border-top-color: var(--brand); animation: spin 1s linear infinite; margin-bottom: 12px; }
 .state-broken .spinner, .state-stopped .spinner { animation: none; border-top-color: var(--brand-soft); }
 @keyframes spin { to { transform: rotate(360deg); } }
+.nap { margin: 12px 18px 0; padding: 14px 16px; border-radius: 12px; background: var(--brand-soft); display: grid; gap: 10px; justify-items: start; }
+.nap p { margin: 0; }
+.nap[hidden] { display: none; }

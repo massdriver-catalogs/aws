@@ -1,0 +1,29 @@
+name: aws-iam-policy
+version: 0.0.0
+label: AWS IAM Policy
+
+ui:
+  connectionOrientation: link
+
+schema:
+  title: AWS IAM Policy
+  description: >-
+    One IAM managed policy, made for a single purpose by the bundle that owns it. An app connects it
+    and its runtime attaches it to the app's own role.
+  type: object
+  additionalProperties: false
+  required:
+    - name
+    - arn
+  properties:
+    name:
+      title: Policy Name
+      type: string
+      minLength: 1
+    arn:
+      title: Policy ARN
+      type: string
+      pattern: ^arn:aws[a-z-]*:iam::[0-9]{12}:policy/.+$
+    description:
+      title: What It Allows
+      type: string

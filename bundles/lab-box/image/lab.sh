@@ -37,13 +37,13 @@ fi
 name=${PLAYER_NAME:-Player}
 model=${LAB_MODEL:-claude-opus-5-5}
 
-databases=""
-[ -z "${PGHOST:-}" ] || databases+="- A PostgreSQL database for saving games. \`psql\` connects with no arguments; the settings are in the PG* environment variables. Use it from a small Node server only if the player wants saves or high scores that last.
+if [ -n "${GAMELAB_TABLE:-}" ]; then
+  saves="- Saves & scores are on in this lab: what a game saves with \`lib/saves.js\` lasts, and the high-score list stays between visits.
 "
-[ -z "${REDIS_URL:-}" ] || databases+="- A Valkey (Redis-compatible) store for fast things like leaderboards, at \$REDIS_URL (TLS). \`valkey-cli -u \$REDIS_URL --tls\` connects.
+else
+  saves="- Saves & scores are off in this lab: \`lib/saves.js\` still works, but what a game saves lasts only until the game reloads. If the player wants saves that last, tell them to ask their grown-up about Saves & scores.
 "
-[ -n "$databases" ] || databases="- No database. Keep everything in the browser, with localStorage for high scores.
-"
+fi
 
 # The prompt and settings live outside the player's home so the agent can't
 # rewrite its own rules.
@@ -55,7 +55,7 @@ databases=""
   printf -- '- The player is %s, age %s. Use their first name; never ask for more about them.\n' "$name" "$age"
   printf -- '- The game lives in `%s`. The Play panel shows `index.html` from there, so open it in the Play panel instead of starting a server.\n' "$GAME_DIR"
   printf -- '- Game libraries are already here and load with no internet: `lib/phaser.min.js`, `lib/kaplay.mjs`, `lib/kaplay.js` and `lib/three.module.js` (an ES module: `import * as THREE from "./lib/three.module.js"`). Load them with a relative path, like `<script src="lib/phaser.min.js"></script>`.\n'
-  printf '%s' "$databases"
+  printf '%s' "$saves"
 } >/etc/gamelab/prompt.md
 
 # Young players don't need the web; it's where the unsafe content is.
@@ -118,15 +118,24 @@ as_player() {
     env HOME="$HOME_DIR" USER="$PLAYER" PATH=/usr/local/bin:/usr/bin:/bin LANG="$LANG" \
     OPENCODE_CONFIG="$OPENCODE_CONFIG" OPENCODE_DISABLE_AUTOUPDATE=1 \
     ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
-    PGHOST="${PGHOST:-}" PGPORT="${PGPORT:-}" PGDATABASE="${PGDATABASE:-}" PGUSER="${PGUSER:-}" \
-    PGPASSWORD="${PGPASSWORD:-}" PGSSLMODE="${PGSSLMODE:-}" REDIS_URL="${REDIS_URL:-}" \
+    "$@"
+}
+
+# The task role's credentials reach only the game server; the agent never
+# sees them.
+as_game_server() {
+  setpriv --reuid=10002 --regid=10001 --clear-groups --reset-env -- \
+    env HOME=/nonexistent PATH=/usr/local/bin:/usr/bin:/bin LANG="$LANG" \
+    GAME_DIR="$GAME_DIR" GAME_PORT="$GAME_PORT" \
+    GAMELAB_TABLE="${GAMELAB_TABLE:-}" GAMELAB_TABLE_REGION="${GAMELAB_TABLE_REGION:-${AWS_REGION:-}}" \
+    AWS_CONTAINER_CREDENTIALS_RELATIVE_URI="${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI:-}" \
     "$@"
 }
 
 cd "$GAME_DIR" || die "no game directory"
 
 log "game server on :$GAME_PORT"
-as_player env GAME_DIR="$GAME_DIR" GAME_PORT="$GAME_PORT" node /opt/gamelab/game-server.mjs &
+as_game_server node /opt/gamelab/game-server.mjs &
 game=$!
 
 log "agent ($model, rules for $band) on :$AGENT_PORT"

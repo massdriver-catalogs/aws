@@ -11,8 +11,19 @@ templating: mustache
 | Model | `{{params.model}}` |
 | Size | {{params.size}} CPU/MB, {{#params.spot}}Spot{{/params.spot}}{{^params.spot}}on demand{{/params.spot}}, {{params.architecture}} |
 | Service | `{{params.md_metadata.name_prefix}}` on cluster `{{dependencies.cluster.name}}` ({{dependencies.cluster.region}}) |
-| Game saves | {{#dependencies.postgres}}`{{dependencies.postgres.hostname}}`{{/dependencies.postgres}}{{^dependencies.postgres}}none{{/dependencies.postgres}} |
-| Leaderboard | {{#dependencies.cache}}`{{dependencies.cache.hostname}}`{{/dependencies.cache}}{{^dependencies.cache}}none{{/dependencies.cache}} |
+| Saves & scores | {{#dependencies.gamedata}}DynamoDB table `{{dependencies.gamedata.name}}`{{/dependencies.gamedata}}{{^dependencies.gamedata}}off{{/dependencies.gamedata}} |
+| Sleeps | when Gamelab sets the service's desired count to 0; a deploy leaves it as it is |
+
+## The box is asleep
+
+A desired count of 0 is normal: nobody used the lab for 30 minutes, so Gamelab stopped the task. Opening the lab in Gamelab wakes it in about a minute. To wake it by hand:
+
+```bash
+aws ecs update-service --region {{dependencies.cluster.region}} --cluster {{dependencies.cluster.name}} \
+  --service {{params.md_metadata.name_prefix}} --desired-count 1 --query 'service.desiredCount'
+```
+
+If it never stays up, it isn't sleep: see the next section.
 
 ## The box won't start
 
@@ -26,7 +37,6 @@ aws logs tail /ecs/{{params.md_metadata.name_prefix}} --region {{dependencies.cl
 - **`CannotPullContainerError`**: the image is gone from the codebase's repository. Push a new one (`./deploy.sh images` in `examples/gamelab`) and deploy.
 - **`exec format error`**: the image is built for the wrong CPU. Rebuild for **{{params.architecture}}**.
 - **`ResourceInitializationError: failed to invoke EFS utils`** or **`mount.nfs4: Connection timed out`**: the task can't reach its home directory. Deploy again.
-- **`ResourceInitializationError` mentioning `secretsmanager`** with game saves connected: the database's secret can't be read. Deploy Game Saves, then this box.
 - **Exit code 137** or `OutOfMemoryError`: raise **Box size**.
 
 ## The helper answers with an error
@@ -47,6 +57,26 @@ curl -s localhost:8080/play/ | head
 ```
 
 A blank page is usually a JavaScript error in the game: ask the helper "the game is blank, can you fix it?". Paths in the game must be relative (`lib/phaser.min.js`, not `/lib/...`).
+
+## Saves or high scores don't stick
+
+{{#dependencies.gamedata}}
+Games save through the game server into `{{dependencies.gamedata.name}}`. From a shell (below), ask it directly, then look in the log for `api` errors:
+
+```bash
+curl -s localhost:8080/play/api/status; echo
+curl -s 'localhost:8080/play/api/scores?board=main'; echo
+aws logs tail /ecs/{{params.md_metadata.name_prefix}} --region {{dependencies.cluster.region}} --since 1h --filter-pattern api
+```
+
+- **`"saves": false`**: the box started without the table. Deploy this box.
+- **`AccessDeniedException`** in the log: the task role lost the table's `read-write` policy. Deploy the table, then this box.
+- **`ResourceNotFoundException`**: the table is gone. Deploy Saves & Scores, then this box.
+- **Status is fine but the game forgets**: the game doesn't use `lib/saves.js`. Ask the helper "make the game remember my progress with Gamelab.save".
+{{/dependencies.gamedata}}
+{{^dependencies.gamedata}}
+Saves & scores are off for this lab, so games remember things only until they reload. Deploy a Saves & Scores table in this environment, connected to this box, then deploy this box.
+{{/dependencies.gamedata}}
 
 ## Open a shell
 

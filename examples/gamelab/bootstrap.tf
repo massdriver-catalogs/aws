@@ -49,7 +49,8 @@ locals {
     # The cluster stays undeployed; the server runs on the platform's cluster,
     # its environment default. Source Repository stays undeployed until the
     # server moves to its own GitHub repository; until then deploy.sh pushes
-    # its image straight to the registry.
+    # its image straight to the registry. Lab Power is the server's permission
+    # to put lab boxes to sleep and wake them.
     gamelab = {
       name        = "Gamelab"
       description = "The Gamelab server: the one public site, where parents make labs and players use them."
@@ -58,28 +59,32 @@ locals {
         registry = { bundle = "ecr-repository", name = "Image Repository" }
         codebase = { bundle = "codebase", name = "Codebase" }
         cluster  = { bundle = "ecs-cluster", name = "ECS Cluster" }
+        power    = { bundle = "ecs-scaling-policy", name = "Lab Power" }
         app      = { bundle = "gamelab-server", name = "Gamelab Server" }
       }
       links = [
         "registry.repository -> codebase.registry",
         "codebase.codebase -> app.codebase",
         "cluster.cluster -> app.cluster",
+        "cluster.cluster -> power.cluster",
+        "power.policy -> app.lab_power",
       ]
     }
 
     # The template builds the lab image once: its registry and codebase are
     # deployed there and become every lab's default codebase. Labs leave
     # theirs undeployed, like the cluster, which comes from the platform.
-    # Game Saves and Leaderboard deploy only in labs whose player wants them.
+    # Saves & Scores deploys only in labs whose parent picked it.
     labs = {
       name        = "Labs"
-      description = "One environment per player, forked from the template by the Gamelab server: a lab box with a game-making helper, and optional game saves and leaderboard."
+      description = "One environment per player, forked from the template by the Gamelab server: a lab box with a game-making helper, and optional saves and high scores."
       stages      = { template = "Template" }
       components = {
         registry = { bundle = "ecr-repository", name = "Lab Image Repository" }
         codebase = { bundle = "codebase", name = "Lab Codebase" }
         cluster  = { bundle = "ecs-cluster", name = "ECS Cluster" }
         box      = { bundle = "lab-box", name = "Lab Box" }
+        gamedata = { bundle = "dynamodb-table", name = "Saves & Scores" }
         saves    = { bundle = "postgres", name = "Game Saves" }
         scores   = { bundle = "valkey", name = "Leaderboard" }
       }
@@ -87,8 +92,7 @@ locals {
         "registry.repository -> codebase.registry",
         "codebase.codebase -> box.codebase",
         "cluster.cluster -> box.cluster",
-        "saves.database -> box.postgres",
-        "scores.cache -> box.cache",
+        "gamedata.table -> box.gamedata",
       ]
     }
   }
@@ -120,8 +124,9 @@ locals {
   # belongs in labs, and the server, which belongs in gamelab.
   bundle_access = merge(
     # Only what Gamelab runs, so its organization holds nothing else.
-    { for b in ["vpc", "dns-zone", "ecs-cluster", "ecr-repository", "codebase", "ecs-service", "postgres", "valkey"] : b => "*" },
+    { for b in ["vpc", "dns-zone", "ecs-cluster", "ecr-repository", "codebase", "ecs-service", "dynamodb-table", "postgres", "valkey"] : b => "*" },
     { (yamldecode(file("${path.module}/applications/gamelab/bundle/massdriver.yaml")).name) = "gamelab" },
+    { "ecs-scaling-policy" = "gamelab" },
     { "lab-box" = "labs" },
   )
 

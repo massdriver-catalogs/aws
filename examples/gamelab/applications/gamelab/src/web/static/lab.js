@@ -14,6 +14,28 @@
   let wasBusy = false;
   let lastSeen = "";
   let timer = null;
+  let napping = false;
+
+  // Opening the lab page again wakes the box, and keeps what was being typed.
+  const draftKey = "gamelab-draft-" + lab;
+  try {
+    const draft = sessionStorage.getItem(draftKey);
+    if (draft) text.value = draft;
+    sessionStorage.removeItem(draftKey);
+  } catch {}
+  function nap() {
+    napping = true;
+    clearTimeout(timer);
+    state.textContent = "Napping";
+    document.getElementById("nap").hidden = false;
+    send.disabled = true;
+  }
+  document.getElementById("wake").addEventListener("click", () => {
+    try {
+      if (text.value.trim()) sessionStorage.setItem(draftKey, text.value);
+    } catch {}
+    location.reload();
+  });
 
   function reloadGame() {
     game.src = studio.dataset.play + "?t=" + Date.now();
@@ -114,6 +136,7 @@
       const res = await fetch(`/labs/${lab}/chat`, { headers: { accept: "application/json" } });
       if (res.status === 401) return location.assign("/login");
       const data = await res.json();
+      if (data.asleep) return nap();
       if (!res.ok) {
         state.textContent = data.error || "The lab isn't answering.";
         return;
@@ -127,7 +150,7 @@
       state.textContent = "Reconnecting...";
     } finally {
       clearTimeout(timer);
-      timer = setTimeout(refresh, busy ? 1500 : 4000);
+      if (!napping) timer = setTimeout(refresh, busy ? 1500 : 4000);
     }
   }
 
@@ -140,6 +163,14 @@
     if (res.status === 401) location.assign("/login");
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      if (data.asleep) {
+        // The send woke the box; reopening the page waits for it.
+        try {
+          sessionStorage.setItem(draftKey, body && body.text ? body.text : "");
+        } catch {}
+        location.reload();
+        return new Promise(() => {});
+      }
       throw new Error(data.error || "That didn't work.");
     }
   }

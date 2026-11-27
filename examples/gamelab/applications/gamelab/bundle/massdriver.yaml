@@ -6,7 +6,11 @@ description: >-
 source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/gamelab/applications/gamelab
 version: 0.0.0
 
-dependencies: {}
+dependencies:
+  # Lets the server put lab boxes nobody is using to sleep and wake them.
+  lab_power:
+    resource_type: aws-iam-policy@0.0.0
+    required: false
 
 resources: {}
 

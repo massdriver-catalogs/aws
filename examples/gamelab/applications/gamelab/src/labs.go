@@ -25,13 +25,11 @@ type Plan struct {
 	Popular  bool     `json:"popular"`
 	Features []string `json:"features"`
 	Monthly  struct {
-		Box         int `json:"box"`
-		Saves       int `json:"saves"`
-		Leaderboard int `json:"leaderboard"`
+		Box      int `json:"box"`
+		Gamedata int `json:"gamedata"`
 	} `json:"monthly"`
-	Box         map[string]any `json:"box"`
-	Saves       map[string]any `json:"saves"`
-	Leaderboard map[string]any `json:"leaderboard"`
+	Box      map[string]any `json:"box"`
+	Gamedata map[string]any `json:"gamedata"`
 }
 
 func loadPlans() ([]Plan, error) {
@@ -49,21 +47,19 @@ type Lab struct {
 	Player    string
 	Age       int
 	Plan      string
-	Saves     bool
-	Scores    bool
+	Gamedata  bool // Saves & scores
 	CreatedAt time.Time
-	State     string // ready, building, removing, broken, stopped
+	State     string // ready, building, removing, broken, stopped; the server adds asleep and waking
 	Detail    string
 }
 
 func (l Lab) Ready() bool { return l.State == "ready" }
 
 type NewLab struct {
-	Player string
-	Age    int
-	Plan   string
-	Saves  bool
-	Scores bool
+	Player   string
+	Age      int
+	Plan     string
+	Gamedata bool
 	// Each lab brings its own Anthropic key, so its Claude bill and spend
 	// limit belong to whoever made it. Never kept by the server; it goes
 	// straight to the box as a secret.
@@ -177,10 +173,8 @@ func (l *Labs) view(e Environment) Lab {
 		CreatedAt: e.CreatedAt,
 	}
 	box := e.Instance(l.instance(e.ID, "box"))
-	saves := e.Instance(l.instance(e.ID, "saves"))
-	scores := e.Instance(l.instance(e.ID, "scores"))
-	lab.Saves = saves != nil && saves.Status == "PROVISIONED"
-	lab.Scores = scores != nil && scores.Status == "PROVISIONED"
+	gamedata := e.Instance(l.instance(e.ID, "gamedata"))
+	lab.Gamedata = gamedata != nil && gamedata.Status == "PROVISIONED"
 
 	if step, msg := l.job(e.ID); step != "" {
 		lab.State, lab.Detail = "building", step
@@ -190,7 +184,7 @@ func (l *Labs) view(e Environment) Lab {
 		return lab
 	}
 
-	for _, inst := range []*Instance{box, saves, scores} {
+	for _, inst := range []*Instance{box, gamedata} {
 		if inst == nil || inst.LatestDeployment == nil {
 			continue
 		}
@@ -331,11 +325,8 @@ func (l *Labs) Resume(ctx context.Context, id string) error {
 	if in.Age == 0 {
 		in.Age = 8
 	}
-	if s := e.Instance(l.instance(id, "saves")); s != nil && s.Status == "PROVISIONED" {
-		in.Saves = true
-	}
-	if s := e.Instance(l.instance(id, "scores")); s != nil && s.Status == "PROVISIONED" {
-		in.Scores = true
+	if s := e.Instance(l.instance(id, "gamedata")); s != nil && s.Status == "PROVISIONED" {
+		in.Gamedata = true
 	}
 	plan, ok := l.plan(in.Plan)
 	if !ok {
@@ -346,8 +337,8 @@ func (l *Labs) Resume(ctx context.Context, id string) error {
 	return nil
 }
 
-// setup deploys the databases the player picked, then the box, which
-// connects to them.
+// setup deploys the saves table if the parent picked it, then the box, which
+// connects to it.
 func (l *Labs) setup(id string, in NewLab, plan Plan) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Minute)
 	l.mu.Lock()
@@ -384,23 +375,11 @@ func (l *Labs) setup(id string, in NewLab, plan Plan) {
 		}
 	}
 
-	type step struct {
-		want      bool
-		component string
-		label     string
-		params    map[string]any
-	}
-	steps := []step{
-		{in.Saves, "saves", "Building the game-save database (about 10 minutes)", plan.Saves},
-		{in.Scores, "scores", "Building the leaderboard store (about 5 minutes)", plan.Leaderboard},
-	}
-	for _, s := range steps {
-		if !s.want {
-			continue
-		}
-		l.setJob(id, s.label)
-		if err := l.deployAndWait(ctx, l.instance(id, s.component), s.params); err != nil {
-			fail(s.label, err)
+	if in.Gamedata {
+		const label = "Setting up saves and scores (about a minute)"
+		l.setJob(id, label)
+		if err := l.deployAndWait(ctx, l.instance(id, "gamedata"), plan.Gamedata); err != nil {
+			fail(label, err)
 			return
 		}
 	}

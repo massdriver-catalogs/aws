@@ -30,6 +30,7 @@ type Server struct {
 	secret    []byte
 	labs      *Labs
 	boxes     *Boxes
+	power     *Power
 	plans     []Plan
 	pages     map[string]*template.Template
 	limiter   loginLimiter
@@ -107,6 +108,17 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	if connected {
+		idle, err := strconv.Atoi(env("LAB_IDLE_MINUTES", "30"))
+		if err != nil || idle < 1 {
+			return errors.New("set LAB_IDLE_MINUTES to a whole number of minutes, at least 1")
+		}
+		if s.power, err = newPower(ctx, boxes, time.Duration(idle)*time.Minute); err != nil {
+			slog.Warn("no AWS configuration; labs won't sleep", "err", err)
+		} else {
+			slog.Info("labs sleep when unused", "minutes", idle)
+		}
+	}
 	go func() {
 		t := time.NewTicker(time.Minute)
 		defer t.Stop()
@@ -117,6 +129,17 @@ func run() error {
 			case <-t.C:
 				sweep, cancel := context.WithTimeout(ctx, 50*time.Second)
 				labs.Sweep(sweep)
+				if s.power != nil {
+					if all, err := labs.List(sweep); err == nil {
+						var ready []string
+						for _, lab := range all {
+							if lab.Ready() {
+								ready = append(ready, lab.ID)
+							}
+						}
+						s.power.Sweep(sweep, ready)
+					}
+				}
 				cancel()
 			}
 		}
@@ -149,8 +172,11 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /login", s.login)
 	mux.HandleFunc("POST /logout", s.logout)
 	// The game's files carry their own token, since the sandboxed frame they
-	// run in sends no cookie.
+	// run in sends no cookie. Only saves and scores calls may write.
 	mux.HandleFunc("GET /labs/{id}/play/{token}/{rest...}", s.play)
+	for _, method := range []string{"POST", "PUT", "OPTIONS"} {
+		mux.HandleFunc(method+" /labs/{id}/play/{token}/api/{rest...}", s.play)
+	}
 
 	mux.Handle("GET /{$}", s.auth(s.home))
 	mux.Handle("GET /new", s.auth(s.newPage))
@@ -310,6 +336,11 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	labs, err := s.labs.List(r.Context())
+	for i := range labs {
+		if labs[i].Ready() && s.power.Asleep(r.Context(), labs[i].ID) {
+			labs[i].State, labs[i].Detail = "asleep", "Napping. Wakes up when you open it."
+		}
+	}
 	data := map[string]any{"Labs": labs, "Connected": s.connected, "Plans": s.planNames()}
 	if err != nil {
 		slog.Error("listing labs", "err", err)
@@ -341,22 +372,18 @@ func ages() []int {
 func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 	age, _ := strconv.Atoi(r.PostFormValue("age"))
 	in := NewLab{
-		Player: r.PostFormValue("player"),
-		Age:    age,
-		Plan:   r.PostFormValue("plan"),
-		Saves:  r.PostFormValue("saves") == "on",
-		Scores: r.PostFormValue("scores") == "on",
+		Player:   r.PostFormValue("player"),
+		Age:      age,
+		Plan:     r.PostFormValue("plan"),
+		Gamedata: r.PostFormValue("gamedata") == "on",
 
 		AnthropicKey: r.PostFormValue("anthropic_key"),
 	}
 	id, err := s.labs.Create(r.Context(), in)
 	if err != nil {
 		form := map[string]string{"player": in.Player, "age": strconv.Itoa(in.Age), "plan": in.Plan}
-		if in.Saves {
-			form["saves"] = "on"
-		}
-		if in.Scores {
-			form["scores"] = "on"
+		if in.Gamedata {
+			form["gamedata"] = "on"
 		}
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		s.render(w, "new", map[string]any{"Plans": s.plans, "Form": form, "Ages": ages(), "Error": friendly(err)})
@@ -374,6 +401,20 @@ func (s *Server) labPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Couldn't reach Massdriver: "+friendly(err), http.StatusBadGateway)
 		return
+	}
+	// Opening the lab is using it: a sleeping box wakes, and the page checks
+	// back until it answers.
+	if lab.Ready() {
+		s.power.Touch(lab.ID)
+		switch s.power.State(r.Context(), lab.ID) {
+		case powerAsleep:
+			if err := s.power.Wake(r.Context(), lab.ID); err != nil {
+				slog.Error("waking lab", "lab", lab.ID, "err", err)
+			}
+			fallthrough
+		case powerWaking:
+			lab.State, lab.Detail = "waking", "Waking up your lab… It was napping while nobody played. This takes about a minute."
+		}
 	}
 	s.render(w, "lab", map[string]any{
 		"Lab":     lab,
@@ -399,8 +440,9 @@ func (s *Server) resume(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/labs/"+url.PathEscape(id), http.StatusSeeOther)
 }
 
-// readyLab checks the lab exists and is ready before the server talks to its box.
-func (s *Server) readyLab(w http.ResponseWriter, r *http.Request) (string, bool) {
+// readyLab checks the lab exists and is ready, and its box awake, before the
+// server talks to the box. With wake, a sleeping box is woken.
+func (s *Server) readyLab(w http.ResponseWriter, r *http.Request, wake bool) (string, bool) {
 	lab, err := s.labs.Get(r.Context(), r.PathValue("id"))
 	if err != nil || lab == nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "No such lab."})
@@ -408,6 +450,15 @@ func (s *Server) readyLab(w http.ResponseWriter, r *http.Request) (string, bool)
 	}
 	if !lab.Ready() {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "The lab isn't ready yet.", "state": lab.State, "detail": lab.Detail})
+		return "", false
+	}
+	if s.power.Asleep(r.Context(), lab.ID) {
+		if wake {
+			if err := s.power.Wake(r.Context(), lab.ID); err != nil {
+				slog.Error("waking lab", "lab", lab.ID, "err", err)
+			}
+		}
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "Your lab is taking a nap.", "asleep": true})
 		return "", false
 	}
 	return lab.ID, true
@@ -421,7 +472,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 }
 
 func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
-	id, ok := s.readyLab(w, r)
+	id, ok := s.readyLab(w, r, false)
 	if !ok {
 		return
 	}
@@ -436,10 +487,11 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 const maxMessage = 2000
 
 func (s *Server) send(w http.ResponseWriter, r *http.Request) {
-	id, ok := s.readyLab(w, r)
+	id, ok := s.readyLab(w, r, true)
 	if !ok {
 		return
 	}
+	s.power.Touch(id)
 	var body struct {
 		Text string `json:"text"`
 	}
@@ -464,7 +516,7 @@ func (s *Server) send(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) stopAgent(w http.ResponseWriter, r *http.Request) {
-	id, ok := s.readyLab(w, r)
+	id, ok := s.readyLab(w, r, false)
 	if !ok {
 		return
 	}
@@ -482,8 +534,36 @@ func (s *Server) play(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	s.boxes.Play(w, r, id, r.PathValue("rest"))
+	rest := r.PathValue("rest")
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		rest = "api/" + rest
+	}
+	// Playing is using the lab. A game opened while its box sleeps wakes it
+	// and checks back.
+	s.power.Touch(id)
+	if s.power.Asleep(r.Context(), id) {
+		if err := s.power.Wake(r.Context(), id); err != nil {
+			slog.Error("waking lab", "lab", id, "err", err)
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Retry-After", "10")
+		if strings.HasPrefix(rest, "api/") {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "The lab is waking up. Try again in a minute.", "waking": true})
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(wakingPage))
+		return
+	}
+	s.boxes.Play(w, r, id, rest)
 }
+
+const wakingPage = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="5"><title>Waking up</title>
+<body style="margin:0;height:100vh;display:grid;place-items:center;font:600 22px system-ui,sans-serif;background:#1b1340;color:#fff;text-align:center">
+<p>Waking up your lab…<br><span style="font-weight:400;font-size:16px">The game will be back in about a minute.</span></p>`
 
 func (s *Server) parseTemplates() error {
 	funcs := template.FuncMap{}

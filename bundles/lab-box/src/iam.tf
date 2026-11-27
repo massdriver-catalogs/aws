@@ -43,19 +43,15 @@ resource "aws_iam_role_policy" "execution" {
   })
 }
 
-# ECS reads the database password from its secret before the container
-# starts, so the database's policy goes on the execution role.
 resource "aws_iam_role_policy_attachment" "execution" {
-  for_each = merge(
-    { for p in var.codebase.registry.policies : "codebase-${p.name}" => p.arn if p.name == "pull" },
-    var.postgres == null ? {} : { for p in var.postgres.policies : "postgres-${p.name}" => p.arn },
-  )
+  for_each   = { for p in var.codebase.registry.policies : "codebase-${p.name}" => p.arn if p.name == "pull" }
   role       = aws_iam_role.execution.name
   policy_arn = each.value
 }
 
 # The agent runs whatever commands it decides to, so its AWS role can do
-# nothing but open the admin shell and mount the home directory.
+# nothing but open the admin shell, mount the home directory, and reach the
+# lab's own saves table. Only the game server is given the role's credentials.
 resource "aws_iam_role" "task" {
   name_prefix        = "${substr(local.name, 0, 28)}-task-"
   assume_role_policy = data.aws_iam_policy_document.assume_task.json
@@ -87,4 +83,10 @@ resource "aws_iam_role_policy" "task" {
       },
     ]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "gamedata" {
+  for_each   = var.gamedata == null ? {} : { for p in var.gamedata.policies : p.name => p.arn if p.name == "read-write" }
+  role       = aws_iam_role.task.name
+  policy_arn = each.value
 }

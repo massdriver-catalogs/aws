@@ -13,7 +13,7 @@
       <span class="avatar" aria-hidden="true">{{slice .Player 0 1}}</span>
       <span class="lab-text">
         <strong>{{.Player}}</strong>
-        <span class="muted">{{if .Age}}Age {{.Age}} · {{end}}{{with index $.Plans .Plan}}{{.}} plan{{else}}{{.Plan}}{{end}}{{if .Saves}} · saves{{end}}{{if .Scores}} · leaderboard{{end}}</span>
+        <span class="muted">{{if .Age}}Age {{.Age}} · {{end}}{{with index $.Plans .Plan}}{{.}} plan{{else}}{{.Plan}}{{end}}{{if .Gamedata}} · saves &amp; scores{{end}}</span>
       </span>
       <span class="status"><span class="dot"></span>{{.Detail}}</span>
     </a>

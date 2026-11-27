@@ -13,11 +13,9 @@ ARG THREE_VERSION=0.187.0
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      bash ca-certificates curl git jq less locales nano postgresql-client procps python3 \
-      redis-tools ripgrep unzip xz-utils zip \
+      bash ca-certificates curl git jq less locales nano procps python3 \
+      ripgrep unzip xz-utils zip \
  && rm -rf /var/lib/apt/lists/* \
- # Valkey speaks the Redis protocol; the agent's instructions call it valkey-cli.
- && ln -s /usr/bin/redis-cli /usr/local/bin/valkey-cli \
  && sed -i 's/^# *en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && locale-gen
 
 RUN set -eu; \
@@ -64,13 +62,17 @@ RUN set -eu; \
     printf '{"phaser":"%s","kaplay":"%s","three":"%s"}\n' "$PHASER_VERSION" "$KAPLAY_VERSION" "$THREE_VERSION" >/opt/gamelab/lib/versions.json; \
     rm -rf /tmp/libs /root/.npm
 
+# The game server runs as its own user, in the player's group, so it can read
+# the game but the agent, running as the player, can't read its environment,
+# where the AWS credentials for the saves table are.
 RUN useradd --create-home --uid 10001 --shell /bin/bash player \
+ && useradd --no-create-home --uid 10002 --gid 10001 --shell /usr/sbin/nologin gameserver \
  && install -d -m 0755 /etc/gamelab
 
 COPY --chmod=0644 prompts/ /opt/gamelab/prompts/
 COPY --chmod=0644 starter/ /opt/gamelab/starter/
 COPY --chmod=0644 game-server.mjs /opt/gamelab/game-server.mjs
-COPY --chmod=0644 screen.js /opt/gamelab/lib/screen.js
+COPY --chmod=0644 screen.js saves.js /opt/gamelab/lib/
 COPY --chmod=0755 lab.sh /usr/local/bin/lab
 
 ENV LANG=en_US.UTF-8 \

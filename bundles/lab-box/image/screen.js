@@ -90,5 +90,23 @@
     });
   }
 
-  window.Gamelab = { fitCanvas: fitCanvas, touchButtons: touchButtons, touch: touch };
+  // A lab goes to sleep when nobody has used it for a while. Playing counts,
+  // so a tap or key press tells the lab someone's here, at most once a minute.
+  var script = document.currentScript;
+  var base = script && script.src ? script.src.replace(/lib\/screen\.js(\?.*)?$/, "") : "";
+  var lastPing = 0;
+  function here() {
+    var now = Date.now();
+    if (now - lastPing < 60000) return;
+    lastPing = now;
+    fetch(base + "api/ping", { cache: "no-store", mode: "no-cors" }).catch(function () {});
+  }
+  ["pointerdown", "keydown"].forEach(function (name) {
+    window.addEventListener(name, here, { capture: true, passive: true });
+  });
+
+  var G = window.Gamelab || (window.Gamelab = {});
+  G.fitCanvas = fitCanvas;
+  G.touchButtons = touchButtons;
+  G.touch = touch;
 })();
