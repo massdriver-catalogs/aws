@@ -46,7 +46,7 @@
     <label class="check"><input type="checkbox" name="saves"{{if eq $.Form.saves "on"}} checked{{end}}> <span><strong>Game saves</strong> A PostgreSQL database, for games that remember things between visits.</span></label>
     <label class="check"><input type="checkbox" name="scores"{{if eq $.Form.scores "on"}} checked{{end}}> <span><strong>Leaderboard</strong> A Valkey store, for fast high scores.</span></label>
   </div>
-  <p class="hint">Prices are AWS running all month, on spare capacity. Claude usage is billed by Anthropic on top.</p>
+  <p class="hint">Monthly prices for running all month. Claude usage is billed by Anthropic on top, to the key you paste.</p>
   <button type="submit" class="big">Make the lab</button>
 </form>
 {{end}}

@@ -73,6 +73,8 @@ Each lab, running all month on Spot in us-east-1. Claude is billed by Anthropic 
 | Medium | 2 vCPU, 8 GB, daily backups | ~$25 | ~$27 (`db.t4g.small`) | ~$6 (1 GB) | ~$58 |
 | Large | 4 vCPU, 16 GB, daily backups | ~$47 | ~$52 (`db.t4g.medium`) | ~$7 (5 GB) | ~$106 |
 
+Those are AWS costs. Gamelab shows prices with a 30% margin on top (price = cost ÷ 0.7, rounded up): Small $19, Medium $36, Large $68 for the box; Game Saves $22 / $39 / $75; Leaderboard $9 / $9 / $10.
+
 The plans are in [`applications/gamelab/src/plans.json`](applications/gamelab/src/plans.json): the box size and the database and cache params Gamelab deploys for each. Gamelab itself (the VPC's NAT, the load balancer, the server and the zone) is about $60/month before any labs.
 
 The helper uses Claude Opus 5.5 ($4/$20 per million tokens in/out). To halve that, add `LAB_MODEL` = `claude-sonnet-5-5` to the Gamelab Server's **Environment variables**; new labs use it. Each lab's key is its own, so give each one a monthly spend limit in the Anthropic console.
