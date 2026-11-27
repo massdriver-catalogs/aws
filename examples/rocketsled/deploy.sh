@@ -10,6 +10,9 @@
 #                                 it with the add-ons named, the way a Rocketsled server does, e.g.
 #                                 ./deploy.sh fork ruby staging db  or  ./deploy.sh fork static demo
 #   ./deploy.sh env               write .env for the Rocketsled servers (fauxroku.yaml, fauxcel.yaml)
+#   ./deploy.sh servers           run both websites on the platform's cluster, at fauxroku.<DOMAIN>
+#                                 and fauxcel.<DOMAIN>, from a Rocketsled checkout (ROCKETSLED_DIR,
+#                                 default ../rocketsled next to this repository)
 #   ./deploy.sh costs             connect Massdriver's cost reporting to this AWS account
 #   ./deploy.sh all               role, publish, bootstrap, provision and env
 #   ./deploy.sh teardown          remove every customer environment, then everything above
@@ -34,7 +37,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CATALOG="$(cd "$HERE/../.." && pwd)"
 BUNDLES=(vpc dns-zone ecs-cluster ecr-repository codebase ecs-service postgres valkey http-api lambda-function dynamodb-table s3-bucket)
-APPS=(fauxroku-node fauxroku-ruby fauxroku-python fauxroku-worker fauxcel-functions fauxcel-static)
+APPS=(fauxroku-node fauxroku-ruby fauxroku-python fauxroku-worker fauxcel-functions fauxcel-static rocketsled-server)
 RUNTIMES=(node ruby python functions static)
 # The bundles above reference these, even where the connection is optional.
 TYPES=(aws-vpc aws-dns-zone aws-ecs-cluster aws-ecr-repository aws-codebase source-repository app-project aws-postgres aws-valkey aws-http-api aws-dynamodb-table aws-s3-bucket website)
@@ -508,17 +511,112 @@ cmd_fork() {
 }
 
 # The Rocketsled servers read their Massdriver keys from here. The values are
-# never printed.
+# never printed. Session secrets are kept across runs, so nobody is signed out.
 cmd_env() {
-  local keys
+  local keys paas secret
   keys=$(cd "$HERE" && tofu output -json server_api_keys)
   umask 077
   {
     echo "MASSDRIVER_ORGANIZATION_ID=$(org_id)"
     echo "FAUXROKU_MASSDRIVER_API_KEY=$(jq -r .fauxroku <<<"$keys")"
     echo "FAUXCEL_MASSDRIVER_API_KEY=$(jq -r .fauxcel <<<"$keys")"
-  } >"$HERE/.env"
+    for paas in FAUXROKU FAUXCEL; do
+      secret=$(env_value "${paas}_SESSION_SECRET")
+      echo "${paas}_SESSION_SECRET=${secret:-$(openssl rand -hex 32)}"
+    done
+  } >"$HERE/.env.new"
+  mv "$HERE/.env.new" "$HERE/.env"
   log "wrote $HERE/.env"
+}
+
+env_value() {
+  [ -f "$HERE/.env" ] && sed -n "s/^$1=//p" "$HERE/.env" | head -1
+}
+
+# set_secret <instance> <name> <.env key>: the value goes from .env to Massdriver unseen.
+set_secret() {
+  local value
+  value=$(env_value "$3")
+  [ -n "$value" ] || die "no $3 in .env; run ./deploy.sh env"
+  graphql "$(jq -n --arg org "$(org_id)" --arg id "$1" --arg name "$2" --arg value "$value" '{
+    query: "mutation($org: ID!, $id: ID!, $input: SetInstanceSecretInput!) { setInstanceSecret(organizationId: $org, id: $id, input: $input) { successful messages { message } } }",
+    variables: {org: $org, id: $id, input: {name: $name, value: $value}}
+  }')" | jq -e '.data.setInstanceSecret.successful' >/dev/null || die "couldn't set $2 on $1"
+}
+
+servers_plan() {
+  cat <<PLAN
+Runs the Fauxroku and Fauxcel websites in $(aws_target), on the platform's cluster:
+  - The rocketsled project's image repository, and an image of Rocketsled with this example's
+    configs and skins, built from ${ROCKETSLED_DIR:-../rocketsled}.
+  - Two 0.25 vCPU, 0.5 GB Fargate Spot tasks at https://fauxroku.<DOMAIN> and https://fauxcel.<DOMAIN>
+    (~\$4/month together). Each keeps its database on the task's disk; who owns which app is
+    kept on the app's environment in Massdriver, so a new task loses nothing customers see.
+PLAN
+}
+
+cmd_servers() {
+  local rocketsled=${ROCKETSLED_DIR:-$CATALOG/../rocketsled} domain org site image hash paas upper port instance before field
+  [ -f "$rocketsled/Dockerfile" ] || die "no Rocketsled checkout at $rocketsled; set ROCKETSLED_DIR"
+  confirm "$(servers_plan)"
+  domain=$(mass instance get platform-main-dns -o json | jq -r .params.domain)
+  org=$(org_id)
+
+  for field in network.network cluster.cluster; do
+    share "platform-main-$field" --condition md-project=rocketsled
+    mass environment default rocketsled-main "platform-main-$field" >/dev/null
+  done
+  mass environment default rocketsled-main "$(tf_output aws_credential)" >/dev/null
+  deploy rocketsled-main-registry ecr-repository
+
+  log "build Rocketsled"
+  docker build --platform linux/arm64 --provenance=false -t rocketsled:local "$rocketsled" >&2
+  hash=$( (cd "$HERE" && tar cf - fauxroku.yaml fauxcel.yaml skins server) | shasum | cut -c1-8)
+  image=$(build_server_image "$(git -C "$rocketsled" rev-parse --short HEAD)-$hash")
+  site=$(static_image)
+
+  for paas in fauxroku fauxcel; do
+    instance=rocketsled-main-$paas
+    upper=$(tr a-z A-Z <<<"$paas")
+    port=8081
+    [ "$paas" = fauxroku ] || port=8082
+    set_secret "$instance" "${upper}_MASSDRIVER_API_KEY" "${upper}_MASSDRIVER_API_KEY"
+    set_secret "$instance" "${upper}_SESSION_SECRET" "${upper}_SESSION_SECRET"
+    pin "$instance"
+    log "deploy $instance"
+    before=$(latest_deployment "$instance")
+    preset ecs-service | jq --arg image "$image" --arg paas "$paas" --argjson port "$port" --arg org "$org" \
+      --arg base "https://$paas.$domain" --arg base_var "${upper}_BASE_URL" --arg site "$site" '
+      .image_uri = $image | .subdomain = $paas | .port = $port | .spot = true | .health_check_path = "/healthz"
+      | .environment = [
+          {name: "PAAS", value: $paas},
+          {name: "MASSDRIVER_ORGANIZATION_ID", value: $org},
+          {name: $base_var, value: $base},
+          {name: "FAUXCEL_SITE_IMAGE", value: $site}
+        ]' | mass instance deploy "$instance" --params - -m "Rocketsled $paas website, $image" --follow || true
+    wait_for "$instance" "$before"
+    log "https://$paas.$domain"
+  done
+}
+
+# build_server_image <tag>: Rocketsled with the configs and skins, in the rocketsled registry.
+build_server_image() {
+  local registry url region image
+  registry=$(mass resource get rocketsled-main-registry.repository -o json)
+  url=$(jq -r '.payload.url' <<<"$registry")
+  region=$(jq -r '.payload.region' <<<"$registry")
+  image="$url:$1"
+  if aws ecr describe-images --region "$region" --repository-name "${url#*/}" --image-ids "imageTag=$1" >/dev/null 2>&1; then
+    log "reuse $image"
+    echo "$image"
+    return
+  fi
+  log "build and push $image"
+  aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}" >&2
+  docker build --platform linux/arm64 --provenance=false --build-arg ROCKETSLED_IMAGE=rocketsled:local \
+    -f "$HERE/server/Dockerfile" -t "$image" "$HERE" >&2
+  docker push "$image" >&2
+  echo "$image"
 }
 
 teardown_plan() {
@@ -634,6 +732,7 @@ case "${1:-}" in
   provision) cmd_provision ;;
   fork) shift; cmd_fork "$@" ;;
   env) cmd_env ;;
+  servers) cmd_servers ;;
   teardown) cmd_teardown ;;
   all)
     [ -n "${DOMAIN:-}" ] || die "set DOMAIN, e.g. DOMAIN=apps.example.com"
@@ -650,5 +749,5 @@ $(provision_plan)"
     cmd_provision
     cmd_env
     ;;
-  *) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

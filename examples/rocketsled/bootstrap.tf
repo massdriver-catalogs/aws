@@ -104,6 +104,19 @@ locals {
           "blob.bucket -> app.blob",
         ]
       }
+      # The two websites themselves, on the platform's cluster and load balancer.
+      rocketsled = {
+        name        = "Rocketsled"
+        description = "The Fauxroku and Fauxcel websites, and the image they run."
+        paas        = "rocketsled"
+        stages      = { main = "Main" }
+        components = {
+          registry = { bundle = "ecr-repository", name = "Image Repository" }
+          fauxroku = { bundle = "rocketsled-server", name = "Fauxroku" }
+          fauxcel  = { bundle = "rocketsled-server", name = "Fauxcel" }
+        }
+        links = []
+      }
       static = {
         name        = "Fauxcel Static"
         description = "Static sites: a bucket of files served over HTTPS. Every environment is a fork of the template."
@@ -159,7 +172,7 @@ locals {
   }
   bundle_access = merge(
     local.bundle_projects,
-    { "ecs-service" = local.paas_projects.fauxroku },
+    { "ecs-service" = concat(local.paas_projects.fauxroku, ["rocketsled"]) },
     { "lambda-function" = local.paas_projects.fauxcel },
   )
 
