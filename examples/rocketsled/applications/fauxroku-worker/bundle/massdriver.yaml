@@ -1,0 +1,28 @@
+name: fauxroku-worker
+description: >-
+  A Fauxroku app's worker dynos: the same image as the web dynos, with no address, for background
+  jobs. Gets DATABASE_URL and REDIS_URL from the add-ons it's connected to. Runs on the ECS service
+  runtime.
+source_url: https://github.com/massdriver-catalogs/aws/tree/main/examples/rocketsled/applications/fauxroku-worker
+version: 0.0.0
+
+dependencies:
+  database:
+    resource_type: aws-postgres@0.0.0
+    required: false
+  cache:
+    resource_type: aws-valkey@0.0.0
+    required: false
+
+resources: {}
+
+app:
+  runtime: ecs-service
+  envs:
+    PROCESS_TYPE: '"worker"'
+    DATABASE_URL: >-
+      if .dependencies.database then "postgres://" + .dependencies.database.username + "@" + .dependencies.database.hostname
+      + ":" + (.dependencies.database.port | tostring) + "/" + .dependencies.database.database + "?sslmode=require" else "" end
+    PGPASSWORD: 'if .dependencies.database then .dependencies.database.secret_arn + ":password::" else "" end'
+    REDIS_URL: >-
+      if .dependencies.cache then "rediss://" + .dependencies.cache.hostname + ":" + (.dependencies.cache.port | tostring) else "" end
