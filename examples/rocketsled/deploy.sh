@@ -590,10 +590,11 @@ cmd_servers() {
     upper=$(tr a-z A-Z <<<"$paas")
     port=8081
     [ "$paas" = fauxroku ] || port=8082
+    # The secrets a bundle accepts are the ones its pinned version declares.
+    pin "$instance"
     set_secret "$instance" "${upper}_MASSDRIVER_API_KEY" "${upper}_MASSDRIVER_API_KEY"
     set_secret "$instance" "${upper}_SESSION_SECRET" "${upper}_SESSION_SECRET"
     set_secret "$instance" "${upper}_PASSWORD" "${upper}_PASSWORD"
-    pin "$instance"
     log "deploy $instance"
     before=$(latest_deployment "$instance")
     preset ecs-service | jq --arg image "$image" --arg paas "$paas" --argjson port "$port" --arg org "$org" \
