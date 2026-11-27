@@ -46,7 +46,8 @@ params:
         tag:
           type: string
           title: Tag
-          description: The image tag, such as `0.2.0`. Pin a version so that a redeploy runs the same code.
+          description: The image tag, such as `0.2.0`. Pin a version so that a redeploy runs the same code. A deploy of
+            a tag that moves, such as `latest` or `0.2`, restarts the automation on the image the tag names then.
           default: '0.2'
           pattern: ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,100}$
           message:
@@ -252,6 +253,20 @@ params:
               pattern: ^https?://[^\s]+$
               message:
                 pattern: Must be a URL.
+        results:
+          type: object
+          title: Stash results
+          properties:
+            prefix:
+              type: string
+              title: Key prefix
+              description: The start of the stash keys of the results the automation writes. The server accepts `md/v1`
+                keys once its widget catalog has them. Until then, a prefix outside `md/`, such as `results/v1`, shows
+                each result as a labeled row.
+              default: md/v1
+              pattern: ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$
+              message:
+                pattern: Must be letters, digits, and `_ . -`, in parts separated by `/`, such as results/v1.
     otel:
       type: object
       title: Tracing
@@ -324,6 +339,7 @@ ui:
     - signature
     - slack
     - massdriver
+    - results
     status:
       ui:widget: checkboxes
       ui:options:

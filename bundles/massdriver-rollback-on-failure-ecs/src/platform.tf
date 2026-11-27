@@ -9,6 +9,9 @@ locals {
   config_file = "config.yaml"
 
   image = "${var.image.repository}:${var.image.tag}"
+  # A tag such as latest or 0.2 moves to new images. A deploy restarts the automation so it runs the image the tag
+  # names now, the same as a deploy of a full version such as 0.2.1.
+  image_moves = !can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.image.tag))
 
   zone_id     = try(var.ecs_cluster.zone.zone_id, "")
   zone_domain = try(var.ecs_cluster.zone.domain, "")
@@ -40,6 +43,8 @@ locals {
       large      = false
       # An S3 bucket that the task role writes to: { bucket, prefix, object_lock }.
       s3_write = null
+      # The task role reads CloudWatch metrics and alarms.
+      cloudwatch_read = false
     }, local.automation)
   }
   stateful = { for name, a in local.enabled : name => a if a.state }
