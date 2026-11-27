@@ -543,6 +543,7 @@ stash-sync:
             - {label: Status page, url: "https://statuspage.dev.tendwell.mdawssbx.com/dev/"}
 
 log-results:
+  attributes: {}
   config: |
     # Tendwell's bundles run OpenTofu with Checkov. Each PROVISION and PLAN
     # shows how its step ran, what it changes, and its Checkov findings as
