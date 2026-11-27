@@ -133,6 +133,7 @@ locals {
     "environment:configure",
     "environment:deploy",
     "environment:decommission",
+    "environment:delete",
     "instance:configure",
     "instance:plan",
     "instance:deploy",
