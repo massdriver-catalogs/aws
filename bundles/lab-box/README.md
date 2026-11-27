@@ -7,6 +7,31 @@ A private box where a coding agent builds browser games with a kid. One Fargate 
 
 Something inside the VPC, such as the Gamelab server, proxies both to a browser. The box has no public address and no load balancer.
 
+```mermaid
+flowchart LR
+  proxy["A proxy inside the VPC<br>such as the Gamelab server"]
+  subgraph task["Fargate task, private subnets"]
+    start["lab.sh, as root<br>writes the prompt and settings<br>to /etc/gamelab"]
+    agent["opencode serve :4096<br>as the player, with LAB_PASSWORD"]
+    game["game-server.mjs :8080<br>/play/, read only"]
+    start --> agent & game
+  end
+  home[("EFS home<br>/home/player, uid 10001")]
+  claude{{"Anthropic API"}}
+  pg[("postgres, optional")]
+  vk[("cache, optional")]
+
+  proxy -- "basic auth" --> agent
+  proxy -- GET --> game
+  agent -- "edits ~/game" --> home
+  game -- "reads ~/game" --> home
+  agent --> claude
+  agent -. "PG*, psql" .-> pg
+  agent -. "REDIS_URL, valkey-cli" .-> vk
+```
+
+The proxy finds the box by name. The box registers a private name in Cloud Map, `box.<name prefix>.internal`, which follows the task across restarts and is published as the `lab` resource's `hostname`. Only one task runs at a time, so two never write to the same home folder.
+
 ## What it needs and makes
 
 The contract a replacement must keep, so a GPU box or another agent can take its place on the same canvas:

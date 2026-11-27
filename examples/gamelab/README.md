@@ -10,28 +10,88 @@ Gamelab runs on Massdriver, and manages Massdriver. Every lab is a Massdriver en
 
 ```mermaid
 flowchart LR
-  parent((Parent and player)) -- HTTPS --> alb
-  subgraph platform[platform / main]
-    vpc[vpc] --> cluster[ecs-cluster]
-    dns[dns-zone] --> cluster
-    alb[[load balancer]]
+  user(["Parent or player<br>on a laptop or iPad"])
+  md{{"Massdriver API"}}
+  anthropic{{"Anthropic API<br>with the lab's own key"}}
+
+  subgraph aws["AWS account, us-east-1"]
+    alb["Load balancer<br>https://play.DOMAIN"]
+    ecr[("ECR<br>server image, lab image")]
+    subgraph vpc["Platform VPC, private subnets"]
+      server["Gamelab server<br>one password"]
+      subgraph box["One lab box per player, on Fargate"]
+        agent["Helper: OpenCode<br>port 4096"]
+        game["Game server<br>port 8080, /play/"]
+        home[("Home folder on EFS<br>~/game")]
+      end
+      saves[("Game Saves<br>Postgres, optional")]
+      scores[("Leaderboard<br>Valkey, optional")]
+    end
   end
-  subgraph gamelab[gamelab / main]
-    reg1[ecr-repository] --> cb1[codebase] --> app[gamelab-server]
-  end
-  subgraph labs[labs / template, forked per player]
-    reg2[ecr-repository] --> cb2[codebase]
-    cb2 --> box[lab-box]
-    saves[(postgres: Game Saves)] -.optional.-> box
-    scores[(valkey: Leaderboard)] -.optional.-> box
-  end
-  alb --> app
-  app -- "chat and game, private VPC only" --> box
-  app -- "forkEnvironment, createDeployment" --> md{{Massdriver API}}
-  box -- Claude --> anthropic{{Anthropic API}}
+
+  user -- HTTPS --> alb --> server
+  server -- "chat, with the lab's password" --> agent
+  server -- "game files, read only" --> game
+  agent --> home
+  game --> home
+  agent -. "PG* variables" .-> saves
+  agent -. "REDIS_URL" .-> scores
+  agent -- "through the VPC's NAT" --> anthropic
+  server -- "GraphQL, as the Gamelab Server service account" --> md
+  ecr -. image .-> server
+  ecr -. image .-> box
 ```
 
-Gamelab's server is the only thing on the internet, behind one password. Lab boxes have no public address; their agent and game ports accept connections only from inside the VPC, and the agent asks for a password the server works out for each lab.
+The Gamelab server is the only thing on the internet. It sits behind the platform's load balancer, and everyone signs in with one password. Each lab box has no public address. Its two ports accept connections only from inside the VPC, and the server finds each box by a private name (`box.<lab>-box.internal`, from Cloud Map) that follows the task when it restarts. The box calls Claude with the Anthropic key the parent gave for that lab, so each lab's Claude bill is its own.
+
+The game runs in a sandboxed frame on the lab page. Its files load through `/labs/<lab>/play/<token>/`, where the token is signed by the server, because a sandboxed frame sends no cookie. The server passes only reads through to the game, and strips cookies on the way.
+
+## How Massdriver sees it
+
+```mermaid
+flowchart TB
+  cred[/"AWS credential<br>aws-iam-role, open to every environment"/]
+
+  subgraph platform["Project: platform"]
+    pmain["main<br>Network, DNS Zone, ECS Cluster"]
+  end
+  subgraph gamelab["Project: gamelab"]
+    gmain["main<br>Image Repository, Codebase, Gamelab Server"]
+  end
+  subgraph labs["Project: labs"]
+    template["template<br>Lab Image Repository, Lab Codebase"]
+    maya["labs-maya<br>Lab Box, Game Saves"]
+    sam["labs-sam<br>Lab Box"]
+  end
+
+  pmain -- "defaults: network, zone, cluster" --> gmain
+  pmain -- "defaults: network, cluster" --> template
+  template -- "default: the lab codebase" --> template
+  cred -. default .-> pmain & gmain & template
+  template == "forkEnvironment copies the defaults" ==> maya & sam
+```
+
+Three projects, each with its own canvas. `platform` holds what everything shares. `gamelab` holds the server. `labs` holds one `template` environment and one forked environment per player. Each box above lists what's deployed in that environment. A fork copies the template's environment defaults (the VPC, the cluster, the lab codebase and the AWS credential), so a new lab needs nothing connected by hand. It doesn't copy secrets.
+
+The `labs` canvas is the same for every lab. What changes is which parts are deployed:
+
+```mermaid
+flowchart LR
+  registry["Lab Image Repository<br>ecr-repository"] -- repository --> codebase["Lab Codebase<br>codebase"]
+  codebase -- codebase --> labbox["Lab Box<br>lab-box"]
+  cluster["ECS Cluster<br>ecs-cluster"] -- cluster --> labbox
+  pg[("Game Saves<br>postgres")] -- database --> labbox
+  vk[("Leaderboard<br>valkey")] -- cache --> labbox
+```
+
+| Component | In `template` | In each lab |
+|---|---|---|
+| Lab Image Repository, Lab Codebase | Deployed. The lab image is built here once. | Not deployed. The template's codebase is the default. |
+| ECS Cluster | Not deployed. The platform's cluster is the default. | Same. |
+| Lab Box | Not deployed. | Deployed. |
+| Game Saves, Leaderboard | Not deployed. | Deployed only if the parent picked them. |
+
+The `gamelab` canvas works the same way: its ECS Cluster sits undeployed, and the server runs on the platform's cluster.
 
 | Project | Environments | What runs there |
 |---|---|---|
@@ -39,16 +99,128 @@ Gamelab's server is the only thing on the internet, behind one password. Lab box
 | `gamelab` | `main` | The Gamelab server: `ecr-repository` and `codebase` for its image, `gamelab-server` on the `ecs-service` runtime at `https://play.<DOMAIN>` |
 | `labs` | `template`, then one per player | `template` deploys only the lab image's `ecr-repository` and `codebase`. Each fork deploys `lab-box`, and `postgres` (Game Saves) and `valkey` (Leaderboard) if the parent picked them |
 
-`ecs-cluster` sits undeployed on the `gamelab` and `labs` canvases: both run on the platform's cluster, their environment default. A lab inherits the template's defaults (the VPC, the cluster, the lab image and the AWS credential), so a fork needs nothing connected by hand. Each lab brings its own Anthropic key: the parent pastes it on **New lab**, and the server stores it as a secret on that lab's box.
+`lab_plan` (`small`, `medium`, `large`) and `player_age` (`5` to `17`) are environment attributes, so labs can be found, reported on and given policies by plan or age.
 
-### Who can do what
+## What happens when a parent makes a lab
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor parent as Parent
+  participant server as Gamelab server
+  participant md as Massdriver
+  participant aws as AWS
+
+  parent->>server: New lab: first name, age, plan, extras, Anthropic key
+  server->>server: Check the name, age 5 to 17, the plan, and a key that starts with sk-ant-
+  server->>md: forkEnvironment from labs-template to labs-maya, with lab_plan and player_age
+  md-->>server: The environment exists
+  server-->>parent: The lab page, "Getting the lab ready"
+  Note over server,md: The rest runs in the background, for up to 90 minutes
+  server->>md: setInstanceSecret LAB_PASSWORD on labs-maya-box
+  server->>md: setInstanceSecret ANTHROPIC_API_KEY on labs-maya-box
+  opt Game Saves picked
+    server->>md: createDeployment labs-maya-saves, with the plan's database settings
+    md->>aws: Postgres
+    server->>md: Check every 15 seconds until it completes
+  end
+  opt Leaderboard picked
+    server->>md: createDeployment labs-maya-scores, with the plan's cache settings
+    md->>aws: Valkey
+    server->>md: Check every 15 seconds until it completes
+  end
+  server->>md: createDeployment labs-maya-box: name, age, model, the plan's size
+  md->>aws: Fargate task, EFS home, private name, secrets
+  server->>md: Check every 15 seconds until it completes
+  server-->>parent: Ready to play
+```
+
+The server checks the form, forks the template, and shows the lab page right away. Then it sets the box's two secrets and deploys the databases first, because the box connects to them when it starts. The lab's password is never stored: the server works it out again from its session secret whenever it talks to the box. The Anthropic key goes straight to Massdriver as a secret, and the server keeps no copy. Massdriver holds all the state, so if a setup stops, **Try again** runs it again and every step skips what's already done.
+
+Removing a lab decommissions its environment, or deletes it right away if nothing is deployed. A sweep every minute deletes environments whose box finished decommissioning.
+
+## What happens when a player asks for something
+
+```mermaid
+sequenceDiagram
+  actor kid as Player
+  participant page as Lab page
+  participant server as Gamelab server
+  participant agent as OpenCode on the box
+  participant claude as Claude
+  participant game as Game server on the box
+
+  kid->>page: Tap Talk and say it, or type it
+  page->>server: POST /labs/ID/chat
+  server->>server: Signed in, same site, lab ready, under 2,000 characters
+  server->>agent: prompt_async, with the lab's password
+  server-->>page: Accepted
+  par The helper works
+    agent->>claude: The message, with the rules for the player's age
+    claude-->>agent: What to change
+    agent->>agent: Edit files in ~/game
+  and The page watches
+    loop Every 1.5 seconds while busy, 4 seconds when idle
+      page->>server: GET /labs/ID/chat
+      server->>agent: Messages and status
+      server-->>page: The helper's words, and one line per step
+    end
+  end
+  page->>page: Busy turned to idle, so reload the game
+  page->>server: GET /labs/ID/play/TOKEN/
+  server->>game: GET, without cookies
+  game-->>page: index.html, never cached
+```
+
+**Talk** uses the browser's speech recognition. When the player stops talking, the words send on their own. The player sees only the helper's words and a short line per step, like "Changed index.html", never code, files, settings or a terminal. When the helper finishes, the game reloads with the change. **Full screen** takes the whole Play panel full screen, so **Reload** stays in reach on an iPad. Every game loads `lib/screen.js`, which fits it to the screen in either direction and adds big touch buttons for the keys it uses.
+
+## Who can do what
+
+```mermaid
+flowchart LR
+  admins(["Gamelab Admins<br>people"])
+  sa(["Gamelab Server<br>service account,<br>in Gamelab Servers"])
+  boxrole(["A lab box's AWS role"])
+  helper(["The helper on a box"])
+
+  subgraph massdriver["Massdriver"]
+    plat["platform"]
+    gl["gamelab"]
+    lb["labs"]
+  end
+  subgraph awsside["AWS"]
+    efs[("Its own home folder")]
+    exec["ECS Exec shell, for admins"]
+  end
+  folder[("~/game")]
+
+  admins == "everything" ==> plat & gl & lb
+  sa == "make, set up, deploy, remove" ==> lb
+  sa -. "view resources only" .-> plat & gl
+  boxrole -- "mount" --> efs
+  boxrole -- "open" --> exec
+  helper -- "edit" --> folder
+```
 
 | Who | Can |
 |---|---|
-| **Gamelab Admins** | Everything. Add yourself after bootstrapping. |
-| **Gamelab Servers** (the **Gamelab Server** service account) | Make, configure, deploy and remove environments and instances in `labs` only, and view resources, since a fork copies the template's defaults and each one must be viewable. It can't touch `platform` or `gamelab`. |
+| **Gamelab Admins** | Everything, everywhere. Add yourself after bootstrapping. |
+| **Gamelab Servers** (the **Gamelab Server** service account) | Where `md-project` is `labs`: `project:view`, `environment:create`, `environment:update`, `environment:configure`, `environment:deploy`, `environment:decommission`, `instance:configure`, `instance:plan`, `instance:deploy`, `instance:decommission`. Everywhere: `resource:view` and nothing else. |
+| **A lab box** | In Massdriver, nothing: it has no Massdriver credentials. In AWS, its task role can mount its own home folder through its own access point and open an ECS Exec shell. Nothing else. |
+| **The helper** | Edit files in the game folder, and run commands in the box as the player. |
 
-`lab_plan` (`small`, `medium`, `large`) and `player_age` (`5` to `17`) are environment attributes, so labs can be found, reported on and given policies by plan or age.
+The server needs `resource:view` everywhere because a fork copies the template's defaults, and those point at resources in `platform` and at the AWS credential, which must be viewable to copy. It reads each box's `lab` resource to find its addresses. It can't deploy, configure or remove anything in `platform` or `gamelab`, including itself.
+
+Bundles are scoped the same way. New bundles aren't granted to every project. `lab-box` is granted only to `labs`, `gamelab-server` only to `gamelab`, and the shared bundles (`vpc`, `dns-zone`, `ecs-cluster`, `ecr-repository`, `codebase`, `ecs-service`, `postgres`, `valkey`) to all three. The platform's network, zone and cluster are shared with `gamelab` and `labs` only, and the lab codebase with `labs` only.
+
+### Secrets
+
+Secrets are never params, so they never show in a form, a deployment's params or the API's params history.
+
+- The server's `GAMELAB_PASSWORD`, `SESSION_SECRET` and `MASSDRIVER_API_KEY` come from `bootstrap.tf`. `deploy.sh` sets them with `setInstanceSecret`, passing each value through the environment and stdin, so it never shows in a process list.
+- A box's `LAB_PASSWORD` and `ANTHROPIC_API_KEY` are set by the server with `setInstanceSecret`. The bundle writes them to Secrets Manager under the box's own KMS key, and ECS reads them when the task starts. The box refuses to deploy, and the agent refuses to start, without `LAB_PASSWORD`.
+- The database password is read from the database's own secret when the task starts. It is never in the task definition.
+- A fork copies no secrets, so one lab never gets another's key.
 
 ### The helper's rules
 
@@ -61,7 +233,47 @@ The lab box is [`bundles/lab-box`](../../bundles/lab-box): [OpenCode](https://op
 | 9 to 12 | The player is the designer. Explains one real idea at a time; mild cartoon peril is fine. |
 | 13 to 17 | A mentor who teaches as it builds. May search the web for game-making docs. |
 
-The rules are backed by settings the agent can't change: it edits only the game folder, runs no `curl`, `ssh`, `git push` or tunnels, and has the web only for 13 and up. The player sees the helper's words and a one-line note per step, never OpenCode's terminal, files, settings or sharing: the server passes through only chat, stop and the game.
+The rules are backed by settings the agent can't change. When the box starts, `lab.sh` writes the prompt and OpenCode's settings to `/etc/gamelab`, outside the player's home, and runs the agent as the player. The settings let it edit only the game folder, never its own settings. Its shell can't run `curl`, `wget`, `ssh`, `scp`, `sudo`, `git push` or tunnels. Web search and fetch are on only for players 13 and up. Sharing is off, and only Anthropic models are allowed. The box itself can still reach the internet, because Claude and npm are there.
+
+## How changes get deployed
+
+```mermaid
+flowchart LR
+  publish["deploy.sh publish<br>resource types, bundles<br>and the server's bundle"]
+  bootstrap["deploy.sh bootstrap<br>bootstrap.tf: projects, canvases,<br>groups, policies, service account,<br>AWS credential"]
+  provision["deploy.sh provision<br>platform, then the lab image,<br>then the server"]
+  forks["The server forks labs<br>on the template's versions"]
+  publish --> bootstrap --> provision --> forks
+```
+
+`deploy.sh` publishes every bundle first, then `bootstrap.tf` builds the projects and permissions around them, then `provision` deploys the platform, the lab template's image repository and codebase, and the server. With `DEV=1`, it publishes development releases, records the exact version of each, and pins every instance to that version, including the template's Lab Box, Game Saves and Leaderboard. Forks take the template's versions, so every lab runs the same releases. `./deploy.sh ship` rebuilds only the server's image and deploys it.
+
+Every bundle runs Checkov on each deploy. In an environment named `prod` or `production`, a failed check stops the deploy. Anywhere else, it reports and goes on. Lab Box skips one check, Secrets Manager rotation, because its secrets are an Anthropic key and a password that only a deploy changes.
+
+## Game saves and the leaderboard
+
+```mermaid
+flowchart LR
+  subgraph browser["Player's browser"]
+    play["The game<br>in a sandboxed frame"]
+  end
+  subgraph labbox["Lab box"]
+    gs["Game server<br>serves files, read only"]
+    helper["Helper's shell<br>psql, valkey-cli"]
+  end
+  pg[("Game Saves<br>Postgres")]
+  vk[("Leaderboard<br>Valkey")]
+
+  play -- "GET files, through the Gamelab server" --> gs
+  helper -- "PG* variables, PGPASSWORD" --> pg
+  helper -- "REDIS_URL" --> vk
+  gs -. "planned: /api/save, /api/load" .-> pg
+  gs -. "planned: /api/scores" .-> vk
+```
+
+Today, nothing in a game writes to Game Saves or the Leaderboard. When they're picked, the box gets `PG*` variables, the database password and `REDIS_URL`, and the helper is told they're there and can reach them with `psql` and `valkey-cli` from its shell. But the game runs in the player's browser, and the only way back to the box is the game server, which serves files and accepts only reads. The helper is also told not to start servers, and nothing would route to one. So games keep scores in the browser, and the Play panel's sandboxed frame gets no lasting browser storage either, so those scores last until the game reloads.
+
+The plan is for the game server to answer `/api/save`, `/api/load` and `/api/scores`, backed by these two stores, and for the Gamelab server to pass those calls through to the lab's own box.
 
 ## Plans
 
