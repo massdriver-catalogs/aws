@@ -25,8 +25,19 @@
   // can't do it opens the game on its own page instead.
   const panel = game.closest(".play");
   const fullButton = document.getElementById("full");
-  function isFull() { return document.fullscreenElement || document.webkitFullscreenElement; }
+  // Real full screen on an iPad stops the game and asks whether you meant to
+  // type whenever a key is pressed, so there the panel just covers the page.
+  const ipad = navigator.maxTouchPoints > 1 && /iPad|Macintosh/.test(navigator.userAgent);
+  function isFull() { return document.fullscreenElement || document.webkitFullscreenElement || panel.classList.contains("cover"); }
+  function cover(on) {
+    panel.classList.toggle("cover", on);
+    document.body.classList.toggle("covered", on);
+    fullButton.textContent = on ? "Exit full screen" : "Full screen";
+    game.focus();
+  }
   fullButton.addEventListener("click", () => {
+    if (panel.classList.contains("cover")) return cover(false);
+    if (ipad) return cover(true);
     if (isFull()) {
       (document.exitFullscreen || document.webkitExitFullscreen).call(document);
       return;

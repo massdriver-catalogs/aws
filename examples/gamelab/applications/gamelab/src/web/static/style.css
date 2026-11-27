@@ -148,6 +148,9 @@ label { font-weight: 700; display: block; margin-bottom: 6px; }
 }
 @media (max-width: 640px) { .studio { height: auto; grid-template-rows: none; } .chat { height: 60dvh; } .play iframe { height: 60dvh; } }
 .play:fullscreen, .play:-webkit-full-screen { width: 100%; height: 100%; border-radius: 0; }
+.play.cover { position: fixed; inset: 0; z-index: 1000; width: 100vw; height: 100dvh; border-radius: 0; margin: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+body.covered { overflow: hidden; }
 .play:fullscreen .play-head, .play:-webkit-full-screen .play-head { padding: 8px 12px; }
 .chat { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 .chat-head, .play-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
