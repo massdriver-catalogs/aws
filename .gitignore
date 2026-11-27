@@ -15,3 +15,5 @@ crash.log
 
 # deploy.sh DEV=1 records the development releases it published
 examples/*/.dev-versions
+# deploy.sh env writes the Rocketsled servers' Massdriver keys here
+examples/*/.env

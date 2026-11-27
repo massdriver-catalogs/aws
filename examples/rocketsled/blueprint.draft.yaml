@@ -1,0 +1,40 @@
+version: 1
+project: platform
+name: Platform
+components:
+  network: { bundle: vpc, name: Network }
+  dns:     { bundle: dns-zone, name: DNS Zone }
+  cluster: { bundle: ecs-cluster, name: Router }
+links:
+  - network.network -> cluster.network
+  - dns.zone        -> cluster.dns
+---
+version: 1
+project: fauxroku
+name: Fauxroku
+components:
+  web:    { bundle: fauxroku-web, name: Web Dynos }
+  worker: { bundle: fauxroku-worker, name: Worker Dynos }
+  db:     { bundle: postgres, name: Postgres }
+  cache:  { bundle: valkey, name: Key-Value Store }
+defaults:
+  - platform/network.network
+  - platform/cluster.cluster
+links:
+  - db.database -> web.database
+  - db.database -> worker.database
+  - cache.cache -> web.cache
+  - cache.cache -> worker.cache
+---
+version: 1
+project: fauxcel
+name: Fauxcel
+components:
+  api:  { bundle: http-api, name: Endpoint }
+  app:  { bundle: fauxcel-app, name: Functions }
+  kv:   { bundle: dynamodb-table, name: KV }
+  blob: { bundle: s3-bucket, name: Blob }
+links:
+  - api.api     -> app.api
+  - kv.table    -> app.kv
+  - blob.bucket -> app.blob
