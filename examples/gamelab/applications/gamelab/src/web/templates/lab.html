@@ -25,10 +25,10 @@
       <h2>Play</h2>
       <div>
         <button type="button" id="reload" class="secondary small">Reload</button>
-        <a class="button secondary small" href="{{.PlayURL}}" target="_blank" rel="noopener">Full screen</a>
+        <button type="button" id="full" class="secondary small">Full screen</button>
       </div>
     </div>
-    <iframe id="game" title="{{.Lab.Player}}'s game" src="{{.PlayURL}}" sandbox="allow-scripts allow-pointer-lock" allow="fullscreen; gamepad; autoplay"></iframe>
+    <iframe id="game" title="{{.Lab.Player}}'s game" src="{{.PlayURL}}" sandbox="allow-scripts allow-pointer-lock" allow="fullscreen; gamepad; autoplay" allowfullscreen></iframe>
   </div>
 </section>
 {{else}}

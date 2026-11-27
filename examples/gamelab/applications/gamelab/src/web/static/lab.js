@@ -20,6 +20,30 @@
   }
   document.getElementById("reload").addEventListener("click", reloadGame);
 
+  // Safari on iPad only knows the prefixed names. The whole Play panel goes
+  // full screen, so Reload and the way back stay in reach; a browser that
+  // can't do it opens the game on its own page instead.
+  const panel = game.closest(".play");
+  const fullButton = document.getElementById("full");
+  function isFull() { return document.fullscreenElement || document.webkitFullscreenElement; }
+  fullButton.addEventListener("click", () => {
+    if (isFull()) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      return;
+    }
+    const enter = panel.requestFullscreen || panel.webkitRequestFullscreen;
+    if (!enter) {
+      window.open(studio.dataset.play, "_blank", "noopener");
+      return;
+    }
+    Promise.resolve(enter.call(panel)).catch(() => window.open(studio.dataset.play, "_blank", "noopener"));
+  });
+  ["fullscreenchange", "webkitfullscreenchange"].forEach((name) =>
+    document.addEventListener(name, () => {
+      fullButton.textContent = isFull() ? "Exit full screen" : "Full screen";
+      game.focus();
+    }));
+
   function el(tag, cls, content) {
     const node = document.createElement(tag);
     if (cls) node.className = cls;

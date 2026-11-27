@@ -70,6 +70,7 @@ RUN useradd --create-home --uid 10001 --shell /bin/bash player \
 COPY --chmod=0644 prompts/ /opt/gamelab/prompts/
 COPY --chmod=0644 starter/ /opt/gamelab/starter/
 COPY --chmod=0644 game-server.mjs /opt/gamelab/game-server.mjs
+COPY --chmod=0644 screen.js /opt/gamelab/lib/screen.js
 COPY --chmod=0755 lab.sh /usr/local/bin/lab
 
 ENV LANG=en_US.UTF-8 \

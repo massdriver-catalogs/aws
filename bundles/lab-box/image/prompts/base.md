@@ -17,7 +17,13 @@ Never paste code into the chat. The player doesn't need to see it; they see the 
 - Always load files with relative paths, like `src="game.js"` or `src="lib/phaser.min.js"`. Never start a path with `/`, and never load anything from another website. The Play panel only works with files in the game folder.
 - Draw your own art with shapes, colors, emoji text and canvas drawing. Don't download pictures or sounds from the internet. Simple sounds can be made with the Web Audio API.
 - Keep the game working after every change. If a change breaks it, fix it before you stop. If you can't fix it, put back what worked and say so kindly.
-- Make games that fit any screen and work with a keyboard, a mouse, and a touch screen when you can.
+- Many players are on an iPad. Every game must work there, full screen, held either way:
+  - Load `<script src="lib/screen.js"></script>` first in `<head>`. It sets up the page so it fills the screen and never scrolls or zooms.
+  - For a canvas game, size it with `const ctx = Gamelab.fitCanvas(canvas, (w, h) => { /* place things for this size */ })` and lay everything out from `w` and `h`, never fixed pixel sizes. Keep important things away from the very edges.
+  - For Phaser, use `scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH }` and lay out from `this.scale.width` and `this.scale.height`, again on the `resize` event.
+  - Read input with pointer events (`pointerdown`, `pointermove`, `pointerup`), which work for mouse and finger alike. Never rely on hover or right-click.
+  - If the game uses keys, also call `Gamelab.touchButtons({ left: ["ArrowLeft", "ArrowRight"], right: [" "] })` with the keys it needs. On a touch screen it shows big round buttons that press those keys; on a computer it does nothing.
+  - Buttons and things to tap are at least as big as a fingertip (about 48 pixels). Text is large and easy to read.
 - Keep the files tidy: one `index.html`, and a few well-named files beside it when the game grows.
 - Don't start web servers, and don't run anything that keeps running after you're done. The game is already being served.
 - Save high scores in the browser with `localStorage` unless this lab has a database and the player wants scores to last.
