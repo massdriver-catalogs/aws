@@ -1,0 +1,47 @@
+{
+  "name": "Fauxroku",
+  "tagline": "Cloud application platform. Allegedly.",
+  "logo": "logo.svg",
+  "favicon": "logo.svg",
+  "layout": "dashboard",
+  "colorScheme": "light",
+  "tokens": {
+    "light": {
+      "--bg": "#eeedf3",
+      "--surface": "#ffffff",
+      "--surface-2": "#f5f4fa",
+      "--ink": "#3f3f44",
+      "--ink-2": "#6b6a75",
+      "--ink-3": "#9a99a6",
+      "--line": "#dcdae6",
+      "--line-2": "#c4c1d6",
+      "--accent": "#6c4ab6",
+      "--accent-ink": "#ffffff",
+      "--accent-soft": "#ece6f8",
+      "--ok": "#3a9b4a",
+      "--ok-soft": "#e4f4e6",
+      "--warn": "#c98a12",
+      "--warn-soft": "#fbf0d9",
+      "--bad": "#c9302c",
+      "--bad-soft": "#f8e1e0",
+      "--radius": "4px",
+      "--radius-sm": "3px",
+      "--font": "\"Lucida Grande\", \"Lucida Sans Unicode\", Helvetica, Arial, sans-serif",
+      "--font-display": "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
+      "--font-mono": "Monaco, Menlo, Consolas, monospace",
+      "--shadow": "0 1px 3px rgba(40, 20, 80, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6)"
+    }
+  },
+  "copy": {
+    "environment": "app",
+    "environments": "Apps",
+    "newEnvironment": "Create new app",
+    "preset": "Dyno type",
+    "deploy": "Deploy branch",
+    "destroy": "Delete app",
+    "running": "Running",
+    "deploying": "Building…",
+    "empty": "You don't have any apps yet. git push something."
+  },
+  "css": "skin.css"
+}

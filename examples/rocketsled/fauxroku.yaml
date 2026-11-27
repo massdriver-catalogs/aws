@@ -15,24 +15,36 @@ massdriver:
   account_mode: tenant                                # rocketsled#10
   organization_id: "${MASSDRIVER_ORGANIZATION_ID}"
   # The Fauxroku Server service account: it can fork, deploy and remove
-  # environments in the fauxroku project and nothing else.
+  # environments in the node, ruby and python projects and nothing else.
   api_key: "${FAUXROKU_MASSDRIVER_API_KEY}"
 
-brand:                                                # rocketsled#1
-  name: Fauxroku
-  tagline: Push code. Get an app.
-  logo: fauxroku.svg
-  favicon: fauxroku.svg
-  colors:
-    primary: "#6c4ab6"
-    accent: "#2ecc71"
+skin: skins/fauxroku                                  # rocketsled#14
 
 paas:                                                 # rocketsled#10
-  project: fauxroku
-  template: template
-  # Where releases land (rocketsled#5): both process types run the same image.
-  app_component: web
-  image_param: image_uri
+  platform:                                           # rocketsled#15
+    project: platform
+    environment: main
+    shares: [network.network, cluster.cluster]
+
+  runtimes:                                           # rocketsled#16
+    - id: node
+      name: Node.js
+      project: node
+      template: template
+      app_component: web                              # rocketsled#5
+      image_param: image_uri
+    - id: ruby
+      name: Ruby
+      project: ruby
+      template: template
+      app_component: web
+      image_param: image_uri
+    - id: python
+      name: Python
+      project: python
+      template: template
+      app_component: web
+      image_param: image_uri
 
   pinned:                                             # rocketsled#11
     web:
@@ -41,33 +53,31 @@ paas:                                                 # rocketsled#10
       subdomain: ""
 
   addons:                                             # rocketsled#3
-    db:
-      title: Postgres
-      summary: A managed PostgreSQL database. Sets DATABASE_URL and PGPASSWORD on your dynos.
-      default: true
-    cache:
-      title: Key-Value Store
-      summary: Redis-compatible, TLS only. Sets REDIS_URL on your dynos.
-      default: false
     worker:
       title: Worker dynos
       summary: Background jobs from the same image, with PROCESS_TYPE=worker.
-      default: false
+    db:
+      title: Postgres
+      summary: A managed PostgreSQL database. Sets DATABASE_URL and PGPASSWORD on your dynos.
+    cache:
+      title: Key-Value Store
+      summary: Redis-compatible, TLS only. Sets REDIS_URL on your dynos.
 
   pipeline:                                           # rocketsled#4
     stages:
       - id: development
         name: Development
-        presets: {web: Development, worker: Development, db: Development, cache: Development}
+        presets: {web: Development}
       - id: staging
         name: Staging
-        presets: {web: Development, worker: Development, db: Development, cache: Development}
+        presets: {web: Development, db: Development}
       - id: production
         name: Production
         presets: {web: Production, worker: Production, db: Production, cache: Production}
+    promote: [web, worker]
 
   previews:                                           # rocketsled#6
-    presets: {web: Development, db: Development}
+    presets: {web: Development}
     ttl: 72h
 
   domains:                                            # rocketsled#7

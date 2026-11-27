@@ -1,0 +1,73 @@
+/* Say less. */
+
+body {
+  letter-spacing: -0.01em;
+}
+
+[data-rs="header"] {
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  box-shadow: none;
+}
+
+[data-rs="brand"] {
+  font-weight: 400;
+  text-transform: lowercase;
+}
+
+.main {
+  max-width: 880px;
+  padding-top: 96px;
+  padding-bottom: 96px;
+}
+
+.section + .section {
+  margin-top: 96px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.card__head,
+.section__title {
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.btn {
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.btn--primary {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.btn:hover {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+[data-rs="preset"] {
+  border: 1px solid var(--line);
+}
+
+[data-rs="preset"][aria-checked="true"] {
+  border-color: var(--line-2);
+  outline: 1px solid var(--line-2);
+}
+
+.chip,
+.pill {
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--line);
+}

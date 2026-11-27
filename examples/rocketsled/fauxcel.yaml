@@ -15,23 +15,23 @@ massdriver:
   account_mode: tenant                                # rocketsled#10
   organization_id: "${MASSDRIVER_ORGANIZATION_ID}"
   # The Fauxcel Server service account: it can fork, deploy and remove
-  # environments in the fauxcel project and nothing else.
+  # environments in the functions and static projects and nothing else.
   api_key: "${FAUXCEL_MASSDRIVER_API_KEY}"
 
-brand:                                                # rocketsled#1
-  name: Fauxcel
-  tagline: Ship the frontend. Skip the servers.
-  logo: fauxcel.svg
-  favicon: fauxcel.svg
-  colors:
-    primary: "#111111"
-    accent: "#0070f3"
+skin: skins/fauxcel                                   # rocketsled#14
 
 paas:                                                 # rocketsled#10
-  project: fauxcel
-  template: template
-  app_component: app                                  # rocketsled#5
-  image_param: image_uri
+  runtimes:                                           # rocketsled#16
+    - id: functions
+      name: Functions
+      project: functions
+      template: template
+      app_component: app                              # rocketsled#5
+      image_param: image_uri
+    - id: static
+      name: Static
+      project: static
+      template: template
 
   pinned:                                             # rocketsled#11
     api:
@@ -42,23 +42,22 @@ paas:                                                 # rocketsled#10
     kv:
       title: KV
       summary: A key-value store your functions can read and write. Sets KV_TABLE.
-      default: false
     blob:
       title: Blob
       summary: File storage for uploads. Sets BLOB_BUCKET.
-      default: false
 
   pipeline:                                           # rocketsled#4
     stages:
       - id: preview
         name: Preview
-        presets: {api: Development, app: Development, kv: Development, blob: Development}
+        presets: {api: Development, app: Development, site: Development, files: Development}
       - id: production
         name: Production
-        presets: {api: Production, app: Production, kv: Production, blob: Production}
+        presets: {api: Production, app: Production, site: Production, files: Production}
+    promote: [app, site]
 
   previews:                                           # rocketsled#6
-    presets: {api: Development, app: Development}
+    presets: {api: Development, app: Development, site: Development, files: Development}
     ttl: 168h
 
   plans:                                              # rocketsled#8
