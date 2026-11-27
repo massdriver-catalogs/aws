@@ -422,27 +422,6 @@ set_secret() {
   }')" | jq -e '.data.setInstanceSecret.successful' >/dev/null || die "couldn't set $2 on $1"
 }
 
-# build_automations_image <branch>: builds massdriver-automations from a branch
-# on GitHub into automations-main-registry and prints the image.
-build_automations_image() {
-  local registry url region image
-  registry=$(mass resource get automations-main-registry.repository -o json)
-  url=$(jq -r '.payload.url' <<<"$registry")
-  region=$(jq -r '.payload.region' <<<"$registry")
-  image="$url:$1-$(git ls-remote https://github.com/massdriver-cloud/massdriver-automations.git "refs/heads/$1" | cut -c1-7)"
-  log "build and push $image"
-  aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "${url%%/*}" >&2
-  docker build --platform linux/arm64 --provenance=false -t "$image" \
-    "https://github.com/massdriver-cloud/massdriver-automations.git#$1" >&2
-  # The ECS bundles' init container writes the config with the -scripts
-  # variant of the same tag, which has a shell.
-  docker build --platform linux/arm64 --provenance=false -f automations/router/Dockerfile.scripts -t "$image-scripts" \
-    "https://github.com/massdriver-cloud/massdriver-automations.git#$1" >&2
-  docker push "$image" >&2
-  docker push "$image-scripts" >&2
-  echo "$image"
-}
-
 automations() {
   python3 -c 'import sys, yaml; print("\n".join(yaml.safe_load(open(sys.argv[1]))))' "$HERE/automations.yaml"
 }
@@ -549,21 +528,13 @@ cmd_provision() {
       share "platform-$stage-$field" --condition "md-project=automations"
       mass environment default automations-main "platform-$stage-$field" >/dev/null
     done
-    local automation instance image="" extra
-    # chaos-monkey isn't in a published image yet, so it runs one built from
-    # its branch and pushed to the automations project's own registry.
-    if automations | grep -qx chaos-monkey; then
-      deploy automations-main-registry ecr-repository "$stage"
-      image=$(build_automations_image chaos-monkey)
-    fi
+    local automation instance
     for automation in $(automations); do
       instance=automations-main-${automation//-/}
       connect "$instance" service_account "$(cd "$HERE" && tofu output -raw automations_credential)"
-      extra=""
-      [ "$automation" != chaos-monkey ] || extra=" | .image = {repository: \"${image%:*}\", tag: \"${image##*:}\"}"
       [ "$automation" != cost-explorer ] ||
         set_secret "$instance" COST_EXPLORER_PASSWORD "$(cd "$HERE" && tofu output -raw cost_explorer_password)"
-      deploy "$instance" "massdriver-$automation-ecs" "$stage" "$(automation_params "$automation")$extra"
+      deploy "$instance" "massdriver-$automation-ecs" "$stage" "$(automation_params "$automation")"
     done
 
     log "sreagent-jimmy"

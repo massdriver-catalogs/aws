@@ -336,3 +336,33 @@ chaos-monkey:
       mutate: 2
       gibberish: 1
 
+
+upgrade-train:
+  config:
+    # Every dev release of an app reaches dev on its own and goes to prod as a
+    # proposal only after an hour in dev with no failed deploy and no alarm.
+    trains:
+      - name: tendwell-apps
+        bundles: [tendwell-visits, tendwell-care, tendwell-billing, ecs-service, lambda-function]
+        include_development: true
+        stages:
+          - name: dev
+            match:
+              md-environment: dev
+            mode: deploy
+            soak: 15m
+          - name: prod
+            match:
+              md-environment: prod
+            mode: propose
+            soak: 1h
+
+stale-proposals:
+  config:
+    # Prod deploys are proposals that wait for a second person, so each weekday
+    # morning lists the ones still waiting. Nothing is rejected automatically:
+    # a proposal can be a held-back prod change someone means to approve.
+    schedule: "37 8 * * 1-5"
+    timezone: America/Los_Angeles
+    remind_after: 24h
+    group_by: project
