@@ -2,3 +2,6 @@ aws_accounts = {
   nonprod = { arn = "arn:aws:iam::111111111111:role/massdriver" }
   prod    = { arn = "arn:aws:iam::222222222222:role/massdriver" }
 }
+
+# The people who get a developer sandbox when they join a team.
+sandbox_owners = ["dana@example.com", "lee@example.com"]

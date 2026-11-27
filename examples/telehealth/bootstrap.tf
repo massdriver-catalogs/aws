@@ -46,6 +46,12 @@ variable "protect_prod" {
   default     = true
 }
 
+variable "sandbox_owners" {
+  description = "Emails of the people who can get a developer sandbox by joining a team. Each fork is tagged with its owner, and Massdriver accepts only declared values."
+  type        = list(string)
+  default     = []
+}
+
 locals {
   automations = keys(yamldecode(file("${path.module}/automations.yaml")))
 
@@ -321,6 +327,23 @@ resource "massdriver_custom_attribute" "automation" {
   key    = each.key
   scope  = "COMPONENT"
   values = each.value
+}
+
+# sandbox-on-join tags each fork with sandbox=true and its owner's email. Once
+# an organization declares any custom attribute, an environment can carry only
+# declared keys and values, so without these every fork is refused.
+resource "massdriver_custom_attribute" "sandbox" {
+  key    = "sandbox"
+  scope  = "ENVIRONMENT"
+  values = ["true"]
+}
+
+resource "massdriver_custom_attribute" "owner" {
+  count = length(var.sandbox_owners) > 0 ? 1 : 0
+
+  key    = "owner"
+  scope  = "ENVIRONMENT"
+  values = var.sandbox_owners
 }
 
 resource "massdriver_project" "this" {
