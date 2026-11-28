@@ -27,7 +27,7 @@ schema:
     arn:
       title: Cluster ARN
       type: string
-      minLength: 1
+      pattern: "^arn:aws(-[a-z]+)*:ecs:"
     region:
       title: Region
       type: string
@@ -46,6 +46,7 @@ schema:
         arn:
           title: ARN
           type: string
+          pattern: "^arn:aws(-[a-z]+)*:elasticloadbalancing:"
         dns_name:
           title: DNS Name
           type: string
@@ -57,10 +58,12 @@ schema:
           title: Security Group ID
           description: Services allow traffic from this group to their container port.
           type: string
+          pattern: ^sg-[a-f0-9]+$
         listener_arn:
           title: Listener ARN
           description: HTTPS when the cluster has a DNS zone, otherwise HTTP. Services add rules here.
           type: string
+          pattern: "^arn:aws(-[a-z]+)*:elasticloadbalancing:"
         protocol:
           title: Listener Protocol
           type: string
@@ -87,6 +90,7 @@ schema:
           minItems: 1
           items:
             type: string
+            pattern: ^subnet-[a-f0-9]+$
         internet_egress:
           title: Internet Egress
           description: Whether the private subnets can reach the internet, e.g. to pull public images.

@@ -40,9 +40,11 @@ schema:
         clone_url:
           title: HTTPS Clone URL
           type: string
+          pattern: ^https://
         ssh_url:
           title: SSH Clone URL
           type: string
+          pattern: ^(git@|ssh://)
         default_branch:
           title: Default Branch
           type: string
@@ -73,7 +75,7 @@ schema:
         arn:
           title: Repository ARN
           type: string
-          minLength: 1
+          pattern: "^arn:aws(-[a-z]+)*:ecr:"
         url:
           title: Repository URL
           description: Image reference without a tag, e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/app.
@@ -106,6 +108,7 @@ schema:
               arn:
                 title: Policy ARN
                 type: string
+                pattern: "^arn:aws(-[a-z]+)*:iam::[0-9]{12}:policy/"
     # Bundles that consume a codebase already run in the project it was made
     # for, so the project would be a second source of truth. Uncomment it here
     # and in the codebase bundle when bundles need the project's identifier or

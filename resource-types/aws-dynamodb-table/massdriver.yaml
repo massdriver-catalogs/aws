@@ -26,7 +26,7 @@ schema:
     arn:
       title: Table ARN
       type: string
-      minLength: 1
+      pattern: "^arn:aws(-[a-z]+)*:dynamodb:"
     region:
       title: Region
       type: string
@@ -40,8 +40,12 @@ schema:
         - type
       properties:
         name:
+          title: Attribute Name
           type: string
+          minLength: 1
         type:
+          title: Attribute Type
+          description: S for string, N for number, B for binary.
           type: string
           enum:
             - S
@@ -56,8 +60,12 @@ schema:
         - type
       properties:
         name:
+          title: Attribute Name
           type: string
+          minLength: 1
         type:
+          title: Attribute Type
+          description: S for string, N for number, B for binary.
           type: string
           enum:
             - S
@@ -82,3 +90,4 @@ schema:
           arn:
             title: Policy ARN
             type: string
+            pattern: "^arn:aws(-[a-z]+)*:iam::[0-9]{12}:policy/"

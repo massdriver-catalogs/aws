@@ -6,7 +6,7 @@ ui:
   connectionOrientation: link
 
 schema:
-  title: Lab Box
+  title: Lab Endpoint
   description: >-
     A private machine running a coding agent with an HTTP API and a web server for what it builds.
     Both answer only inside the VPC. The agent's API asks for HTTP basic auth with the user `opencode`
