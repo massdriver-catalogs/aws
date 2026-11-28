@@ -526,12 +526,8 @@ stash-sync:
         cloudwatch: {namespace: AWS/DynamoDB, metric: ReadThrottleEvents, dimensions: {TableName: tendwell-health-visits-dev-slots}, stat: Sum, period: 5m}
         default: 0
 
-      - target: {environment: visits-dev, key: md/v1/banner}
-        value: {message: "Development: new releases deploy here first and soak 15 minutes before prod gets a proposal.", level: info}
-      - target: {environment: care-dev, key: md/v1/banner}
-        value: {message: "Development: new releases deploy here first and soak 15 minutes before prod gets a proposal.", level: info}
-      - target: {environment: billing-dev, key: md/v1/banner}
-        value: {message: "Development: new releases deploy here first and soak 15 minutes before prod gets a proposal.", level: info}
+      # Banners are left to people and demo/sim.sh: a rule rewrites its entry every
+      # few minutes, so a banner here would replace theirs.
       - target: {environment: visits-dev, key: md/v1/links}
         value:
           links:

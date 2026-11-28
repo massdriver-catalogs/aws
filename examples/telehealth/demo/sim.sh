@@ -7,7 +7,7 @@
 #   ./sim.sh traffic [minutes]          steady requests to visits, care and billing
 #   ./sim.sh banners [minutes]          a calm banner every few minutes on the visits canvas
 #   ./sim.sh flap [minutes]             a banner that changes level every 30 seconds
-#   ./sim.sh links                      header links on the visits canvas
+#   ./sim.sh links                      header links on the visits canvas (stash-sync replaces them on dev)
 #   ./sim.sh prs [minutes]              a merge queue of pull requests on the visits project
 #   ./sim.sh alarms [minutes]           fire and clear random alarms outside visits
 #   ./sim.sh metadata                   labeled metadata on the visits instances
@@ -182,6 +182,11 @@ cmd_results() {
   local inst=${1:-visits-$STAGE-app} dep now
   dep=$(latest_deployment "$inst")
   [ -n "$dep" ] || { say "$inst has no completed deployment"; return 1; }
+  # log-results writes the real ones; don't replace them with made-up numbers.
+  if $MASS alpha stash list "$dep" -o json | jq -e 'any(.[]; .key == "md/v1/step/src")' >/dev/null; then
+    say "$inst deployment $dep already has results"
+    return
+  fi
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   json "$dep.md/v1/step/src" "$(jq -nc --arg t "$now" '{tool: "opentofu", action: "apply", status: "succeeded", finished_at: $t, duration_s: 142, message: "Apply complete! Resources: 1 added, 2 changed, 0 destroyed."}')" --label "OpenTofu step"
   json "$dep.md/v1/changes/src" '{"tool": "opentofu", "add": 1, "change": 2, "destroy": 0}' --label "Changes"
@@ -202,7 +207,6 @@ cmd_deploys() {
 
 cmd_all() {
   local m=${1:-20}
-  cmd_links
   cmd_metadata
   cmd_traffic "$m" &
   cmd_banners "$m" &
