@@ -30,31 +30,56 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MASSDRIVER_API_KEY: ${{ secrets.MASSDRIVER_API_KEY }}
-      MASSDRIVER_ORG_ID: ${{ vars.MASSDRIVER_ORG_ID || secrets.MASSDRIVER_ORG_ID }}
+      MASSDRIVER_ORGANIZATION_ID: ${{ vars.MASSDRIVER_ORG_ID || secrets.MASSDRIVER_ORG_ID }}
     steps:
+      # A fork without the secrets passes instead of failing every push. A skipped run
+      # doesn't count as a publish, so the first run with credentials still catches up.
+      - name: Check for Massdriver credentials
+        id: credentials
+        run: |
+          if [ -n "$MASSDRIVER_API_KEY" ] && [ -n "$MASSDRIVER_ORGANIZATION_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            msg="Nothing published: add the secret MASSDRIVER_API_KEY and the variable MASSDRIVER_ORG_ID in Settings > Secrets and variables > Actions."
+            echo "::warning title=Publish skipped::$msg"
+            echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.credentials.outputs.ready == 'true'
         with:
           fetch-depth: 0
 
       - uses: actions/setup-go@v5
+        if: steps.credentials.outputs.ready == 'true'
         with:
           go-version: stable
 
       # Released builds lag main, and the catalog is developed against main.
       - name: Install mass from main
+        if: steps.credentials.outputs.ready == 'true'
         run: |
           go install github.com/massdriver-cloud/mass@main
           mass version
 
       - name: Work out what changed
         id: changed
+        if: steps.credentials.outputs.ready == 'true'
         env:
           ALL: ${{ inputs.all }}
           GH_TOKEN: ${{ github.token }}
-        # Diff against the last successful publish, not the previous push: when pushes
-        # land close together GitHub drops queued runs, and their changes would be skipped.
+        # Diff against the last run that published, not the previous push: when pushes
+        # land close together GitHub drops queued runs, and a run without credentials
+        # passes without publishing. Either way their changes would be skipped.
         run: |
-          BASE=$(gh run list --workflow publish.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha // empty')
+          BASE=""
+          for id in $(gh run list --workflow publish.yml --branch main --status success --limit 30 --json databaseId --jq '.[].databaseId'); do
+            if gh run view "$id" --json jobs --jq '.jobs[].steps[] | select(.name == "Publish bundles") | .conclusion' | grep -qx success; then
+              BASE=$(gh run view "$id" --json headSha --jq .headSha)
+              break
+            fi
+          done
           if [ "$ALL" = "true" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             git ls-files > changed.txt
           else
@@ -74,26 +99,39 @@ jobs:
           done
 
       - name: Publish Massdriver resource types
+        if: steps.credentials.outputs.ready == 'true'
         run: scripts/publish-massdriver-types.sh
 
       # Order matters: bundles reference resource types, which must already exist.
+      # Only 0.0.0 republishes in place. The automation bundles and the website type are
+      # 0.1.0, so a version the organization already has is current, not an error.
       - name: Publish platforms and resource types
+        if: steps.credentials.outputs.ready == 'true'
         run: |
           set -euo pipefail
           for dir in $(cat platforms.txt resource-types.txt app-resource-types.txt); do
             [ -f "$dir/massdriver.yaml" ] || continue
             name=$(awk '/^name:/ { print $2; exit }' "$dir/massdriver.yaml")
             mass repository create "$name" -t resource-type >/dev/null 2>&1 || true
-            mass resource-type publish "$dir"
+            if ! out=$(mass resource-type publish "$dir" 2>&1); then
+              grep -q "already exists" <<<"$out" || { echo "$out" >&2; exit 1; }
+              out="$name is already published"
+            fi
+            echo "$out"
           done
 
       # Example apps build on the runtimes among the bundles, so they publish after them.
       - name: Publish bundles
+        if: steps.credentials.outputs.ready == 'true'
         run: |
           set -euo pipefail
           for dir in $(cat bundles.txt apps.txt); do
             [ -f "$dir/massdriver.yaml" ] || continue
             name=$(awk '/^name:/ { print $2; exit }' "$dir/massdriver.yaml")
             mass repository create "$name" -t bundle >/dev/null 2>&1 || true
-            mass bundle publish --bundle-directory "$dir"
+            if ! out=$(mass bundle publish --bundle-directory "$dir" 2>&1); then
+              grep -q "already exists" <<<"$out" || { echo "$out" >&2; exit 1; }
+              out="$name is already published"
+            fi
+            echo "$out"
           done

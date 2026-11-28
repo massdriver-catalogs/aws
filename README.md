@@ -103,7 +103,7 @@ Massdriver builds the app and its runtime into one bundle when the app is publis
 
 1. In Massdriver, turn on **Settings → General → Grant new bundle repositories to all projects**. Create a service account with a **1 year** token in a group allowed to publish. The examples' `bootstrap.sh` turns that setting off and grants each repository itself, so turn it back on after running one.
 2. In the fork's **Settings → Secrets and variables → Actions**, add its key as the secret `MASSDRIVER_API_KEY` and your organization ID as the variable `MASSDRIVER_ORG_ID`.
-3. Run **Actions → Publish → Run workflow** with *all* ticked. After that, every push to `main` publishes what changed: credentials and resource types first, then bundles.
+3. Run **Actions → Publish → Run workflow** with *all* ticked. After that, every push to `main` publishes what changed: credentials and resource types first, then bundles. Until the secret and the variable are set, each run passes with a warning and publishes nothing.
 
 Then add an AWS IAM Role credential, following the instructions on its form, and deploy `vpc`, `dns-zone` and `ecs-cluster` in each environment. A new DNS zone must be delegated from its parent domain before its certificate is issued; the `dns-zone` operator guide shows how. Each runtime's operator guide has a **Ship your app** walkthrough.
 
@@ -132,7 +132,9 @@ scripts/          Publishes the official Massdriver resource types; syncs the au
 
 ## Versioning
 
-Everything publishes as `0.0.0`, which can be republished in place. Publishing any other version to a repository ends that, development releases included: once a repository holds another version, `0.0.0` can't be overwritten there, and the next change needs a version bump.
+Everything this catalog owns publishes as `0.0.0`, which can be republished in place. Publishing any other version to a repository ends that, development releases included: once a repository holds another version, `0.0.0` can't be overwritten there, and the next change needs a version bump.
+
+The automation bundles and the `website` resource type come from massdriver-automations at `0.1.0`. A published `0.1.0` can't change, so publishing skips one the organization already has. A synced change reaches the organization when upstream bumps the version, or as a development release: `mass bundle publish --development`.
 
 ## License
 
