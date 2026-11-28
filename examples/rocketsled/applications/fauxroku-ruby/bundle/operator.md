@@ -4,7 +4,7 @@ templating: mustache
 # Fauxroku Ruby Dynos
 
 {{#resources.web}}
-**Open first:** {{resources.web.url}}
+**URL:** {{resources.web.url}}
 
 {{/resources.web}}
 - **Dynos:** {{params.desired_count}} to {{params.max_count}} × {{params.size}} ({{params.architecture}}){{#params.spot}}, Spot{{/params.spot}}

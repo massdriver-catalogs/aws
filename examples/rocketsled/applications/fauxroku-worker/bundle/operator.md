@@ -3,7 +3,7 @@ templating: mustache
 ---
 # Fauxroku Worker Dynos
 
-**Open first:** https://console.aws.amazon.com/ecs/v2/clusters/{{dependencies.cluster.name}}/services/{{params.md_metadata.name_prefix}}/health?region={{dependencies.cluster.region}}
+**URL:** https://console.aws.amazon.com/ecs/v2/clusters/{{dependencies.cluster.name}}/services/{{params.md_metadata.name_prefix}}/health?region={{dependencies.cluster.region}}
 
 - **Dynos:** {{params.desired_count}} to {{params.max_count}} × {{params.size}} ({{params.architecture}}){{#params.spot}}, Spot{{/params.spot}}
 - **Service and logs:** `{{params.md_metadata.name_prefix}}`, `/ecs/{{params.md_metadata.name_prefix}}`

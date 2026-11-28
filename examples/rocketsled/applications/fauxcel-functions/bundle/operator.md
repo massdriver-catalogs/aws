@@ -3,7 +3,7 @@ templating: mustache
 ---
 # Fauxcel Functions
 
-**Open first:** {{dependencies.api.endpoint}}
+**URL:** {{dependencies.api.endpoint}}
 
 - **Function and logs:** `{{params.md_metadata.name_prefix}}`, `/aws/lambda/{{params.md_metadata.name_prefix}}`
 - **Memory and timeout:** {{params.memory_mb}} MB, {{params.timeout_seconds}} seconds
