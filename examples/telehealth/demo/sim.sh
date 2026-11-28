@@ -143,7 +143,7 @@ cmd_prs() {
 cmd_alarms() {
   local end=$((SECONDS + $(minutes "${1:-15}"))) firing=() alarms
   alarms=$(aws cloudwatch describe-alarms --region "$AWS_REGION" --alarm-name-prefix "$ORG-" \
-    --query 'MetricAlarms[].AlarmName' --output text | tr '\t' '\n' | grep -v -- "-visits-" || true)
+    --query 'MetricAlarms[].AlarmName' --output text | tr '\t' '\n' | grep -v -- "${ALARM_SKIP:--visits-}" || true)
   [ -n "$alarms" ] || { say "no alarms outside visits"; return; }
   set_state() {
     aws cloudwatch set-alarm-state --region "$AWS_REGION" --alarm-name "$1" --state-value "$2" --state-reason "Demo" >/dev/null
