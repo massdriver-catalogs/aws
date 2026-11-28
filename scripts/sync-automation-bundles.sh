@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# Copies the ECS automation bundles from massdriver-automations into bundles/,
+# then applies this catalog's changes to them. Upstream generates the bundles,
+# so editing them here by hand gets lost on the next sync; every change the
+# catalog needs lives in overlay() below.
+#
+#   scripts/sync-automation-bundles.sh
+#   AUTOMATIONS_DIR=~/src/massdriver-automations scripts/sync-automation-bundles.sh
+#   AUTOMATIONS_REF=v0.2.0 scripts/sync-automation-bundles.sh   # with no local checkout
+#   BUILD=1 MASSDRIVER_PROFILE=<profile> scripts/sync-automation-bundles.sh
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+REPO_URL=https://github.com/massdriver-cloud/massdriver-automations.git
+AUTOMATIONS_REF=${AUTOMATIONS_REF:-main}
+
+die() { echo "sync-automation-bundles: $*" >&2; exit 1; }
+
+if [ -n "${AUTOMATIONS_DIR:-}" ]; then
+  # A directory the caller named must exist; falling back to a clone would hide the typo.
+  [ -d "$AUTOMATIONS_DIR/bundles" ] || die "AUTOMATIONS_DIR=$AUTOMATIONS_DIR has no bundles/ directory"
+  UPSTREAM=$(cd "$AUTOMATIONS_DIR" && pwd)
+elif [ -d "$ROOT/../massdriver-automations/bundles" ]; then
+  UPSTREAM=$(cd "$ROOT/../massdriver-automations" && pwd)
+else
+  UPSTREAM=$(mktemp -d)
+  trap 'rm -rf "$UPSTREAM"' EXIT
+  git clone --quiet --depth 1 --branch "$AUTOMATIONS_REF" "$REPO_URL" "$UPSTREAM"
+fi
+
+if git -C "$UPSTREAM" rev-parse --git-dir >/dev/null 2>&1; then
+  echo "Upstream: $UPSTREAM at $(git -C "$UPSTREAM" rev-parse --abbrev-ref HEAD) $(git -C "$UPSTREAM" rev-parse --short HEAD)"
+  [ -z "$(git -C "$UPSTREAM" status --porcelain -- bundles)" ] || echo "  warning: upstream bundles/ has uncommitted changes"
+else
+  echo "Upstream: $UPSTREAM"
+fi
+
+# Replaces a whole line that must appear exactly once, so a line upstream renamed
+# or removed stops the sync instead of leaving the bundle unpatched.
+replace_line() {
+  local file=$1 old=$2 new=$3 n
+  n=$(awk -v old="$old" '$0 == old { n++ } END { print n + 0 }' "$file")
+  [ "$n" -eq 1 ] || die "$file: expected the line '$old' once, found it $n times"
+  awk -v old="$old" -v new="$new" '{ print ($0 == old ? new : $0) }' "$file" > "$file.tmp"
+  mv "$file.tmp" "$file"
+}
+
+# Inserts text after a line that must appear exactly once.
+insert_after() {
+  local file=$1 anchor=$2 text=$3 n
+  n=$(awk -v a="$anchor" '$0 == a { n++ } END { print n + 0 }' "$file")
+  [ "$n" -eq 1 ] || die "$file: expected the line '$anchor' once, found it $n times"
+  # Through the environment, because BSD awk refuses a newline in -v.
+  INSERT_TEXT=$text awk -v a="$anchor" '{ print } $0 == a { print ENVIRON["INSERT_TEXT"] }' "$file" > "$file.tmp"
+  mv "$file.tmp" "$file"
+}
+
+# Sets the image tag of every preset under params.examples, and expects the two
+# presets upstream generates.
+preset_tag() {
+  local file=$1 tag=$2 n
+  awk -v tag="$tag" '
+    /^  examples:$/ { in_ex = 1; print; next }
+    in_ex && /^  [^ -]/ { in_ex = 0 }
+    in_ex && /^      tag: / { print "      tag: " tag; n++; next }
+    { print }
+    END { if (n != 2) exit 1 }
+  ' "$file" > "$file.tmp" || { rm -f "$file.tmp"; die "$file: expected 2 preset image tags under params.examples"; }
+  mv "$file.tmp" "$file"
+}
+
+CHECKOV='  config:
+    checkov:
+      # The environment is the second part of the instance slug, <project>-<environment>-<component>.
+      halt_on_failure: '"'"'.params.md_metadata.default_tags["md-instance"] | split("-")[1] | . == "prod" or . == "production"'"'"'
+      # With md-environment in the organization'"'"'s default tags:
+      # halt_on_failure: '"'"'.params.md_metadata.default_tags["md-environment"] | . == "prod" or . == "production"'"'"''
+
+overlay() {
+  local m=$1/massdriver.yaml
+  # The catalog publishes its own aws-iam-role and aws-ecs-cluster at 0.0.0, and
+  # unpinned dependencies would pick up another version an organization has.
+  replace_line "$m" "    resource_type: aws-iam-role" "    resource_type: aws-iam-role@0.0.0"
+  replace_line "$m" "    resource_type: aws-ecs-cluster" "    resource_type: aws-ecs-cluster@0.0.0"
+  replace_line "$m" "    resource_type: massdriver-service-account" "    resource_type: massdriver-service-account@~0.1"
+  # Only statuspage and cost-explorer produce a website.
+  if grep -qx "  website:" "$m"; then
+    replace_line "$m" "    resource_type: website" "    resource_type: website@~0.1"
+  fi
+  # Every bundle in this catalog stops production deploys on Checkov failures.
+  insert_after "$m" "  provisioner: opentofu:1.10" "$CHECKOV"
+  # The example companies follow the newest automations image.
+  preset_tag "$m" latest
+}
+
+BUNDLES=$(cd "$UPSTREAM/bundles" && ls -d massdriver-*-ecs 2>/dev/null | while read -r b; do
+  [ -f "$UPSTREAM/bundles/$b/massdriver.yaml" ] && echo "$b"
+done)
+[ -n "$BUNDLES" ] || die "no bundles/massdriver-*-ecs with a massdriver.yaml in $UPSTREAM"
+
+for b in $BUNDLES; do
+  mkdir -p "$ROOT/bundles/$b"
+  # The lock file is the catalog's own (upstream ignores it), and the rest is
+  # generated by mass bundle build or tofu init.
+  rsync -a --delete \
+    --exclude .terraform/ --exclude .terraform.lock.hcl \
+    --exclude _massdriver_variables.tf --exclude 'schema-*.json' \
+    "$UPSTREAM/bundles/$b/" "$ROOT/bundles/$b/"
+  overlay "$ROOT/bundles/$b"
+done
+
+# An automation bundle upstream removed would otherwise stay published from here forever.
+for dir in "$ROOT"/bundles/massdriver-*-ecs; do
+  b=$(basename "$dir")
+  echo "$BUNDLES" | grep -qx "$b" || { echo "Removing $b: upstream no longer has it"; rm -rf "$dir"; }
+done
+
+if [ "${BUILD:-0}" = 1 ]; then
+  for b in $BUNDLES; do
+    mass bundle build --bundle-directory "$ROOT/bundles/$b" >/dev/null
+  done
+fi
+
+echo
+changed=$(git -C "$ROOT" status --porcelain --untracked-files=all -- bundles |
+  awk '{ print $NF }' | awk -F/ '$2 ~ /^massdriver-.*-ecs$/ { print $2 }' | sort -u)
+if [ -z "$changed" ]; then
+  echo "No automation bundle changed."
+else
+  echo "Changed automation bundles:"
+  echo "$changed" | sed 's/^/  /'
+fi
