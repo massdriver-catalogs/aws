@@ -97,11 +97,40 @@ Every Development preset fits in AWS's free tier or bills per request. What Verc
 | `paas.plans` | Prices on plan cards | [#8](https://github.com/massdriver-cloud/rocketsled/issues/8) |
 | `paas.highlights` | What the app page shows from each resource | [#9](https://github.com/massdriver-cloud/rocketsled/issues/9) |
 | `paas.limits` | Apps per person and in all, allowed plans and add-ons, time to live | |
-| `paas.platform` | Not read: forks copy the platform's defaults from their template | [#15](https://github.com/massdriver-cloud/rocketsled/issues/15) |
-| `app_component`, `image_param` | Not read yet: push to deploy | [#5](https://github.com/massdriver-cloud/rocketsled/issues/5) |
-| `paas.pipeline` | Not read yet: stages, and promotion by copy | [#4](https://github.com/massdriver-cloud/rocketsled/issues/4) |
-| `paas.previews` | Not read yet: preview environments per pull request | [#6](https://github.com/massdriver-cloud/rocketsled/issues/6) |
-| `paas.domains` | Not read yet: custom domains | [#7](https://github.com/massdriver-cloud/rocketsled/issues/7) |
+| `app_component`, `image_param` | Where a release lands: a build sends an image with a deploy token, and an older image can be rolled back to | [#5](https://github.com/massdriver-cloud/rocketsled/issues/5) |
+| `paas.pipeline` | Stages, and promoting one stage's build to the next by copy | [#4](https://github.com/massdriver-cloud/rocketsled/issues/4) |
+| `paas.previews` | A preview app per branch or pull request, removed after 6 quiet hours | [#6](https://github.com/massdriver-cloud/rocketsled/issues/6) |
+
+Two keys are left out on purpose:
+
+- `paas.platform` would have the Fauxroku server check the platform layer and share it with every runtime. `./bootstrap.sh provision` already shares it and pins it on every template, so forks get it without the server ([#15](https://github.com/massdriver-cloud/rocketsled/issues/15)).
+- `paas.domains` puts a customer's own hostname on the web dynos' `subdomain` param, and `ecs-service` takes one label there, not a hostname. Custom domains need an `ecs-service` param for extra hostnames and their certificate first ([#7](https://github.com/massdriver-cloud/rocketsled/issues/7)).
+
+### What a customer can do
+
+| | Fauxroku | Fauxcel |
+|---|---|---|
+| Make an app | Pick Node.js, Ruby or Python, and a stage | Pick Functions or Static, and a stage |
+| Add-ons | Add or remove a worker, Postgres or Key-Value Store after the app is made; the dynos redeploy with `DATABASE_URL` or `REDIS_URL` set or cleared | Add or remove KV or Blob; the function redeploys with `KV_TABLE` or `BLOB_BUCKET` |
+| Release | Make a deploy token, then push an image from CI | The same, for a Functions app |
+| Roll back | Pick an older release on the app page | The same |
+| Promote | Development to Staging to Production: the image and config move, and each stage keeps its own plan and add-ons | Preview to Production |
+| Preview | One app per pull request, made by the first push and removed when the pull request closes | The same, for a Functions app |
+
+```bash
+# release to the app named staging
+curl -X POST "https://fauxroku.<DOMAIN>/api/v1/environments/staging/releases" \
+  -H "Authorization: Bearer $FAUXROKU_DEPLOY_TOKEN" -H 'content-type: application/json' \
+  -d '{"image": "<registry>:abc123", "description": "abc123"}'
+
+# make or update the preview for pull request 42, and remove it when the pull request closes
+curl -X PUT "https://fauxroku.<DOMAIN>/api/v1/previews/pr42" \
+  -H "Authorization: Bearer $FAUXROKU_DEPLOY_TOKEN" -H 'content-type: application/json' \
+  -d '{"image": "<registry>:abc123", "runtime": "ruby"}'
+curl -X DELETE "https://fauxroku.<DOMAIN>/api/v1/previews/pr42" -H "Authorization: Bearer $FAUXROKU_DEPLOY_TOKEN"
+```
+
+Deploy tokens and release history live in the server's database on the task's disk, so a new task starts without them; apps, their stages and add-ons come back from Massdriver.
 
 ## Stand it up
 

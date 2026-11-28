@@ -65,7 +65,7 @@ A runtime is a project with a `template` environment. The template's canvas has 
 
 Nothing else in the template is ever deployed. It is a pattern, not an environment.
 
-Here each runtime is one project shared by every app of that kind. The fuller model is a project per app, made from the runtime's blueprint when the customer creates the app, so one app's stages and previews share a canvas and nothing else (rocketsled#16).
+Here each runtime is one project shared by every app of that kind. Rocketsled can also give each app its own project, copied from the runtime's template (`app_projects: true`, rocketsled#16), so one app's stages and previews share a canvas and nothing else. This example doesn't turn it on yet: each server's policy, and each bundle's grant, names its projects, and the servers can't create projects.
 
 ## Environments: forks with presets
 
@@ -85,17 +85,19 @@ An add-on is a component on the template's canvas, linked to the runtime compone
 
 Promoting staging to production copies the runtime component's config and bundle version with `copyInstance`, keeping the fields production's preset owns (size, counts, Spot) and its pinned params, then deploys only what changed. The image that passed staging is the image production runs. Add-ons aren't promoted; production has its own data (rocketsled#4).
 
-## What the engine needs
+## What the engine does
 
-| Change | Issue |
-|---|---|
-| Serve forks of existing templates in an operator's organization | [#10](https://github.com/massdriver-cloud/rocketsled/issues/10) |
-| Platform layer deployed once and pinned as defaults | [#15](https://github.com/massdriver-cloud/rocketsled/issues/15) |
-| Several runtimes per PaaS; an app is its own project | [#16](https://github.com/massdriver-cloud/rocketsled/issues/16) |
-| Add-ons: deploy or don't | [#3](https://github.com/massdriver-cloud/rocketsled/issues/3) |
-| Pinned params over presets | [#11](https://github.com/massdriver-cloud/rocketsled/issues/11) |
-| Stages and promotion by copy | [#4](https://github.com/massdriver-cloud/rocketsled/issues/4) |
-| Preview environments | [#6](https://github.com/massdriver-cloud/rocketsled/issues/6) |
-| Releases with deploy tokens | [#5](https://github.com/massdriver-cloud/rocketsled/issues/5) |
+| Change | Issue | Here |
+|---|---|---|
+| Serve forks of existing templates in an operator's organization | [#10](https://github.com/massdriver-cloud/rocketsled/issues/10) | yes |
+| Several runtimes per PaaS | [#16](https://github.com/massdriver-cloud/rocketsled/issues/16) | yes |
+| An app is its own project | [#16](https://github.com/massdriver-cloud/rocketsled/issues/16) | not yet |
+| Add-ons: deploy or don't, and add or remove later | [#3](https://github.com/massdriver-cloud/rocketsled/issues/3) | yes |
+| Pinned params over presets | [#11](https://github.com/massdriver-cloud/rocketsled/issues/11) | yes |
+| Releases with deploy tokens, and rollback | [#5](https://github.com/massdriver-cloud/rocketsled/issues/5) | yes |
+| Stages and promotion by copy | [#4](https://github.com/massdriver-cloud/rocketsled/issues/4) | yes |
+| Preview environments | [#6](https://github.com/massdriver-cloud/rocketsled/issues/6) | yes |
+| Custom domains | [#7](https://github.com/massdriver-cloud/rocketsled/issues/7) | needs an `ecs-service` hostnames param |
+| Platform layer deployed once and pinned as defaults | [#15](https://github.com/massdriver-cloud/rocketsled/issues/15) | done by `./bootstrap.sh provision` |
 
-Rocketsled does steps 1 to 3 since #10, #16, #3 and #11. `./bootstrap.sh fork <runtime> <id> [add-on...]` does the same by hand.
+`./bootstrap.sh fork <runtime> <id> [add-on...]` makes an environment by hand the way the server does.

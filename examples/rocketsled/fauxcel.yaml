@@ -1,5 +1,4 @@
 # bin/rocketsled serve -config ../aws/examples/rocketsled/fauxcel.yaml -env-file ../aws/examples/rocketsled/.env
-# Keys still marked with an issue are not read yet; see massdriver-cloud/rocketsled.
 
 server:
   addr: ":8082"
@@ -26,7 +25,7 @@ paas:
       name: Functions
       project: functions
       template: template
-      app_component: app                              # rocketsled#5
+      app_component: app
       image_param: image_uri
     - id: static
       name: Static
@@ -49,7 +48,7 @@ paas:
       title: Blob
       summary: File storage for uploads. Sets BLOB_BUCKET.
 
-  pipeline:                                           # rocketsled#4
+  pipeline:
     stages:
       - id: preview
         name: Preview
@@ -59,9 +58,9 @@ paas:
         presets: {api: Production, app: Production, site: Production, files: Production}
     promote: [app, site]
 
-  previews:                                           # rocketsled#6
+  previews:
     presets: {api: Development, app: Development, site: Development, files: Development}
-    ttl: 168h
+    ttl: 6h
 
   plans:
     app:

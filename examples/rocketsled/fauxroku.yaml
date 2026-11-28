@@ -1,5 +1,4 @@
 # bin/rocketsled serve -config ../aws/examples/rocketsled/fauxroku.yaml -env-file ../aws/examples/rocketsled/.env
-# Keys still marked with an issue are not read yet; see massdriver-cloud/rocketsled.
 
 server:
   addr: ":8081"
@@ -21,17 +20,12 @@ massdriver:
 skin: skins/fauxroku
 
 paas:
-  platform:                                           # rocketsled#15
-    project: platform
-    environment: main
-    shares: [network.network, cluster.cluster]
-
   runtimes:
     - id: node
       name: Node.js
       project: node
       template: template
-      app_component: web                              # rocketsled#5
+      app_component: web
       image_param: image_uri
       # A welcome page from the runtime's own registry, until the app's image is pushed.
       pinned:
@@ -77,7 +71,7 @@ paas:
       title: Key-Value Store
       summary: Redis-compatible, TLS only. Sets REDIS_URL on your dynos.
 
-  pipeline:                                           # rocketsled#4
+  pipeline:
     stages:
       - id: development
         name: Development
@@ -90,14 +84,9 @@ paas:
         presets: {web: Production, worker: Production, db: Production, cache: Production}
     promote: [web, worker]
 
-  previews:                                           # rocketsled#6
+  previews:
     presets: {web: Development}
-    ttl: 72h
-
-  domains:                                            # rocketsled#7
-    component: web
-    param: subdomain
-    target_field: url
+    ttl: 6h
 
   plans:
     web:
