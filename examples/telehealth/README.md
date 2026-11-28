@@ -96,6 +96,28 @@ mass resource get visits-dev-app.visits -o json | jq -r .payload.url
 
 A dead-letter message stays for 14 days, so that alarm keeps firing until the message expires or someone clears the queue. Set the response alarm back to `1000` when you're done.
 
+## Automations
+
+Tendwell runs these from [massdriver-automations](https://github.com/massdriver-cloud/massdriver-automations), one instance each in the `automations` project (`automations-main-<name>`). Each one's config is its key in [automations.yaml](automations.yaml).
+
+| Automation | What it does in Tendwell |
+|---|---|
+| autodeploy-downstream | When an upstream instance deploys, deploys the dev instances that depend on it, and proposes the same in prod. Instances opt in with `autodeploy=upstream-changes`. |
+| rollback-on-failure | When a deploy fails on an instance with `autorollback=true`, redeploys its last good deployment. |
+| drift | Plans opted-in instances hourly or daily (`driftwatch=drift-hourly` or `drift-daily`) and reports drift. Runs on demand with its token. |
+| freeze-guard | Blocks prod deploys outside 08:00 to 17:00 Pacific, every day. Platform Engineering is exempt. |
+| sandbox-on-join | Forks the `sandboxes` template for each person who joins Patient Experience, Clinical, Revenue or Platform Engineering, and removes it when they leave. |
+| statuspage | Public status page at `statuspage.<stage>.<DOMAIN>`, from alarms, deploys and the stash's health and warning banners. |
+| router | Small reactions with no code, such as logging failed deploys. |
+| cost-explorer | Costs by project, environment, component and team at `cost-explorer.<stage>.<DOMAIN>`. |
+| chaos-monkey | Weekdays every 2 hours, plans one dev instance in visits, care or billing with made-up params. Plan only, nothing is applied. |
+| upgrade-train | Moves new versions of the app bundles to dev, waits 15 minutes, then proposes them in prod. |
+| stale-proposals | Weekday mornings, a digest of proposals that have waited more than 24 hours. |
+| stash-sync | Every 2 minutes, copies CloudWatch metrics into each instance's health, usage and traffic widgets. |
+| log-results | Reads each deployment's logs and shows the OpenTofu step, its changes and Checkov findings on the deployment. |
+| leaderboard | The "MAX LOC" leaderboard on visits-dev, from a fixed list until Tendwell's pull requests score it. |
+| oncall | The on-call card on visits-dev, from a fixed list until Tendwell has a PagerDuty or incident.io schedule. |
+
 ## Stand it up
 
 You need an organization with a service account in the Organization Admin group, AWS CLI credentials for the account to deploy into, and a domain whose Route 53 zone is in that account. You also need `mass`, `tofu`, `jq`, `docker` and `python3` with PyYAML.
