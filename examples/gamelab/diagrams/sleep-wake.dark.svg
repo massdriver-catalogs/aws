@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1228 726" width="1228" height="726" role="img" aria-label="Sleep and wake: every minute the server finds boxes unused for 30 minutes whose helper isn't working on a reply, and sets their ECS service's desired count to 0; ECS stops the task and the home folder stays on EFS. When the player opens the lab, the server sees desired count 0, sets it to 1, and the page shows Waking up your lab. Every 4 seconds the page asks again while the server checks the service is running and the box's /play/healthz answers, then the page shows the chat and the game as they were.">
+<title>Sleep and wake: every minute the server finds boxes unused for 30 minutes whose helper isn't working on a reply, and sets their ECS service's desired count to 0; ECS stops the task and the home folder stays on EFS. When the player opens the lab, the server sees desired count 0, sets it to 1, and the page shows Waking up your lab. Every 4 seconds the page asks again while the server checks the service is running and the box's /play/healthz answers, then the page shows the chat and the game as they were.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #0d1117; }
+  .surface { fill: #111113; stroke: #3f3f46; stroke-width: 1.25; }
+  .accent { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1.5; }
+  .ghost { fill: #111113; stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #0a0a0b; stroke: #27272a; stroke-width: 1.25; }
+  .heading { fill: #8b8b94; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #fafafa; font-size: 13px; font-weight: 600; }
+  .body { fill: #a1a1aa; font-size: 11.5px; }
+  .muted { fill: #8b8b94; font-size: 10.5px; }
+  .label { fill: #a1a1aa; font-size: 10.5px; }
+  .labelAccent { fill: #2dd4bf; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #0a0a0b; stroke: #27272a; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #0d1117; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #71717a; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #2dd4bf; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #2dd4bf; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #71717a; }
+  .headAccent { fill: #2dd4bf; }
+  .lifeline { stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1; }
+  .frame { fill: none; stroke: #3f3f46; stroke-width: 1.25; }
+  .frameTab { fill: #0a0a0b; stroke: #3f3f46; stroke-width: 1.25; }
+  .divider { stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1; }
+  .badge { fill: #2dd4bf; }
+  .badgeText { fill: #0d1117; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="examples-gamelab-sleep-wake-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="examples-gamelab-sleep-wake-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="1228" height="726" rx="10"/>
+<line class="lifeline" x1="57.79" y1="54" x2="57.79" y2="668"/>
+<line class="lifeline" x1="207.79" y1="54" x2="207.79" y2="668"/>
+<line class="lifeline" x1="487.31499999999994" y1="54" x2="487.31499999999994" y2="668"/>
+<line class="lifeline" x1="829.9749999999999" y1="54" x2="829.9749999999999" y2="668"/>
+<line class="lifeline" x1="1165.62" y1="54" x2="1165.62" y2="668"/>
+<rect class="frame" x="8" y="434" width="1211.375" height="164" rx="6"/>
+<path class="frameTab" d="M8 440 Q8 434 14 434 H51.620000000000005 V448 L43.620000000000005 454 H8 Z"/>
+<text class="heading" x="16.0" y="448.0">LOOP</text>
+<text class="labelAccent" x="61.6" y="448.0">Every 4 seconds</text>
+<rect class="note" x="325.99999999999994" y="80" width="322.62999999999994" height="46" rx="5"/>
+<text class="body" x="487.3" y="98.0" text-anchor="middle">Every minute: a box unused for 30 minutes,</text>
+<text class="body" x="487.3" y="114.0" text-anchor="middle">whose helper isn't working on a reply</text>
+<text class="body halo" x="658.6" y="152.0" text-anchor="middle">UpdateService labs-maya-box, desired count 0</text>
+<path class="edgeAccent" d="M487.31499999999994 164 H826.9749999999999" marker-end="url(#examples-gamelab-sleep-wake-headAccent)"/>
+<text class="body halo" x="997.8" y="198.0" text-anchor="middle">Stop the task. The home folder stays on EFS</text>
+<path class="edgeAccent" d="M829.9749999999999 210 H1162.62" marker-end="url(#examples-gamelab-sleep-wake-headAccent)"/>
+<text class="body halo" x="132.8" y="244.0" text-anchor="middle">Opens the lab</text>
+<path class="edgeAccent" d="M57.79 256 H204.79" marker-end="url(#examples-gamelab-sleep-wake-headAccent)"/>
+<text class="body halo" x="347.6" y="290.0" text-anchor="middle">GET /labs/labs-maya</text>
+<path class="edgeAccent" d="M207.79 302 H484.31499999999994" marker-end="url(#examples-gamelab-sleep-wake-headAccent)"/>
+<text class="body halo" x="658.6" y="336.0" text-anchor="middle">DescribeServices: desired 0, so</text>
+<text class="body halo" x="658.6" y="352.0" text-anchor="middle">UpdateService desired count 1</text>
+<path class="edgeAccent" d="M487.31499999999994 364 H826.9749999999999" marker-end="url(#examples-gamelab-sleep-wake-headAccent)"/>
+<text class="body halo" x="347.6" y="398.0" text-anchor="middle">Waking up your lab…</text>
+<path class="edge dashed" d="M487.31499999999994 410 H210.79" marker-end="url(#examples-gamelab-sleep-wake-head)"/>
+<text class="body halo" x="347.6" y="474.0" text-anchor="middle">GET /labs/labs-maya</text>
+<path class="edgeAccent" d="M207.79 486 H484.31499999999994" marker-end="url(#examples-gamelab-sleep-wake-headAccent)"/>
+<text class="body halo" x="658.6" y="520.0" text-anchor="middle">DescribeServices: running?</text>
+<path class="edgeAccent" d="M487.31499999999994 532 H826.9749999999999" marker-end="url(#examples-gamelab-sleep-wake-headAccent)"/>
+<text class="body halo" x="826.5" y="566.0" text-anchor="middle">GET /play/healthz</text>
+<path class="edgeAccent" d="M487.31499999999994 578 H1162.62" marker-end="url(#examples-gamelab-sleep-wake-headAccent)"/>
+<text class="body halo" x="347.6" y="626.0" text-anchor="middle">The chat and the game, as they were</text>
+<path class="edge dashed" d="M487.31499999999994 638 H210.79" marker-end="url(#examples-gamelab-sleep-wake-head)"/>
+<rect class="accent" x="20" y="16" width="75.58" height="38" rx="19"/>
+<text class="name" x="57.8" y="40.0" text-anchor="middle">Player</text>
+<rect class="surface" x="162.07" y="16" width="91.44" height="38" rx="6"/>
+<text class="name" x="207.8" y="40.0" text-anchor="middle">Lab page</text>
+<rect class="surface" x="417.80499999999995" y="16" width="139.01999999999998" height="38" rx="6"/>
+<text class="name" x="487.3" y="40.0" text-anchor="middle">Gamelab server</text>
+<rect class="surface" x="804.0799999999999" y="16" width="51.79" height="38" rx="6"/>
+<text class="name" x="830.0" y="40.0" text-anchor="middle">ECS</text>
+<rect class="surface" x="1123.8649999999998" y="16" width="83.50999999999999" height="38" rx="6"/>
+<text class="name" x="1165.6" y="40.0" text-anchor="middle">Lab box</text>
+<rect class="accent" x="20" y="672" width="75.58" height="38" rx="19"/>
+<text class="name" x="57.8" y="696.0" text-anchor="middle">Player</text>
+<rect class="surface" x="162.07" y="672" width="91.44" height="38" rx="6"/>
+<text class="name" x="207.8" y="696.0" text-anchor="middle">Lab page</text>
+<rect class="surface" x="417.80499999999995" y="672" width="139.01999999999998" height="38" rx="6"/>
+<text class="name" x="487.3" y="696.0" text-anchor="middle">Gamelab server</text>
+<rect class="surface" x="804.0799999999999" y="672" width="51.79" height="38" rx="6"/>
+<text class="name" x="830.0" y="696.0" text-anchor="middle">ECS</text>
+<rect class="surface" x="1123.8649999999998" y="672" width="83.50999999999999" height="38" rx="6"/>
+<text class="name" x="1165.6" y="696.0" text-anchor="middle">Lab box</text>
+</svg>

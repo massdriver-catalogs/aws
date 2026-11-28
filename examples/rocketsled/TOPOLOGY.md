@@ -11,34 +11,10 @@ A PaaS has four layers. Each one is a different Massdriver shape, and getting th
 
 ## The picture
 
-```mermaid
-flowchart TB
-  cred[/"AWS credential<br>open to every environment"/]
-
-  subgraph platform["Project: platform"]
-    main["main<br>Network, DNS Zone, Router"]
-  end
-
-  subgraph ruby["Project: ruby"]
-    rt["template<br>deployed: Image Repository, Codebase<br>linked, not deployed: Web, Worker, Postgres, Key-Value Store"]
-    rdev["ruby-dev<br>Web"]
-    rstg["ruby-staging<br>Web, Postgres"]
-    rprd["ruby-production<br>Web, Worker, Postgres, Key-Value Store"]
-    rpr["ruby-pr42<br>Web"]
-  end
-
-  subgraph static["Project: static"]
-    st["template<br>deployed: Image Repository, Codebase<br>linked, not deployed: Endpoint, Site, Files"]
-    sdemo["static-demo<br>Endpoint, Site, Files"]
-  end
-
-  main -- "shared to ruby, node, python:<br>network, cluster as defaults" --> rt
-  rt -- "codebase as a default" --> rt
-  cred -. default .-> main & rt & st
-  rt == "fork, copy defaults" ==> rdev & rstg & rprd & rpr
-  st == "fork, copy defaults" ==> sdemo
-  rdev -. promote .-> rstg -. promote .-> rprd
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/topology.dark.svg">
+  <img src="diagrams/topology.svg" alt="The AWS credential, open to every environment, is the default of platform main and of the ruby and static templates. platform main (Network, DNS Zone, Router) shares the network and cluster with the ruby, node and python projects as defaults of their templates. The ruby template deploys its Image Repository and Codebase and links, without deploying, Web, Worker, Postgres and Key-Value Store; its codebase is its own default. Forks copy the defaults into ruby-dev (Web), ruby-staging (Web, Postgres), ruby-production (Web, Worker, Postgres, Key-Value Store) and ruby-pr42 (Web), and changes promote from dev to staging to production. The static template deploys an Image Repository and Codebase and links Endpoint, Site and Files; static-demo is forked from it.">
+</picture>
 
 ## Platform: deployed once
 

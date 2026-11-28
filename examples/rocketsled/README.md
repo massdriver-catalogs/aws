@@ -11,37 +11,12 @@ Customers never see Massdriver and never bring an AWS account: the PaaSes run on
 
 ## How it fits together
 
-```mermaid
-flowchart LR
-  dev(["Developer"])
-  rsr["Rocketsled server<br>fauxroku.yaml"]
-  rsc["Rocketsled server<br>fauxcel.yaml"]
-  md{{"Massdriver API"}}
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/architecture.dark.svg">
+  <img src="diagrams/architecture.svg" alt="A developer signs in to the Rocketsled servers, one for fauxroku.yaml and one for fauxcel.yaml, and makes environments; each server forks and deploys through the Massdriver API as its own service account. In the operator's AWS account, the developer reaches web dynos on Fargate Spot over HTTPS through the load balancer at *.apps.example.com, and functions or the static file server on Lambda through the HTTP API's execute-api URL. Web and worker dynos use Postgres and the Valkey key-value store in the platform VPC; functions use DynamoDB KV and S3 blob or files. One image repository per runtime holds the images for the dynos and functions.">
+</picture>
 
-  subgraph aws["Operator's AWS account, us-east-1"]
-    subgraph vpc["Platform VPC"]
-      alb["Load balancer<br>*.apps.example.com"]
-      web["Web dynos<br>Fargate Spot"]
-      worker["Worker dynos"]
-      pg[("Postgres")]
-      kvs[("Key-Value Store<br>Valkey")]
-    end
-    api["HTTP API<br>execute-api URL"]
-    fn["Functions or<br>static file server<br>Lambda"]
-    kv[("KV<br>DynamoDB")]
-    blob[("Blob or Files<br>S3")]
-    ecr[("Image repositories<br>one per runtime")]
-  end
-
-  dev -- "sign in, make environments" --> rsr & rsc
-  rsr & rsc -- "fork and deploy, each as its own service account" --> md
-  dev -- HTTPS --> alb --> web
-  web & worker -.-> pg & kvs
-  dev -- HTTPS --> api --> fn -.-> kv & blob
-  ecr -. images .-> web & worker & fn
-```
-
-Dotted lines are add-ons: there only where the customer picked them.
+Dashed lines are add-ons: there only where the customer picked them.
 
 ## Fauxroku
 

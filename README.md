@@ -60,26 +60,12 @@ The onboarding bundles create projects, groups and service accounts, and share r
 
 ## How it fits together
 
-```mermaid
-flowchart TB
-  subgraph env[Each environment]
-    vpc[vpc]
-    dns[dns-zone]
-    cluster[ecs-cluster]
-  end
-  subgraph app[An app's project]
-    api[http-api] --> fn[app on lambda-function]
-    pg[(postgres)] --> svc[app on ecs-service]
-    q[sqs-queue] --> fn
-    b[(s3-bucket)] --> svc
-  end
-  vpc -. default .-> app
-  dns -. default .-> app
-  cluster -. default .-> app
-  cb[codebase] -. default .-> app
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/how-it-fits.dark.svg">
+  <img src="diagrams/how-it-fits.svg" alt="Each environment deploys vpc, dns-zone and ecs-cluster once. They, and an app's codebase, are environment defaults of the app's project. In the project, http-api and sqs-queue connect to an app on lambda-function, and postgres and s3-bucket connect to an app on ecs-service.">
+</picture>
 
-Dotted lines are environment defaults; solid lines are links on the app's canvas.
+Dashed lines are environment defaults; solid lines are links on the app's canvas.
 
 - **Subdomains.** The DNS zone's certificate covers every name one level under it. An `http-api` or `ecs-service` with **Subdomain** `api` answers at `https://api.dev.example.com`, with the record and certificate handled for you. The zone, the API and the cluster must be in the same region. An `ecs-service` takes its VPC and zone from the cluster, so it always lands in the load balancer's network and under its certificate.
 - **Databases and caches** sit in the VPC's internal subnets and only accept connections from their own client security group.
@@ -140,7 +126,7 @@ platforms/        Credentials
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
 examples/         Example companies built on the catalog, with their apps
-scripts/          Publishes the official Massdriver resource types; syncs the automation bundles
+scripts/          Publishes the official Massdriver resource types; syncs the automation bundles; renders the README diagrams
 .github/workflows Publishing
 ```
 
