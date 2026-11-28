@@ -19,7 +19,7 @@ schema:
     provider_arn:
       title: Provider ARN
       type: string
-      minLength: 1
+      pattern: "^arn:aws(-[a-z]+)*:iam::[0-9]{12}:oidc-provider/"
     url:
       title: Issuer URL
       type: string

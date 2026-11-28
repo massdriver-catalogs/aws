@@ -35,7 +35,7 @@ schema:
       title: Execution ARN
       description: Used to scope Lambda invoke permissions to this API.
       type: string
-      minLength: 1
+      pattern: "^arn:aws(-[a-z]+)*:execute-api:"
     domain:
       title: Custom Domain
       description: Present when the API answers on a subdomain of the environment's DNS zone, e.g. api.dev.example.com.

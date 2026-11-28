@@ -81,3 +81,4 @@ schema:
           arn:
             title: Policy ARN
             type: string
+            pattern: "^arn:aws(-[a-z]+)*:iam::[0-9]{12}:policy/"

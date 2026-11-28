@@ -26,7 +26,7 @@ schema:
     arn:
       title: Queue ARN
       type: string
-      minLength: 1
+      pattern: "^arn:aws(-[a-z]+)*:sqs:"
     url:
       title: Queue URL
       type: string
@@ -39,6 +39,7 @@ schema:
       title: Dead-Letter Queue ARN
       description: Messages that fail too many times end up here.
       type: string
+      pattern: "^arn:aws(-[a-z]+)*:sqs:"
     policies:
       title: Access Policies
       description: IAM managed policies a consumer attaches to its role.
@@ -58,3 +59,4 @@ schema:
           arn:
             title: Policy ARN
             type: string
+            pattern: "^arn:aws(-[a-z]+)*:iam::[0-9]{12}:policy/"

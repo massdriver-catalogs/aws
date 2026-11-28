@@ -30,9 +30,11 @@ schema:
     clone_url:
       title: HTTPS Clone URL
       type: string
+      pattern: ^https://
     ssh_url:
       title: SSH Clone URL
       type: string
+      pattern: ^(git@|ssh://)
     default_branch:
       title: Default Branch
       type: string

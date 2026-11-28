@@ -27,7 +27,7 @@ schema:
     arn:
       title: Repository ARN
       type: string
-      minLength: 1
+      pattern: "^arn:aws(-[a-z]+)*:ecr:"
     url:
       title: Repository URL
       description: Image reference without a tag, e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/app.
@@ -61,3 +61,4 @@ schema:
           arn:
             title: Policy ARN
             type: string
+            pattern: "^arn:aws(-[a-z]+)*:iam::[0-9]{12}:policy/"

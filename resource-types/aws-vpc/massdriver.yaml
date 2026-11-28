@@ -64,12 +64,17 @@ schema:
           - tier
         properties:
           id:
+            title: Subnet ID
             type: string
+            pattern: ^subnet-[a-f0-9]+$
           cidr:
+            title: CIDR
             type: string
           availability_zone_id:
+            title: Zone ID
             type: string
           tier:
+            title: Tier
             description: >-
               public routes to the internet gateway, private routes out through the VPC's egress,
               internal has no route out of the VPC.
