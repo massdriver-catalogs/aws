@@ -121,6 +121,18 @@ Massdriver builds the app and its runtime into one bundle when the app is publis
 
 Then add an AWS IAM Role credential, following the instructions on its form, and deploy `vpc`, `dns-zone` and `ecs-cluster` in each environment. A new DNS zone must be delegated from its parent domain before its certificate is issued; the `dns-zone` operator guide shows how. Each runtime's operator guide has a **Ship your app** walkthrough.
 
+## Automation bundles
+
+The `bundles/massdriver-*-ecs` bundles come from [massdriver-automations](https://github.com/massdriver-cloud/massdriver-automations), which generates them. Don't edit them here; the next sync overwrites the change. To bring them up to date:
+
+```bash
+scripts/sync-automation-bundles.sh
+```
+
+It copies every `-ecs` bundle from `../massdriver-automations`, or from a fresh clone of `main` when that folder is missing, and lists the bundles that changed. Point it elsewhere with `AUTOMATIONS_DIR=<path>`, or clone another branch or tag with `AUTOMATIONS_REF=<ref>`.
+
+This catalog changes a few lines in each bundle. It pins the dependencies to its own resource types, stops production deploys on Checkov failures, and sets the presets to the `latest` image. The `overlay` function in the script makes these changes. If upstream changes one of those lines, the script stops and names the line. Change the overlay to match, or move the change upstream when every catalog needs it.
+
 ## Repository layout
 
 ```
@@ -128,7 +140,7 @@ platforms/        Credentials
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
 examples/         Example companies built on the catalog, with their apps
-scripts/          Publishes the official Massdriver resource types
+scripts/          Publishes the official Massdriver resource types; syncs the automation bundles
 .github/workflows Publishing
 ```
 
