@@ -279,7 +279,7 @@ router:
             - exec:
                 - python3
                 - -c
-                - import sys; open('/proc/1/fd/1', 'w').write('✗ ' + sys.argv[1] + '\n')
+                - import sys; open('/proc/1/fd/1', 'w').write('\u2717 ' + sys.argv[1] + '\n')
                 - '\(.data.attributes["md-instance"] // .data.entity.instance_id) \(.data.entity.action | ascii_downcase) failed\(if .data.entity.deployed_by_name then " (\(.data.entity.deployed_by_name))" else "" end)'
 
         - name: deploy-completed
@@ -289,7 +289,7 @@ router:
             - exec:
                 - python3
                 - -c
-                - import sys; open('/proc/1/fd/1', 'w').write('✓ ' + sys.argv[1] + '\n')
+                - import sys; open('/proc/1/fd/1', 'w').write('\u2713 ' + sys.argv[1] + '\n')
                 - '\(.data.attributes["md-instance"] // .data.entity.instance_id) \(.data.entity.action | ascii_downcase)ed by \(.data.entity.deployed_by_name // "Massdriver")\(if .data.entity.message then ": \(.data.entity.message)" else "" end)'
 
         - name: proposal
@@ -563,7 +563,7 @@ log-results:
           - (?:OpenTofu|Terraform) v(?:ersion:\s*)?(?P<tool_version>\d+\.\d+\.\d+)
           - (?P<message>(?:Apply|Destroy) complete! Resources:.*|Plan:.*|No changes\.)
           # OpenTofu boxes its errors. The provisioner's last line, Error: exit status 1, has no box.
-          - '│ Error: (?P<error>.+)'
+          - '\x{2502} Error: (?P<error>.+)'
         key: step/src
         label: OpenTofu step
         value: >-
