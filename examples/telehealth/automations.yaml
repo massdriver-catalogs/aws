@@ -599,24 +599,24 @@ leaderboard:
     interval: 15m
     routes:
       - environments: [visits-dev]
-        title: Most deploys this week
+        title: "\u26A1 MAX LOC \u26A1"
         static:
-        - name: Maria Chen (41 deploys)
+        - name: Maria Chen (+18.2k LOC)
           image_url: https://api.dicebear.com/9.x/personas/png?seed=Maria&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
           email: maria@tendwell.example
           handles: [slack:@maria, github:mchen]
-        - name: James Okafor (33 deploys)
+        - name: James Okafor (+14.7k LOC)
           image_url: https://api.dicebear.com/9.x/personas/png?seed=James&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
           email: james@tendwell.example
           handles: [slack:@james]
-        - name: Priya Shah (27 deploys)
+        - name: Priya Shah (+9.3k LOC)
           image_url: https://api.dicebear.com/9.x/personas/png?seed=Priya&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
           email: priya@tendwell.example
           handles: [github:pshah]
-        - name: Daniel Kim (19 deploys)
+        - name: Daniel Kim (+6.1k LOC)
           image_url: https://api.dicebear.com/9.x/personas/png?seed=Daniel&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
           email: daniel@tendwell.example
-        - name: Sofia Alvarez (12 deploys)
+        - name: Sofia Alvarez (+2.8k LOC)
           image_url: https://api.dicebear.com/9.x/personas/png?seed=Sofia&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
           email: sofia@tendwell.example
 
