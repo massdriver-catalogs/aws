@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1282 1088" width="1282" height="1088" role="img" aria-label="A chat turn: the player taps Talk or types, and the lab page posts the message. The server checks the player is signed in, on the same site, the lab is ready and the message is under 2,000 characters, sends it to OpenCode with the lab's password, and accepts it. In parallel, OpenCode sends the message with the age rules to Claude and edits files in ~/game, while the page polls the server every 1.5 seconds while busy and every 4 seconds when idle for the helper's words and steps. When busy turns to idle, the page reloads the game from the game server through the server, without cookies, and index.html is never cached.">
+<title>A chat turn: the player taps Talk or types, and the lab page posts the message. The server checks the player is signed in, on the same site, the lab is ready and the message is under 2,000 characters, sends it to OpenCode with the lab's password, and accepts it. In parallel, OpenCode sends the message with the age rules to Claude and edits files in ~/game, while the page polls the server every 1.5 seconds while busy and every 4 seconds when idle for the helper's words and steps. When busy turns to idle, the page reloads the game from the game server through the server, without cookies, and index.html is never cached.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #ffffff; }
+  .surface { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; }
+  .accent { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1.5; }
+  .ghost { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1.25; }
+  .heading { fill: #6b7280; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #111827; font-size: 13px; font-weight: 600; }
+  .body { fill: #4b5563; font-size: 11.5px; }
+  .muted { fill: #6b7280; font-size: 10.5px; }
+  .label { fill: #4b5563; font-size: 10.5px; }
+  .labelAccent { fill: #0d9488; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #9ca3af; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #0d9488; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #0d9488; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #9ca3af; }
+  .headAccent { fill: #0d9488; }
+  .lifeline { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .frame { fill: none; stroke: #d1d5db; stroke-width: 1.25; }
+  .frameTab { fill: #f9fafb; stroke: #d1d5db; stroke-width: 1.25; }
+  .divider { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .badge { fill: #0d9488; }
+  .badgeText { fill: #ffffff; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="examples-gamelab-chat-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="examples-gamelab-chat-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="1282" height="1088" rx="10"/>
+<line class="lifeline" x1="57.79" y1="72" x2="57.79" y2="1012"/>
+<line class="lifeline" x1="288.21" y1="72" x2="288.21" y2="1012"/>
+<line class="lifeline" x1="562.66" y1="72" x2="562.66" y2="1012"/>
+<line class="lifeline" x1="830.095" y1="72" x2="830.095" y2="1012"/>
+<line class="lifeline" x1="1053.5" y1="72" x2="1053.5" y2="1012"/>
+<line class="lifeline" x1="1203.5" y1="72" x2="1203.5" y2="1012"/>
+<rect class="frame" x="8" y="380" width="1265.115" height="404" rx="6"/>
+<path class="frameTab" d="M8 386 Q8 380 14 380 H45.215 V394 L37.215 400 H8 Z"/>
+<text class="heading" x="16.0" y="394.0">PAR</text>
+<text class="labelAccent" x="55.2" y="394.0">The helper works</text>
+<line class="divider" x1="8" y1="562" x2="1273.115" y2="562"/>
+<text class="labelAccent" x="18.0" y="577.0">The page watches</text>
+<rect class="frame" x="16" y="590" width="1249.115" height="180" rx="6"/>
+<path class="frameTab" d="M16 596 Q16 590 22 590 H59.620000000000005 V604 L51.620000000000005 610 H16 Z"/>
+<text class="heading" x="24.0" y="604.0">LOOP</text>
+<text class="labelAccent" x="69.6" y="604.0">Every 1.5 s while busy, 4 s when idle</text>
+<text class="body halo" x="173.0" y="108.0" text-anchor="middle">Tap Talk and say it, or type</text>
+<text class="body halo" x="173.0" y="124.0" text-anchor="middle">it</text>
+<path class="edgeAccent" d="M57.79 136 H285.21" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="425.4" y="170.0" text-anchor="middle">POST /labs/ID/chat</text>
+<path class="edgeAccent" d="M288.21 182 H559.66" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="602.7" y="216.0">Signed in, same site, lab</text>
+<text class="body halo" x="602.7" y="232.0">ready, under 2,000 characters</text>
+<path class="edgeAccent" d="M562.66 242 H592.66 V258 H566.66" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="696.4" y="282.0" text-anchor="middle">prompt_async, with the lab's</text>
+<text class="body halo" x="696.4" y="298.0" text-anchor="middle">password</text>
+<path class="edgeAccent" d="M562.66 310 H827.095" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="425.4" y="344.0" text-anchor="middle">Accepted</text>
+<path class="edge dashed" d="M562.66 356 H291.21" marker-end="url(#examples-gamelab-chat-head)"/>
+<text class="body halo" x="941.8" y="420.0" text-anchor="middle">The message, with the rules</text>
+<text class="body halo" x="941.8" y="436.0" text-anchor="middle">for the player's age</text>
+<path class="edgeAccent" d="M830.095 448 H1050.5" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="941.8" y="482.0" text-anchor="middle">What to change</text>
+<path class="edge dashed" d="M1053.5 494 H833.095" marker-end="url(#examples-gamelab-chat-head)"/>
+<text class="body halo" x="870.1" y="528.0">Edit files in ~/game</text>
+<path class="edgeAccent" d="M830.095 538 H860.095 V554 H834.095" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="425.4" y="630.0" text-anchor="middle">GET /labs/ID/chat</text>
+<path class="edgeAccent" d="M288.21 642 H559.66" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="696.4" y="676.0" text-anchor="middle">Messages and status</text>
+<path class="edgeAccent" d="M562.66 688 H827.095" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="425.4" y="722.0" text-anchor="middle">The helper's words, one line</text>
+<text class="body halo" x="425.4" y="738.0" text-anchor="middle">per step</text>
+<path class="edge dashed" d="M562.66 750 H291.21" marker-end="url(#examples-gamelab-chat-head)"/>
+<text class="body halo" x="328.2" y="812.0">Busy turned to idle, so reload</text>
+<text class="body halo" x="328.2" y="828.0">the game</text>
+<path class="edgeAccent" d="M288.21 838 H318.21 V854 H292.21" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="425.4" y="878.0" text-anchor="middle">GET /labs/ID/play/TOKEN/</text>
+<path class="edgeAccent" d="M288.21 890 H559.66" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="883.1" y="924.0" text-anchor="middle">GET, without cookies</text>
+<path class="edgeAccent" d="M562.66 936 H1200.5" marker-end="url(#examples-gamelab-chat-headAccent)"/>
+<text class="body halo" x="745.9" y="970.0" text-anchor="middle">index.html, never cached</text>
+<path class="edge dashed" d="M1203.5 982 H291.21" marker-end="url(#examples-gamelab-chat-head)"/>
+<rect class="accent" x="20" y="16" width="75.58" height="56" rx="28"/>
+<text class="name" x="57.8" y="49.0" text-anchor="middle">Player</text>
+<rect class="surface" x="242.48999999999998" y="16" width="91.44" height="56" rx="6"/>
+<text class="name" x="288.2" y="49.0" text-anchor="middle">Lab page</text>
+<rect class="surface" x="493.15" y="16" width="139.01999999999998" height="56" rx="6"/>
+<text class="name" x="562.7" y="49.0" text-anchor="middle">Gamelab server</text>
+<rect class="surface" x="776.445" y="16" width="107.3" height="56" rx="6"/>
+<text class="name" x="830.1" y="40.0" text-anchor="middle">OpenCode</text>
+<text class="muted" x="830.1" y="58.0" text-anchor="middle">on the box</text>
+<rect class="surface" x="1015.71" y="16" width="75.58" height="56" rx="6"/>
+<text class="name" x="1053.5" y="49.0" text-anchor="middle">Claude</text>
+<rect class="surface" x="1145.885" y="16" width="115.23" height="56" rx="6"/>
+<text class="name" x="1203.5" y="40.0" text-anchor="middle">Game server</text>
+<text class="muted" x="1203.5" y="58.0" text-anchor="middle">on the box</text>
+<rect class="accent" x="20" y="1016" width="75.58" height="56" rx="28"/>
+<text class="name" x="57.8" y="1049.0" text-anchor="middle">Player</text>
+<rect class="surface" x="242.48999999999998" y="1016" width="91.44" height="56" rx="6"/>
+<text class="name" x="288.2" y="1049.0" text-anchor="middle">Lab page</text>
+<rect class="surface" x="493.15" y="1016" width="139.01999999999998" height="56" rx="6"/>
+<text class="name" x="562.7" y="1049.0" text-anchor="middle">Gamelab server</text>
+<rect class="surface" x="776.445" y="1016" width="107.3" height="56" rx="6"/>
+<text class="name" x="830.1" y="1040.0" text-anchor="middle">OpenCode</text>
+<text class="muted" x="830.1" y="1058.0" text-anchor="middle">on the box</text>
+<rect class="surface" x="1015.71" y="1016" width="75.58" height="56" rx="6"/>
+<text class="name" x="1053.5" y="1049.0" text-anchor="middle">Claude</text>
+<rect class="surface" x="1145.885" y="1016" width="115.23" height="56" rx="6"/>
+<text class="name" x="1203.5" y="1040.0" text-anchor="middle">Game server</text>
+<text class="muted" x="1203.5" y="1058.0" text-anchor="middle">on the box</text>
+</svg>

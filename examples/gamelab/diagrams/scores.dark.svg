@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1059 628" width="1059" height="628" role="img" aria-label="Saving a score: the game, in a sandboxed frame, calls Gamelab.addScore(&quot;Maya&quot;, 1200) from lib/saves.js, which posts to the server's api/scores path for the lab. The server checks the signed token, a body of 64 KB at most and POST only under api/, and forwards it to the game server on the box. The game server accepts a first name of letters only and a whole-number score, at most 120 writes a minute, puts the item in the Saves &amp; Scores table and trims the board to the top ten, and returns rank 1, the best score and the top ten. The game shows New high score!">
+<title>Saving a score: the game, in a sandboxed frame, calls Gamelab.addScore(&quot;Maya&quot;, 1200) from lib/saves.js, which posts to the server's api/scores path for the lab. The server checks the signed token, a body of 64 KB at most and POST only under api/, and forwards it to the game server on the box. The game server accepts a first name of letters only and a whole-number score, at most 120 writes a minute, puts the item in the Saves &amp; Scores table and trims the board to the top ten, and returns rank 1, the best score and the top ten. The game shows New high score!</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #0d1117; }
+  .surface { fill: #111113; stroke: #3f3f46; stroke-width: 1.25; }
+  .accent { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1.5; }
+  .ghost { fill: #111113; stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #0a0a0b; stroke: #27272a; stroke-width: 1.25; }
+  .heading { fill: #8b8b94; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #fafafa; font-size: 13px; font-weight: 600; }
+  .body { fill: #a1a1aa; font-size: 11.5px; }
+  .muted { fill: #8b8b94; font-size: 10.5px; }
+  .label { fill: #a1a1aa; font-size: 10.5px; }
+  .labelAccent { fill: #2dd4bf; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #0a0a0b; stroke: #27272a; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #0d1117; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #71717a; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #2dd4bf; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #2dd4bf; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #71717a; }
+  .headAccent { fill: #2dd4bf; }
+  .lifeline { stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1; }
+  .frame { fill: none; stroke: #3f3f46; stroke-width: 1.25; }
+  .frameTab { fill: #0a0a0b; stroke: #3f3f46; stroke-width: 1.25; }
+  .divider { stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1; }
+  .badge { fill: #2dd4bf; }
+  .badgeText { fill: #0d1117; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="examples-gamelab-scores-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="examples-gamelab-scores-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="1059" height="628" rx="10"/>
+<line class="lifeline" x1="93.475" y1="72" x2="93.475" y2="552"/>
+<line class="lifeline" x1="373" y1="72" x2="373" y2="552"/>
+<line class="lifeline" x1="633.42" y1="72" x2="633.42" y2="552"/>
+<line class="lifeline" x1="969.0649999999999" y1="72" x2="969.0649999999999" y2="552"/>
+<text class="body halo" x="133.5" y="108.0">Gamelab.addScore(&quot;Maya&quot;,</text>
+<text class="body halo" x="133.5" y="124.0">1200), from lib/saves.js</text>
+<path class="edgeAccent" d="M93.475 134 H123.475 V150 H97.475" marker-end="url(#examples-gamelab-scores-headAccent)"/>
+<text class="body halo" x="233.2" y="174.0" text-anchor="middle">POST /labs/ID/play/TOKEN/api/scores</text>
+<path class="edgeAccent" d="M93.475 186 H370" marker-end="url(#examples-gamelab-scores-headAccent)"/>
+<text class="body halo" x="413.0" y="220.0">Signed token, 64 KB at most,</text>
+<text class="body halo" x="413.0" y="236.0">POST only under api/</text>
+<path class="edgeAccent" d="M373 246 H403 V262 H377" marker-end="url(#examples-gamelab-scores-headAccent)"/>
+<text class="body halo" x="503.2" y="286.0" text-anchor="middle">POST /play/api/scores</text>
+<path class="edgeAccent" d="M373 298 H630.42" marker-end="url(#examples-gamelab-scores-headAccent)"/>
+<text class="body halo" x="673.4" y="332.0">A first name of letters only,</text>
+<text class="body halo" x="673.4" y="348.0">a whole-number score, 120</text>
+<text class="body halo" x="673.4" y="364.0">writes a minute</text>
+<path class="edgeAccent" d="M633.42 374 H663.42 V390 H637.42" marker-end="url(#examples-gamelab-scores-headAccent)"/>
+<text class="body halo" x="801.2" y="414.0" text-anchor="middle">PutItem, then trim the board to the top ten</text>
+<path class="edgeAccent" d="M633.42 426 H966.0649999999999" marker-end="url(#examples-gamelab-scores-headAccent)"/>
+<text class="body halo" x="363.4" y="460.0" text-anchor="middle">rank 1, best, and the top ten</text>
+<path class="edge dashed" d="M633.42 472 H96.475" marker-end="url(#examples-gamelab-scores-head)"/>
+<text class="body halo" x="133.5" y="506.0">&quot;New high score!&quot;</text>
+<path class="edgeAccent" d="M93.475 516 H123.475 V532 H97.475" marker-end="url(#examples-gamelab-scores-headAccent)"/>
+<rect class="surface" x="20" y="16" width="146.95" height="56" rx="6"/>
+<text class="name" x="93.5" y="40.0" text-anchor="middle">The game</text>
+<text class="muted" x="93.5" y="58.0" text-anchor="middle">sandboxed frame</text>
+<rect class="surface" x="303.49" y="16" width="139.01999999999998" height="56" rx="6"/>
+<text class="name" x="373.0" y="49.0" text-anchor="middle">Gamelab server</text>
+<rect class="surface" x="575.805" y="16" width="115.23" height="56" rx="6"/>
+<text class="name" x="633.4" y="40.0" text-anchor="middle">Game server</text>
+<text class="muted" x="633.4" y="58.0" text-anchor="middle">on the box</text>
+<rect class="surface" x="899.555" y="16" width="139.01999999999998" height="56" rx="6"/>
+<text class="name" x="969.1" y="40.0" text-anchor="middle">Saves &amp; Scores</text>
+<text class="muted" x="969.1" y="58.0" text-anchor="middle">table</text>
+<rect class="surface" x="20" y="556" width="146.95" height="56" rx="6"/>
+<text class="name" x="93.5" y="580.0" text-anchor="middle">The game</text>
+<text class="muted" x="93.5" y="598.0" text-anchor="middle">sandboxed frame</text>
+<rect class="surface" x="303.49" y="556" width="139.01999999999998" height="56" rx="6"/>
+<text class="name" x="373.0" y="589.0" text-anchor="middle">Gamelab server</text>
+<rect class="surface" x="575.805" y="556" width="115.23" height="56" rx="6"/>
+<text class="name" x="633.4" y="580.0" text-anchor="middle">Game server</text>
+<text class="muted" x="633.4" y="598.0" text-anchor="middle">on the box</text>
+<rect class="surface" x="899.555" y="556" width="139.01999999999998" height="56" rx="6"/>
+<text class="name" x="969.1" y="580.0" text-anchor="middle">Saves &amp; Scores</text>
+<text class="muted" x="969.1" y="598.0" text-anchor="middle">table</text>
+</svg>

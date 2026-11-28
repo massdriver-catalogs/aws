@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 935 782" width="935" height="782" role="img" aria-label="The platform project deploys vpc and dns-zone, which connect to ecs-cluster, and the apps project connects ecr-repository to codebase. Both are environment defaults of every app project: visits, care and billing. In visits, http-api, dynamodb-table and sqs-queue connect to the tendwell-visits API and its reminder sender. In care, postgres, valkey and s3-bucket connect to tendwell-care. In billing, mariadb and s3-bucket connect to tendwell-billing. tendwell-visits connects to tendwell-care through the tendwell-visits-api resource, and tendwell-care to tendwell-billing through tendwell-care-api.">
+<title>The platform project deploys vpc and dns-zone, which connect to ecs-cluster, and the apps project connects ecr-repository to codebase. Both are environment defaults of every app project: visits, care and billing. In visits, http-api, dynamodb-table and sqs-queue connect to the tendwell-visits API and its reminder sender. In care, postgres, valkey and s3-bucket connect to tendwell-care. In billing, mariadb and s3-bucket connect to tendwell-billing. tendwell-visits connects to tendwell-care through the tendwell-visits-api resource, and tendwell-care to tendwell-billing through tendwell-care-api.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #ffffff; }
+  .surface { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; }
+  .accent { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1.5; }
+  .ghost { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1.25; }
+  .heading { fill: #6b7280; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #111827; font-size: 13px; font-weight: 600; }
+  .body { fill: #4b5563; font-size: 11.5px; }
+  .muted { fill: #6b7280; font-size: 10.5px; }
+  .label { fill: #4b5563; font-size: 10.5px; }
+  .labelAccent { fill: #0d9488; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #9ca3af; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #0d9488; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #0d9488; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #9ca3af; }
+  .headAccent { fill: #0d9488; }
+  .lifeline { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .frame { fill: none; stroke: #d1d5db; stroke-width: 1.25; }
+  .frameTab { fill: #f9fafb; stroke: #d1d5db; stroke-width: 1.25; }
+  .divider { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .badge { fill: #0d9488; }
+  .badgeText { fill: #ffffff; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="examples-telehealth-projects-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="examples-telehealth-projects-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="935" height="782" rx="10"/>
+<rect class="well" x="16" y="44" width="300" height="196" rx="8"/>
+<text class="heading" x="28.0" y="62.0">PLATFORM</text>
+<rect class="well" x="16" y="300" width="300" height="110" rx="8"/>
+<text class="heading" x="28.0" y="318.0">APPS</text>
+<rect class="well" x="400" y="16" width="440" height="750" rx="8"/>
+<text class="heading" x="412.0" y="34.0">APP PROJECTS</text>
+<rect class="well" x="416" y="44" width="408" height="250" rx="8"/>
+<text class="heading" x="428.0" y="62.0">VISITS</text>
+<rect class="well" x="416" y="314" width="408" height="236" rx="8"/>
+<text class="heading" x="428.0" y="332.0">CARE</text>
+<rect class="well" x="416" y="570" width="408" height="180" rx="8"/>
+<text class="heading" x="428.0" y="588.0">BILLING</text>
+<path class="edge" d="M58.0 118.0 C58.0 153.6, 119.2 126.4, 119.2 166.0" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M226.0 118.0 C226.0 146.0, 188.8 134.0, 188.8 166.0" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M172.0 361.0 C196.0 361.0, 176.0 361.0, 204.0 361.0" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M524.0 86.4 C574.9 86.4, 579.1 101.4, 634.0 101.4" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M572.0 154.0 C604.9 154.0, 597.1 118.5, 634.0 118.5" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M532.0 232.4 C595.9 232.4, 566.1 135.6, 634.0 135.6" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M524.0 111.6 C590.9 111.6, 563.1 209.4, 634.0 209.4" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M572.0 184.0 C606.6 184.0, 595.4 226.5, 634.0 226.5" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M532.0 257.6 C579.2 257.6, 582.8 243.6, 634.0 243.6" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M524.0 373.0 C578.4 373.0, 575.6 418.4, 634.0 418.4" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M508.0 439.0 C565.7 439.0, 572.3 431.0, 634.0 431.0" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M532.0 505.0 C586.3 505.0, 575.7 443.6, 634.0 443.6" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M516.0 635.0 C570.9 635.0, 575.1 656.4, 634.0 656.4" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edge" d="M532.0 715.0 C581.2 715.0, 580.8 681.6, 634.0 681.6" marker-end="url(#examples-telehealth-projects-head)"/>
+<path class="edgeAccent" d="M783.0 118.5 C873.0 118.5, 864.0 418.4, 770.0 418.4" marker-end="url(#examples-telehealth-projects-headAccent)"/>
+<path class="edgeAccent" d="M768.0 443.6 C858.0 443.6, 887.0 669.0, 793.0 669.0" marker-end="url(#examples-telehealth-projects-headAccent)"/>
+<path class="edgeAccent dashed" d="M316.0 142.0 C353.8 142.0, 356.2 143.5, 398.0 143.5" marker-end="url(#examples-telehealth-projects-headAccent)"/>
+<path class="edgeAccent dashed" d="M316.0 355.0 C353.8 355.0, 356.2 353.5, 398.0 353.5" marker-end="url(#examples-telehealth-projects-headAccent)"/>
+<rect class="surface" x="32" y="76" width="52" height="42" rx="6"/>
+<text class="name" x="46.0" y="98.0">vpc</text>
+<rect class="surface" x="180" y="76" width="92" height="42" rx="6"/>
+<text class="name" x="194.0" y="98.0">dns-zone</text>
+<rect class="surface" x="96" y="168" width="116" height="42" rx="6"/>
+<text class="name" x="110.0" y="190.0">ecs-cluster</text>
+<rect class="surface" x="32" y="340" width="140" height="42" rx="6"/>
+<text class="name" x="46.0" y="362.0">ecr-repository</text>
+<rect class="surface" x="206" y="340" width="92" height="42" rx="6"/>
+<text class="name" x="220.0" y="362.0">codebase</text>
+<rect class="surface" x="432" y="78" width="92" height="42" rx="6"/>
+<text class="name" x="446.0" y="100.0">http-api</text>
+<path class="surface" d="M432 150 A70 6 0 0 1 572 150 V188 A70 6 0 0 1 432 188 Z"/>
+<path class="surface" d="M432 150 A70 6 0 0 0 572 150" style="fill:none"/>
+<text class="name" x="446.0" y="174.0">dynamodb-table</text>
+<rect class="surface" x="432" y="224" width="100" height="42" rx="6"/>
+<text class="name" x="446.0" y="246.0">sqs-queue</text>
+<rect class="accent" x="636" y="90" width="147" height="57" rx="6"/>
+<text class="name" x="650.0" y="112.0">tendwell-visits</text>
+<text class="muted" x="650.0" y="130.0">the API</text>
+<rect class="accent" x="636" y="198" width="147" height="57" rx="6"/>
+<text class="name" x="650.0" y="220.0">tendwell-visits</text>
+<text class="muted" x="650.0" y="238.0">reminder sender</text>
+<path class="surface" d="M432 354 A46 6 0 0 1 524 354 V392 A46 6 0 0 1 432 392 Z"/>
+<path class="surface" d="M432 354 A46 6 0 0 0 524 354" style="fill:none"/>
+<text class="name" x="446.0" y="378.0">postgres</text>
+<path class="surface" d="M432 420 A38 6 0 0 1 508 420 V458 A38 6 0 0 1 432 458 Z"/>
+<path class="surface" d="M432 420 A38 6 0 0 0 508 420" style="fill:none"/>
+<text class="name" x="446.0" y="444.0">valkey</text>
+<path class="surface" d="M432 486 A50 6 0 0 1 532 486 V524 A50 6 0 0 1 432 524 Z"/>
+<path class="surface" d="M432 486 A50 6 0 0 0 532 486" style="fill:none"/>
+<text class="name" x="446.0" y="510.0">s3-bucket</text>
+<rect class="accent" x="636" y="410" width="132" height="42" rx="6"/>
+<text class="name" x="650.0" y="432.0">tendwell-care</text>
+<path class="surface" d="M432 616 A42 6 0 0 1 516 616 V654 A42 6 0 0 1 432 654 Z"/>
+<path class="surface" d="M432 616 A42 6 0 0 0 516 616" style="fill:none"/>
+<text class="name" x="446.0" y="640.0">mariadb</text>
+<path class="surface" d="M432 696 A50 6 0 0 1 532 696 V734 A50 6 0 0 1 432 734 Z"/>
+<path class="surface" d="M432 696 A50 6 0 0 0 532 696" style="fill:none"/>
+<text class="name" x="446.0" y="720.0">s3-bucket</text>
+<rect class="accent" x="636" y="648" width="155" height="42" rx="6"/>
+<text class="name" x="650.0" y="670.0">tendwell-billing</text>
+<rect class="chip" x="847.5" y="251.4" width="76.0" height="34" rx="4"/>
+<text class="labelAccent" x="885.5" y="265.4" text-anchor="middle">tendwell-</text>
+<text class="labelAccent" x="885.5" y="279.4" text-anchor="middle">visits-api</text>
+<rect class="chip" x="854.7" y="539.3" width="69.6" height="34" rx="4"/>
+<text class="labelAccent" x="889.5" y="553.3" text-anchor="middle">tendwell-</text>
+<text class="labelAccent" x="889.5" y="567.3" text-anchor="middle">care-api</text>
+<rect class="chip" x="314.3" y="105.8" width="82.5" height="34" rx="4"/>
+<text class="labelAccent" x="355.5" y="119.8" text-anchor="middle">environment</text>
+<text class="labelAccent" x="355.5" y="133.8" text-anchor="middle">defaults</text>
+<rect class="chip" x="323.9" y="317.3" width="63.2" height="34" rx="4"/>
+<text class="labelAccent" x="355.5" y="331.3" text-anchor="middle">default:</text>
+<text class="labelAccent" x="355.5" y="345.3" text-anchor="middle">codebase</text>
+</svg>

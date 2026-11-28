@@ -24,41 +24,10 @@ Each team's group can change only its own project and read the rest. Platform En
 
 `sandboxes` has a `template`, and sandbox-on-join forks it for each person who joins a team. The template deploys the workspace image's registry and codebase once; `bootstrap.sh provision dev` builds [`bundles/dev-workspace/image`](../../bundles/dev-workspace) into it and sets the codebase, the dev cluster and VPC, and a Sandbox Provisioner credential as the template's defaults, which every fork copies. In a fork, the developer deploys **Workspace** for a shell with Claude Code, OpenCode, `mass` and git, and **Developer VPN** to reach the dev VPC from their laptop. `./bootstrap.sh sandbox <name>` does the same by hand and prints the command to get in.
 
-```mermaid
-flowchart LR
-  subgraph platform
-    network[vpc] --> cluster[ecs-cluster]
-    dns[dns-zone] --> cluster
-  end
-  subgraph visits
-    api[http-api] --> vapp[tendwell-visits]
-    slots[(dynamodb-table)] --> vapp
-    q[sqs-queue] --> vapp
-    api --> sender[tendwell-visits: reminder sender]
-    slots --> sender
-    q --> sender
-  end
-  subgraph care
-    pg[(postgres)] --> capp[tendwell-care]
-    vk[(valkey)] --> capp
-    docs[(s3-bucket)] --> capp
-  end
-  subgraph billing
-    db[(mariadb)] --> bapp[tendwell-billing]
-    claims[(s3-bucket)] --> bapp
-  end
-  subgraph apps
-    reg[ecr-repository] --> cb[codebase]
-  end
-  vapp -- tendwell-visits-api --> capp
-  capp -- tendwell-care-api --> bapp
-  platform -. environment defaults .-> visits
-  platform -. environment defaults .-> care
-  platform -. environment defaults .-> billing
-  cb -. environment default .-> visits
-  cb -. environment default .-> care
-  cb -. environment default .-> billing
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/projects.dark.svg">
+  <img src="diagrams/projects.svg" alt="The platform project deploys vpc and dns-zone, which connect to ecs-cluster, and the apps project connects ecr-repository to codebase. Both are environment defaults of every app project: visits, care and billing. In visits, http-api, dynamodb-table and sqs-queue connect to the tendwell-visits API and its reminder sender. In care, postgres, valkey and s3-bucket connect to tendwell-care. In billing, mariadb and s3-bucket connect to tendwell-billing. tendwell-visits connects to tendwell-care through the tendwell-visits-api resource, and tendwell-care to tendwell-billing through tendwell-care-api.">
+</picture>
 
 ## The apps
 

@@ -7,26 +7,10 @@ A private box where a coding agent builds browser games with a kid. One Fargate 
 
 Something inside the VPC, such as the Gamelab server, proxies both to a browser. The box has no public address and no load balancer.
 
-```mermaid
-flowchart LR
-  proxy["A proxy inside the VPC<br>such as the Gamelab server"]
-  subgraph task["Fargate task, private subnets"]
-    start["lab.sh, as root<br>writes the prompt and settings<br>to /etc/gamelab"]
-    agent["opencode serve :4096<br>as the player, with LAB_PASSWORD"]
-    game["game-server.mjs :8080<br>as gameserver, uid 10002<br>/play/ read only, /play/api/ saves"]
-    start --> agent & game
-  end
-  home[("EFS home<br>/home/player, uid 10001")]
-  claude{{"Anthropic API"}}
-  table[("gamedata<br>DynamoDB, optional")]
-
-  proxy -- "basic auth" --> agent
-  proxy -- "GET, and POST/PUT to /play/api/" --> game
-  agent -- "edits ~/game" --> home
-  game -- "reads ~/game" --> home
-  agent --> claude
-  game -. "task role, read-write on this table only" .-> table
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/task.dark.svg">
+  <img src="diagrams/task.svg" alt="A proxy inside the VPC, such as the Gamelab server, reaches the lab box's Fargate task in private subnets. lab.sh runs as root, writes the prompt and settings to /etc/gamelab, then starts opencode serve on port 4096 as the player with LAB_PASSWORD, and game-server.mjs on port 8080 as gameserver (uid 10002), with /play/ read only and /play/api/ for saves. The proxy uses basic auth to the helper, and GET plus POST and PUT under /play/api/ to the game server. The helper edits ~/game and the game server reads it, on the EFS home /home/player (uid 10001). The helper calls the Anthropic API. The game server reads and writes the optional gamedata DynamoDB table with the task role, on that table only.">
+</picture>
 
 The proxy finds the box by name. The box registers a private name in Cloud Map, `box.<name prefix>.internal`, which follows the task across restarts and is published as the `lab` resource's `hostname`. Only one task runs at a time, so two never write to the same home folder.
 

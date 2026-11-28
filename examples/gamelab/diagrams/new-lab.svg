@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1069 1026" width="1069" height="1026" role="img" aria-label="Making a lab: the parent submits the first name, age, lesson, plan, extras and Anthropic key. The server checks them, forks labs-template into labs-maya with lab_plan and player_age, and shows the lab page as getting ready. In the background, for up to 90 minutes, it sets the LAB_PASSWORD and ANTHROPIC_API_KEY secrets on labs-maya-box, deploys labs-maya-gamedata when saves and scores were picked and waits for it, then deploys labs-maya-box with the name, age, lesson, model and the plan's size, waits for it, and tells the parent the lab is ready to play.">
+<title>Making a lab: the parent submits the first name, age, lesson, plan, extras and Anthropic key. The server checks them, forks labs-template into labs-maya with lab_plan and player_age, and shows the lab page as getting ready. In the background, for up to 90 minutes, it sets the LAB_PASSWORD and ANTHROPIC_API_KEY secrets on labs-maya-box, deploys labs-maya-gamedata when saves and scores were picked and waits for it, then deploys labs-maya-box with the name, age, lesson, model and the plan's size, waits for it, and tells the parent the lab is ready to play.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #ffffff; }
+  .surface { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; }
+  .accent { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1.5; }
+  .ghost { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1.25; }
+  .heading { fill: #6b7280; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #111827; font-size: 13px; font-weight: 600; }
+  .body { fill: #4b5563; font-size: 11.5px; }
+  .muted { fill: #6b7280; font-size: 10.5px; }
+  .label { fill: #4b5563; font-size: 10.5px; }
+  .labelAccent { fill: #0d9488; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #9ca3af; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #0d9488; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #0d9488; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #9ca3af; }
+  .headAccent { fill: #0d9488; }
+  .lifeline { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .frame { fill: none; stroke: #d1d5db; stroke-width: 1.25; }
+  .frameTab { fill: #f9fafb; stroke: #d1d5db; stroke-width: 1.25; }
+  .divider { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .badge { fill: #0d9488; }
+  .badgeText { fill: #ffffff; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="examples-gamelab-new-lab-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="examples-gamelab-new-lab-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="1069" height="1026" rx="10"/>
+<line class="lifeline" x1="57.79" y1="54" x2="57.79" y2="968"/>
+<line class="lifeline" x1="400.45" y1="54" x2="400.45" y2="968"/>
+<line class="lifeline" x1="729.0799999999999" y1="54" x2="729.0799999999999" y2="968"/>
+<line class="lifeline" x1="1022.635" y1="54" x2="1022.635" y2="968"/>
+<rect class="frame" x="8" y="548" width="1052.53" height="180" rx="6"/>
+<path class="frameTab" d="M8 554 Q8 548 14 548 H45.215 V562 L37.215 568 H8 Z"/>
+<text class="heading" x="16.0" y="562.0">OPT</text>
+<text class="labelAccent" x="55.2" y="562.0">Saves &amp; scores picked</text>
+<text class="body halo" x="229.1" y="90.0" text-anchor="middle">New lab: first name, age, lesson (optional),</text>
+<text class="body halo" x="229.1" y="106.0" text-anchor="middle">plan, extras, Anthropic key</text>
+<path class="edgeAccent" d="M57.79 118 H397.45" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="71.78999999999999" cy="118" r="8"/><text class="badgeText" x="71.8" y="121.4" text-anchor="middle">1</text>
+<text class="body halo" x="440.4" y="152.0">Check the name, age 5 to 17,</text>
+<text class="body halo" x="440.4" y="168.0">the lesson, the plan, and a</text>
+<text class="body halo" x="440.4" y="184.0">key that starts with sk-ant-</text>
+<path class="edgeAccent" d="M400.45 194 H430.45 V210 H404.45" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="402.45" cy="148" r="8"/><text class="badgeText" x="402.4" y="151.4" text-anchor="middle">2</text>
+<text class="body halo" x="564.8" y="234.0" text-anchor="middle">forkEnvironment labs-template → labs-maya,</text>
+<text class="body halo" x="564.8" y="250.0" text-anchor="middle">with lab_plan and player_age</text>
+<path class="edgeAccent" d="M400.45 262 H726.0799999999999" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="414.45" cy="262" r="8"/><text class="badgeText" x="414.4" y="265.4" text-anchor="middle">3</text>
+<text class="body halo" x="564.8" y="296.0" text-anchor="middle">The environment exists</text>
+<path class="edge dashed" d="M729.0799999999999 308 H403.45" marker-end="url(#examples-gamelab-new-lab-head)"/>
+<circle class="badge" cx="715.0799999999999" cy="308" r="8"/><text class="badgeText" x="715.1" y="311.4" text-anchor="middle">4</text>
+<text class="body halo" x="229.1" y="342.0" text-anchor="middle">The lab page: Getting the lab ready</text>
+<path class="edge dashed" d="M400.45 354 H60.79" marker-end="url(#examples-gamelab-new-lab-head)"/>
+<circle class="badge" cx="386.45" cy="354" r="8"/><text class="badgeText" x="386.4" y="357.4" text-anchor="middle">5</text>
+<rect class="note" x="360.45000000000005" y="378" width="408.6299999999999" height="30" rx="5"/>
+<text class="body" x="564.8" y="396.0" text-anchor="middle">The rest runs in the background, for up to 90 minutes</text>
+<text class="body halo" x="564.8" y="434.0" text-anchor="middle">setInstanceSecret LAB_PASSWORD on</text>
+<text class="body halo" x="564.8" y="450.0" text-anchor="middle">labs-maya-box</text>
+<path class="edgeAccent" d="M400.45 462 H726.0799999999999" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="414.45" cy="462" r="8"/><text class="badgeText" x="414.4" y="465.4" text-anchor="middle">6</text>
+<text class="body halo" x="564.8" y="496.0" text-anchor="middle">setInstanceSecret ANTHROPIC_API_KEY on</text>
+<text class="body halo" x="564.8" y="512.0" text-anchor="middle">labs-maya-box</text>
+<path class="edgeAccent" d="M400.45 524 H726.0799999999999" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="414.45" cy="524" r="8"/><text class="badgeText" x="414.4" y="527.4" text-anchor="middle">7</text>
+<text class="body halo" x="564.8" y="588.0" text-anchor="middle">createDeployment labs-maya-gamedata, with</text>
+<text class="body halo" x="564.8" y="604.0" text-anchor="middle">the plan's table settings</text>
+<path class="edgeAccent" d="M400.45 616 H726.0799999999999" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="414.45" cy="616" r="8"/><text class="badgeText" x="414.4" y="619.4" text-anchor="middle">8</text>
+<text class="body halo" x="875.9" y="650.0" text-anchor="middle">DynamoDB table, on demand</text>
+<path class="edgeAccent" d="M729.0799999999999 662 H1019.635" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="743.0799999999999" cy="662" r="8"/><text class="badgeText" x="743.1" y="665.4" text-anchor="middle">9</text>
+<text class="body halo" x="564.8" y="696.0" text-anchor="middle">Check every 15 seconds until it completes</text>
+<path class="edgeAccent" d="M400.45 708 H726.0799999999999" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="414.45" cy="708" r="8"/><text class="badgeText" x="414.4" y="711.4" text-anchor="middle">10</text>
+<text class="body halo" x="564.8" y="756.0" text-anchor="middle">createDeployment labs-maya-box: name, age,</text>
+<text class="body halo" x="564.8" y="772.0" text-anchor="middle">lesson, model, the plan's size</text>
+<path class="edgeAccent" d="M400.45 784 H726.0799999999999" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="414.45" cy="784" r="8"/><text class="badgeText" x="414.4" y="787.4" text-anchor="middle">11</text>
+<text class="body halo" x="875.9" y="818.0" text-anchor="middle">Fargate task, EFS home, private name,</text>
+<text class="body halo" x="875.9" y="834.0" text-anchor="middle">secrets</text>
+<path class="edgeAccent" d="M729.0799999999999 846 H1019.635" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="743.0799999999999" cy="846" r="8"/><text class="badgeText" x="743.1" y="849.4" text-anchor="middle">12</text>
+<text class="body halo" x="564.8" y="880.0" text-anchor="middle">Check every 15 seconds until it completes</text>
+<path class="edgeAccent" d="M400.45 892 H726.0799999999999" marker-end="url(#examples-gamelab-new-lab-headAccent)"/>
+<circle class="badge" cx="414.45" cy="892" r="8"/><text class="badgeText" x="414.4" y="895.4" text-anchor="middle">13</text>
+<text class="body halo" x="229.1" y="926.0" text-anchor="middle">Ready to play</text>
+<path class="edge dashed" d="M400.45 938 H60.79" marker-end="url(#examples-gamelab-new-lab-head)"/>
+<circle class="badge" cx="386.45" cy="938" r="8"/><text class="badgeText" x="386.4" y="941.4" text-anchor="middle">14</text>
+<rect class="accent" x="20" y="16" width="75.58" height="38" rx="19"/>
+<text class="name" x="57.8" y="40.0" text-anchor="middle">Parent</text>
+<rect class="surface" x="330.94" y="16" width="139.01999999999998" height="38" rx="6"/>
+<text class="name" x="400.4" y="40.0" text-anchor="middle">Gamelab server</text>
+<rect class="surface" x="675.43" y="16" width="107.3" height="38" rx="6"/>
+<text class="name" x="729.1" y="40.0" text-anchor="middle">Massdriver</text>
+<rect class="surface" x="996.74" y="16" width="51.79" height="38" rx="6"/>
+<text class="name" x="1022.6" y="40.0" text-anchor="middle">AWS</text>
+<rect class="accent" x="20" y="972" width="75.58" height="38" rx="19"/>
+<text class="name" x="57.8" y="996.0" text-anchor="middle">Parent</text>
+<rect class="surface" x="330.94" y="972" width="139.01999999999998" height="38" rx="6"/>
+<text class="name" x="400.4" y="996.0" text-anchor="middle">Gamelab server</text>
+<rect class="surface" x="675.43" y="972" width="107.3" height="38" rx="6"/>
+<text class="name" x="729.1" y="996.0" text-anchor="middle">Massdriver</text>
+<rect class="surface" x="996.74" y="972" width="51.79" height="38" rx="6"/>
+<text class="name" x="1022.6" y="996.0" text-anchor="middle">AWS</text>
+</svg>

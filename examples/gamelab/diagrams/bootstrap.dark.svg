@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1011 134" width="1011" height="134" role="img" aria-label="bootstrap.sh publish publishes the resource types, the bundles and the server's bundle. bootstrap.sh projects applies bootstrap.tf: projects, canvases, groups, policies, the service account and the AWS credential. bootstrap.sh provision deploys the platform, then the lab image, then the server. The server then forks labs on the template's versions.">
+<title>bootstrap.sh publish publishes the resource types, the bundles and the server's bundle. bootstrap.sh projects applies bootstrap.tf: projects, canvases, groups, policies, the service account and the AWS credential. bootstrap.sh provision deploys the platform, then the lab image, then the server. The server then forks labs on the template's versions.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #0d1117; }
+  .surface { fill: #111113; stroke: #3f3f46; stroke-width: 1.25; }
+  .accent { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1.5; }
+  .ghost { fill: #111113; stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #0a0a0b; stroke: #27272a; stroke-width: 1.25; }
+  .heading { fill: #8b8b94; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #fafafa; font-size: 13px; font-weight: 600; }
+  .body { fill: #a1a1aa; font-size: 11.5px; }
+  .muted { fill: #8b8b94; font-size: 10.5px; }
+  .label { fill: #a1a1aa; font-size: 10.5px; }
+  .labelAccent { fill: #2dd4bf; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #0a0a0b; stroke: #27272a; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #0d1117; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #71717a; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #2dd4bf; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #2dd4bf; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #71717a; }
+  .headAccent { fill: #2dd4bf; }
+  .lifeline { stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1; }
+  .frame { fill: none; stroke: #3f3f46; stroke-width: 1.25; }
+  .frameTab { fill: #0a0a0b; stroke: #3f3f46; stroke-width: 1.25; }
+  .divider { stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1; }
+  .badge { fill: #2dd4bf; }
+  .badgeText { fill: #0d1117; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="examples-gamelab-bootstrap-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="examples-gamelab-bootstrap-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="1011" height="134" rx="10"/>
+<path class="edge" d="M203.0 67.0 C228.7 67.0, 228.3 67.0, 258.0 67.0" marker-end="url(#examples-gamelab-bootstrap-head)"/>
+<path class="edge" d="M461.0 67.0 C492.1 67.0, 492.9 67.0, 528.0 67.0" marker-end="url(#examples-gamelab-bootstrap-head)"/>
+<path class="edge" d="M733.0 67.0 C763.1 67.0, 763.9 67.0, 798.0 67.0" marker-end="url(#examples-gamelab-bootstrap-head)"/>
+<rect class="surface" x="16" y="16" width="187" height="102" rx="6"/>
+<text class="name" x="30.0" y="53.0">bootstrap.sh publish</text>
+<text class="muted" x="30.0" y="71.0">resource types, bundles</text>
+<text class="muted" x="30.0" y="86.0">and the server's bundle</text>
+<rect class="surface" x="260" y="16" width="201" height="102" rx="6"/>
+<text class="name" x="274.0" y="38.0">bootstrap.sh projects</text>
+<text class="muted" x="274.0" y="56.0">bootstrap.tf: projects,</text>
+<text class="muted" x="274.0" y="71.0">canvases, groups, policies,</text>
+<text class="muted" x="274.0" y="86.0">service account,</text>
+<text class="muted" x="274.0" y="101.0">AWS credential</text>
+<rect class="surface" x="530" y="16" width="203" height="102" rx="6"/>
+<text class="name" x="544.0" y="53.0">bootstrap.sh provision</text>
+<text class="muted" x="544.0" y="71.0">platform, then the lab</text>
+<text class="muted" x="544.0" y="86.0">image, then the server</text>
+<rect class="accent" x="800" y="16" width="195" height="102" rx="6"/>
+<text class="name" x="814.0" y="53.0">The server forks labs</text>
+<text class="muted" x="814.0" y="71.0">on the template's</text>
+<text class="muted" x="814.0" y="86.0">versions</text>
+</svg>

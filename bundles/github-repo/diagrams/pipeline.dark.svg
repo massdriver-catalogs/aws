@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 936 205" width="936" height="205" role="img" aria-label="A push to the default branch runs a secret scan, builds the image, scans it, and pushes it to ECR tagged with the git SHA. If a release target is set, the pipeline deploys the image into the project; otherwise it stops.">
+<title>A push to the default branch runs a secret scan, builds the image, scans it, and pushes it to ECR tagged with the git SHA. If a release target is set, the pipeline deploys the image into the project; otherwise it stops.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #0d1117; }
+  .surface { fill: #111113; stroke: #3f3f46; stroke-width: 1.25; }
+  .accent { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1.5; }
+  .ghost { fill: #111113; stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #0a0a0b; stroke: #27272a; stroke-width: 1.25; }
+  .heading { fill: #8b8b94; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #fafafa; font-size: 13px; font-weight: 600; }
+  .body { fill: #a1a1aa; font-size: 11.5px; }
+  .muted { fill: #8b8b94; font-size: 10.5px; }
+  .label { fill: #a1a1aa; font-size: 10.5px; }
+  .labelAccent { fill: #2dd4bf; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #0a0a0b; stroke: #27272a; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #0d1117; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #71717a; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #2dd4bf; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #2dd4bf; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #71717a; }
+  .headAccent { fill: #2dd4bf; }
+  .lifeline { stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1; }
+  .frame { fill: none; stroke: #3f3f46; stroke-width: 1.25; }
+  .frameTab { fill: #0a0a0b; stroke: #3f3f46; stroke-width: 1.25; }
+  .divider { stroke: #3f3f46; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #0f2422; stroke: #2dd4bf; stroke-width: 1; }
+  .badge { fill: #2dd4bf; }
+  .badgeText { fill: #0d1117; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="bundles-github-repo-pipeline-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="bundles-github-repo-pipeline-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="936" height="205" rx="10"/>
+<path class="edge" d="M179.0 44.5 C203.0 44.5, 180.0 44.5, 208.0 44.5" marker-end="url(#bundles-github-repo-pipeline-head)"/>
+<path class="edge" d="M326.0 44.5 C350.0 44.5, 320.0 44.5, 348.0 44.5" marker-end="url(#bundles-github-repo-pipeline-head)"/>
+<path class="edge" d="M466.0 44.5 C490.0 44.5, 460.0 44.5, 488.0 44.5" marker-end="url(#bundles-github-repo-pipeline-head)"/>
+<path class="edge" d="M598.0 44.5 C622.0 44.5, 600.0 44.5, 628.0 44.5" marker-end="url(#bundles-github-repo-pipeline-head)"/>
+<path class="edge" d="M688.0 73.0 C688.0 97.0, 699.5 80.0, 699.5 108.0" marker-end="url(#bundles-github-repo-pipeline-head)"/>
+<path class="edgeAccent" d="M610.0 149.5 C556.3 149.5, 550.7 158.5, 493.0 158.5" marker-end="url(#bundles-github-repo-pipeline-headAccent)"/>
+<path class="edge" d="M789.0 149.5 C821.4 149.5, 821.6 161.0, 858.0 161.0" marker-end="url(#bundles-github-repo-pipeline-head)"/>
+<rect class="surface" x="16" y="16" width="163" height="57" rx="18"/>
+<text class="name" x="97.5" y="41.0" text-anchor="middle">push</text>
+<text class="muted" x="97.5" y="59.0" text-anchor="middle">to the default branch</text>
+<rect class="surface" x="210" y="16" width="116" height="57" rx="6"/>
+<text class="name" x="224.0" y="45.5">secret scan</text>
+<rect class="surface" x="350" y="16" width="116" height="57" rx="6"/>
+<text class="name" x="364.0" y="45.5">build image</text>
+<rect class="surface" x="490" y="16" width="108" height="57" rx="6"/>
+<text class="name" x="504.0" y="45.5">image scan</text>
+<rect class="surface" x="630" y="16" width="116" height="57" rx="6"/>
+<text class="name" x="644.0" y="38.0">push to ECR</text>
+<text class="muted" x="644.0" y="56.0">:git-sha</text>
+<path class="surface" d="M699.51 110 L789.02 149.5 L699.51 189 L610 149.5 Z"/>
+<text class="name" x="699.5" y="146.0" text-anchor="middle">release target</text>
+<text class="muted" x="699.5" y="164.0" text-anchor="middle">set?</text>
+<rect class="accent" x="360" y="130" width="131" height="57" rx="6"/>
+<text class="name" x="374.0" y="152.0">deploy</text>
+<text class="muted" x="374.0" y="170.0">into the project</text>
+<rect class="ghost" x="860" y="140" width="60" height="42" rx="6"/>
+<text class="name" x="874.0" y="162.0">stop</text>
+<rect class="chip" x="537.4" y="144.0" width="31.2" height="20" rx="4"/>
+<text class="labelAccent" x="553.0" y="158.0" text-anchor="middle">yes</text>
+<rect class="chip" x="809.6" y="145.3" width="24.8" height="20" rx="4"/>
+<text class="label" x="822.0" y="159.3" text-anchor="middle">no</text>
+</svg>

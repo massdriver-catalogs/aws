@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 736 710" width="736" height="710" role="img" aria-label="The AWS credential, open to every environment, is the default of platform main and of the ruby and static templates. platform main (Network, DNS Zone, Router) shares the network and cluster with the ruby, node and python projects as defaults of their templates. The ruby template deploys its Image Repository and Codebase and links, without deploying, Web, Worker, Postgres and Key-Value Store; its codebase is its own default. Forks copy the defaults into ruby-dev (Web), ruby-staging (Web, Postgres), ruby-production (Web, Worker, Postgres, Key-Value Store) and ruby-pr42 (Web), and changes promote from dev to staging to production. The static template deploys an Image Repository and Codebase and links Endpoint, Site and Files; static-demo is forked from it.">
+<title>The AWS credential, open to every environment, is the default of platform main and of the ruby and static templates. platform main (Network, DNS Zone, Router) shares the network and cluster with the ruby, node and python projects as defaults of their templates. The ruby template deploys its Image Repository and Codebase and links, without deploying, Web, Worker, Postgres and Key-Value Store; its codebase is its own default. Forks copy the defaults into ruby-dev (Web), ruby-staging (Web, Postgres), ruby-production (Web, Worker, Postgres, Key-Value Store) and ruby-pr42 (Web), and changes promote from dev to staging to production. The static template deploys an Image Repository and Codebase and links Endpoint, Site and Files; static-demo is forked from it.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #ffffff; }
+  .surface { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; }
+  .accent { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1.5; }
+  .ghost { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1.25; }
+  .heading { fill: #6b7280; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #111827; font-size: 13px; font-weight: 600; }
+  .body { fill: #4b5563; font-size: 11.5px; }
+  .muted { fill: #6b7280; font-size: 10.5px; }
+  .label { fill: #4b5563; font-size: 10.5px; }
+  .labelAccent { fill: #0d9488; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #9ca3af; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #0d9488; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #0d9488; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #9ca3af; }
+  .headAccent { fill: #0d9488; }
+  .lifeline { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .frame { fill: none; stroke: #d1d5db; stroke-width: 1.25; }
+  .frameTab { fill: #f9fafb; stroke: #d1d5db; stroke-width: 1.25; }
+  .divider { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .badge { fill: #0d9488; }
+  .badgeText { fill: #ffffff; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="examples-rocketsled-topology-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="examples-rocketsled-topology-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="736" height="710" rx="10"/>
+<rect class="well" x="16" y="16" width="300" height="96" rx="8"/>
+<text class="heading" x="28.0" y="34.0">PROJECT: PLATFORM</text>
+<rect class="well" x="16" y="180" width="680" height="366" rx="8"/>
+<text class="heading" x="28.0" y="198.0">PROJECT: RUBY</text>
+<rect class="well" x="16" y="570" width="680" height="124" rx="8"/>
+<text class="heading" x="28.0" y="588.0">PROJECT: STATIC</text>
+<path class="edge" d="M88.7 103.0 C88.7 177.0, 109.7 186.0, 109.7 264.0" marker-end="url(#examples-rocketsled-topology-head)"/>
+<path class="edgeThick" d="M291.0 286.4 C378.5 286.4, 386.5 240.5, 478.0 240.5" marker-end="url(#examples-rocketsled-topology-headAccent)"/>
+<path class="edgeThick" d="M291.0 306.8 C376.2 306.8, 388.8 318.5, 478.0 318.5" marker-end="url(#examples-rocketsled-topology-headAccent)"/>
+<path class="edgeThick" d="M291.0 327.2 C381.0 327.2, 384.0 404.0, 478.0 404.0" marker-end="url(#examples-rocketsled-topology-headAccent)"/>
+<path class="edgeThick" d="M291.0 347.6 C381.0 347.6, 384.0 494.5, 478.0 494.5" marker-end="url(#examples-rocketsled-topology-headAccent)"/>
+<path class="edgeAccent dashed" d="M572.0 240.5 C603.0 240.5, 641.0 301.4, 606.0 301.4" marker-end="url(#examples-rocketsled-topology-headAccent)"/>
+<path class="edgeAccent dashed" d="M604.0 335.6 C640.8 335.6, 691.8 404.0, 651.0 404.0" marker-end="url(#examples-rocketsled-topology-headAccent)"/>
+<path class="edgeThick" d="M291.0 642.0 C376.1 642.0, 388.9 642.5, 478.0 642.5" marker-end="url(#examples-rocketsled-topology-headAccent)"/>
+<rect class="ghost" x="360" y="30" width="304" height="72" rx="6"/>
+<text class="name" x="374.0" y="52.0">AWS credential</text>
+<text class="muted" x="374.0" y="70.0">open to every environment</text>
+<text class="muted" x="374.0" y="85.0">default of platform main and both templates</text>
+<rect class="surface" x="32" y="46" width="189" height="57" rx="6"/>
+<text class="name" x="46.0" y="68.0">main</text>
+<text class="muted" x="46.0" y="86.0">Network, DNS Zone, Router</text>
+<rect class="accent" x="32" y="266" width="259" height="102" rx="6"/>
+<text class="name" x="46.0" y="288.0">template</text>
+<text class="muted" x="46.0" y="306.0">deployed: Image Repository, Codebase</text>
+<text class="muted" x="46.0" y="321.0">linked: Web, Worker, Postgres,</text>
+<text class="muted" x="46.0" y="336.0">Key-Value Store</text>
+<text class="muted" x="46.0" y="351.0">default: its codebase</text>
+<rect class="surface" x="480" y="212" width="92" height="57" rx="6"/>
+<text class="name" x="494.0" y="234.0">ruby-dev</text>
+<text class="muted" x="494.0" y="252.0">Web</text>
+<rect class="surface" x="480" y="290" width="124" height="57" rx="6"/>
+<text class="name" x="494.0" y="312.0">ruby-staging</text>
+<text class="muted" x="494.0" y="330.0">Web, Postgres</text>
+<rect class="surface" x="480" y="368" width="169" height="72" rx="6"/>
+<text class="name" x="494.0" y="390.0">ruby-production</text>
+<text class="muted" x="494.0" y="408.0">Web, Worker, Postgres,</text>
+<text class="muted" x="494.0" y="423.0">Key-Value Store</text>
+<rect class="surface" x="480" y="466" width="100" height="57" rx="6"/>
+<text class="name" x="494.0" y="488.0">ruby-pr42</text>
+<text class="muted" x="494.0" y="506.0">Web</text>
+<rect class="accent" x="32" y="606" width="259" height="72" rx="6"/>
+<text class="name" x="46.0" y="628.0">template</text>
+<text class="muted" x="46.0" y="646.0">deployed: Image Repository, Codebase</text>
+<text class="muted" x="46.0" y="661.0">linked: Endpoint, Site, Files</text>
+<rect class="surface" x="480" y="614" width="163" height="57" rx="6"/>
+<text class="name" x="494.0" y="636.0">static-demo</text>
+<text class="muted" x="494.0" y="654.0">Endpoint, Site, Files</text>
+<rect class="chip" x="101.1" y="131.0" width="197.7" height="34" rx="4"/>
+<text class="label" x="200.0" y="145.0" text-anchor="middle">shared to ruby, node, python:</text>
+<text class="label" x="200.0" y="159.0" text-anchor="middle">network, cluster as defaults</text>
+<rect class="chip" x="362.0" y="313.0" width="76.0" height="34" rx="4"/>
+<text class="labelAccent" x="400.0" y="327.0" text-anchor="middle">fork, copy</text>
+<text class="labelAccent" x="400.0" y="341.0" text-anchor="middle">defaults</text>
+<rect class="chip" x="625.3" y="260.9" width="56.8" height="20" rx="4"/>
+<text class="labelAccent" x="653.7" y="274.9" text-anchor="middle">promote</text>
+<rect class="chip" x="668.2" y="359.8" width="56.8" height="20" rx="4"/>
+<text class="labelAccent" x="696.6" y="373.8" text-anchor="middle">promote</text>
+<rect class="chip" x="345.0" y="625.3" width="76.0" height="34" rx="4"/>
+<text class="labelAccent" x="383.0" y="639.3" text-anchor="middle">fork, copy</text>
+<text class="labelAccent" x="383.0" y="653.3" text-anchor="middle">defaults</text>
+</svg>

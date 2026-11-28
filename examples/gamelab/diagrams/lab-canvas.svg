@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 277" width="660" height="277" role="img" aria-label="On a lab's canvas, the Lab Image Repository (ecr-repository) connects to the Lab Codebase (codebase) through repository, and the codebase, the ECS Cluster (ecs-cluster) and Saves &amp; Scores (dynamodb-table) connect to the Lab Box (lab-box) through codebase, cluster and table.">
+<title>On a lab's canvas, the Lab Image Repository (ecr-repository) connects to the Lab Codebase (codebase) through repository, and the codebase, the ECS Cluster (ecs-cluster) and Saves &amp; Scores (dynamodb-table) connect to the Lab Box (lab-box) through codebase, cluster and table.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #ffffff; }
+  .surface { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; }
+  .accent { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1.5; }
+  .ghost { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1.25; }
+  .heading { fill: #6b7280; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #111827; font-size: 13px; font-weight: 600; }
+  .body { fill: #4b5563; font-size: 11.5px; }
+  .muted { fill: #6b7280; font-size: 10.5px; }
+  .label { fill: #4b5563; font-size: 10.5px; }
+  .labelAccent { fill: #0d9488; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #9ca3af; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #0d9488; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #0d9488; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #9ca3af; }
+  .headAccent { fill: #0d9488; }
+  .lifeline { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .frame { fill: none; stroke: #d1d5db; stroke-width: 1.25; }
+  .frameTab { fill: #f9fafb; stroke: #d1d5db; stroke-width: 1.25; }
+  .divider { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .badge { fill: #0d9488; }
+  .badgeText { fill: #ffffff; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="examples-gamelab-lab-canvas-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="examples-gamelab-lab-canvas-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="660" height="277" rx="10"/>
+<path class="edge" d="M203.0 44.5 C246.7 44.5, 250.3 44.5, 298.0 44.5" marker-end="url(#examples-gamelab-lab-canvas-head)"/>
+<path class="edge" d="M424.0 44.5 C493.4 44.5, 484.6 117.4, 558.0 117.4" marker-end="url(#examples-gamelab-lab-canvas-head)"/>
+<path class="edge" d="M416.0 134.5 C480.8 134.5, 489.2 134.5, 558.0 134.5" marker-end="url(#examples-gamelab-lab-canvas-head)"/>
+<path class="edge" d="M440.0 228.5 C504.1 228.5, 489.9 151.6, 558.0 151.6" marker-end="url(#examples-gamelab-lab-canvas-head)"/>
+<rect class="surface" x="16" y="16" width="187" height="57" rx="6"/>
+<text class="name" x="30.0" y="38.0">Lab Image Repository</text>
+<text class="muted" x="30.0" y="56.0">ecr-repository</text>
+<rect class="surface" x="300" y="16" width="124" height="57" rx="6"/>
+<text class="name" x="314.0" y="38.0">Lab Codebase</text>
+<text class="muted" x="314.0" y="56.0">codebase</text>
+<rect class="surface" x="300" y="106" width="116" height="57" rx="6"/>
+<text class="name" x="314.0" y="128.0">ECS Cluster</text>
+<text class="muted" x="314.0" y="146.0">ecs-cluster</text>
+<path class="surface" d="M300 202 A70 6 0 0 1 440 202 V255 A70 6 0 0 1 300 255 Z"/>
+<path class="surface" d="M300 202 A70 6 0 0 0 440 202" style="fill:none"/>
+<text class="name" x="314.0" y="226.0">Saves &amp; Scores</text>
+<text class="muted" x="314.0" y="244.0">dynamodb-table</text>
+<rect class="accent" x="560" y="106" width="84" height="57" rx="6"/>
+<text class="name" x="574.0" y="128.0">Lab Box</text>
+<text class="muted" x="574.0" y="146.0">lab-box</text>
+<rect class="chip" x="211.0" y="34.5" width="76.0" height="20" rx="4"/>
+<text class="label" x="249.0" y="48.5" text-anchor="middle">repository</text>
+<rect class="chip" x="457.9" y="71.0" width="63.2" height="20" rx="4"/>
+<text class="label" x="489.5" y="85.0" text-anchor="middle">codebase</text>
+<rect class="chip" x="457.1" y="124.5" width="56.8" height="20" rx="4"/>
+<text class="label" x="485.5" y="138.5" text-anchor="middle">cluster</text>
+<rect class="chip" x="475.5" y="180.0" width="44.0" height="20" rx="4"/>
+<text class="label" x="497.5" y="194.0" text-anchor="middle">table</text>
+</svg>

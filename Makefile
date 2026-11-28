@@ -1,4 +1,4 @@
-.PHONY: help repos publish-platforms publish-resource-types publish-bundles build lint validate clean
+.PHONY: help repos publish-platforms publish-resource-types publish-bundles build lint validate clean diagrams
 
 PLATFORMS      = $(notdir $(wildcard platforms/*))
 RESOURCE_TYPES = $(notdir $(wildcard resource-types/*))
@@ -13,6 +13,7 @@ help:
 	@echo "make validate                tofu init + validate every bundle"
 	@echo "make publish-bundles         Publish every bundle"
 	@echo "make clean                   Remove generated and OpenTofu working files"
+	@echo "make diagrams                Render the README diagrams from scripts/diagrams/specs.mjs"
 
 # Repositories must exist before the first publish. Re-running is safe: an
 # existing repository makes `create` exit non-zero, which is ignored.
@@ -44,3 +45,6 @@ clean:
 	@find . -name _massdriver_variables.tf -delete
 	@find . -name 'schema-*.json' -delete
 	@find . -name .terraform -type d -prune -exec rm -rf {} +
+
+diagrams:
+	@node scripts/diagrams/build.mjs

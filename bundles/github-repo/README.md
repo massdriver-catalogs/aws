@@ -2,16 +2,10 @@
 
 An app's repository in the connected GitHub organization, created through the GitHub App, with a pipeline that builds the image, pushes it to the app's ECR repository and deploys it into the app's Massdriver project.
 
-```mermaid
-flowchart LR
-  P[push to the default branch] --> S[secret scan]
-  S --> B[build image]
-  B --> V[image scan]
-  V --> E[push :git-sha to ECR]
-  E --> R{release target set?}
-  R -->|yes| D[deploy the image into the project]
-  R -->|no| X[stop]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/pipeline.dark.svg">
+  <img src="diagrams/pipeline.svg" alt="A push to the default branch runs a secret scan, builds the image, scans it, and pushes it to ECR tagged with the git SHA. If a release target is set, the pipeline deploys the image into the project; otherwise it stops.">
+</picture>
 
 ## How it connects
 

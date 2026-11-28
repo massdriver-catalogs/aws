@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 412" width="792" height="412" role="img" aria-label="Each environment deploys vpc, dns-zone and ecs-cluster once. They, and an app's codebase, are environment defaults of the app's project. In the project, http-api and sqs-queue connect to an app on lambda-function, and postgres and s3-bucket connect to an app on ecs-service.">
+<title>Each environment deploys vpc, dns-zone and ecs-cluster once. They, and an app's codebase, are environment defaults of the app's project. In the project, http-api and sqs-queue connect to an app on lambda-function, and postgres and s3-bucket connect to an app on ecs-service.</title>
+<style>
+  text { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .bg { fill: #ffffff; }
+  .surface { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; }
+  .accent { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1.5; }
+  .ghost { fill: #ffffff; stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 4 3; }
+  .well { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1.25; }
+  .heading { fill: #6b7280; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .name { fill: #111827; font-size: 13px; font-weight: 600; }
+  .body { fill: #4b5563; font-size: 11.5px; }
+  .muted { fill: #6b7280; font-size: 10.5px; }
+  .label { fill: #4b5563; font-size: 10.5px; }
+  .labelAccent { fill: #0d9488; font-size: 10.5px; font-weight: 600; }
+  .chip { fill: #f9fafb; stroke: #e5e7eb; stroke-width: 1; }
+  .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+  .edge { fill: none; stroke: #9ca3af; stroke-width: 1.4; }
+  .edgeAccent { fill: none; stroke: #0d9488; stroke-width: 1.6; }
+  .edgeThick { fill: none; stroke: #0d9488; stroke-width: 2.6; }
+  .dashed { stroke-dasharray: 5 4; }
+  .head { fill: #9ca3af; }
+  .headAccent { fill: #0d9488; }
+  .lifeline { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 3 4; }
+  .activation { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .frame { fill: none; stroke: #d1d5db; stroke-width: 1.25; }
+  .frameTab { fill: #f9fafb; stroke: #d1d5db; stroke-width: 1.25; }
+  .divider { stroke: #d1d5db; stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .note { fill: #e7f4f2; stroke: #0d9488; stroke-width: 1; }
+  .badge { fill: #0d9488; }
+  .badgeText { fill: #ffffff; font-size: 9.5px; font-weight: 700; }
+</style>
+<defs><marker id="--how-it-fits-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 .6 7.6 4 0 7.4z"/></marker><marker id="--how-it-fits-headAccent" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="headAccent" d="M0 .6 7.6 4 0 7.4z"/></marker></defs>
+<rect class="bg" x="0" y="0" width="792" height="412" rx="10"/>
+<rect class="well" x="16" y="16" width="432" height="104" rx="8"/>
+<text class="heading" x="28.0" y="34.0">EACH ENVIRONMENT</text>
+<rect class="well" x="16" y="200" width="760" height="196" rx="8"/>
+<text class="heading" x="28.0" y="218.0">AN APP'S PROJECT</text>
+<path class="edge" d="M137.0 268.5 C175.5 268.5, 175.5 289.4, 218.0 289.4" marker-end="url(#--how-it-fits-head)"/>
+<path class="edge" d="M144.0 350.5 C180.3 350.5, 177.7 323.6, 218.0 323.6" marker-end="url(#--how-it-fits-head)"/>
+<path class="edge" d="M535.0 268.5 C565.7 268.5, 563.3 289.4, 598.0 289.4" marker-end="url(#--how-it-fits-head)"/>
+<path class="edge" d="M542.0 352.5 C571.2 352.5, 564.8 323.6, 598.0 323.6" marker-end="url(#--how-it-fits-head)"/>
+<path class="edgeAccent dashed" d="M68.5 103.0 C68.5 165.5, 168.0 131.5, 168.0 198.0" marker-end="url(#--how-it-fits-headAccent)"/>
+<path class="edgeAccent dashed" d="M212.5 103.0 C212.5 168.2, 320.0 128.8, 320.0 198.0" marker-end="url(#--how-it-fits-headAccent)"/>
+<path class="edgeAccent dashed" d="M362.5 103.0 C362.5 168.8, 472.0 128.2, 472.0 198.0" marker-end="url(#--how-it-fits-headAccent)"/>
+<path class="edgeAccent dashed" d="M619.0 120.0 C619.0 156.1, 624.0 157.9, 624.0 198.0" marker-end="url(#--how-it-fits-headAccent)"/>
+<rect class="surface" x="32" y="46" width="73" height="57" rx="6"/>
+<text class="name" x="46.0" y="68.0">vpc</text>
+<text class="muted" x="46.0" y="86.0">aws-vpc</text>
+<rect class="surface" x="160" y="46" width="105" height="57" rx="6"/>
+<text class="name" x="174.0" y="68.0">dns-zone</text>
+<text class="muted" x="174.0" y="86.0">aws-dns-zone</text>
+<rect class="surface" x="300" y="46" width="125" height="57" rx="6"/>
+<text class="name" x="314.0" y="68.0">ecs-cluster</text>
+<text class="muted" x="314.0" y="86.0">aws-ecs-cluster</text>
+<rect class="surface" x="560" y="46" width="118" height="74" rx="6"/>
+<text class="heading" x="574.0" y="68.0">APP ONBOARDING</text>
+<text class="name" x="574.0" y="85.0">codebase</text>
+<text class="muted" x="574.0" y="103.0">aws-codebase</text>
+<rect class="surface" x="32" y="240" width="105" height="57" rx="6"/>
+<text class="name" x="46.0" y="262.0">http-api</text>
+<text class="muted" x="46.0" y="280.0">aws-http-api</text>
+<rect class="surface" x="32" y="322" width="112" height="57" rx="6"/>
+<text class="name" x="46.0" y="344.0">sqs-queue</text>
+<text class="muted" x="46.0" y="362.0">aws-sqs-queue</text>
+<rect class="accent" x="220" y="278" width="144" height="57" rx="6"/>
+<text class="name" x="234.0" y="300.0">billing-api</text>
+<text class="muted" x="234.0" y="318.0">on lambda-function</text>
+<path class="surface" d="M430 242 A52.5 6 0 0 1 535 242 V295 A52.5 6 0 0 1 430 295 Z"/>
+<path class="surface" d="M430 242 A52.5 6 0 0 0 535 242" style="fill:none"/>
+<text class="name" x="444.0" y="266.0">postgres</text>
+<text class="muted" x="444.0" y="284.0">aws-postgres</text>
+<path class="surface" d="M430 326 A56 6 0 0 1 542 326 V379 A56 6 0 0 1 430 379 Z"/>
+<path class="surface" d="M430 326 A56 6 0 0 0 542 326" style="fill:none"/>
+<text class="name" x="444.0" y="350.0">s3-bucket</text>
+<text class="muted" x="444.0" y="368.0">aws-s3-bucket</text>
+<rect class="accent" x="600" y="278" width="118" height="57" rx="6"/>
+<text class="name" x="614.0" y="300.0">billing-web</text>
+<text class="muted" x="614.0" y="318.0">on ecs-service</text>
+<rect class="chip" x="196.2" y="139.0" width="140.1" height="20" rx="4"/>
+<text class="labelAccent" x="266.3" y="153.0" text-anchor="middle">environment defaults</text>
+<rect class="chip" x="593.1" y="147.5" width="56.8" height="20" rx="4"/>
+<text class="labelAccent" x="621.5" y="161.5" text-anchor="middle">default</text>
+</svg>
