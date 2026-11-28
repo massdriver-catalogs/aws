@@ -592,3 +592,47 @@ log-results:
         label: Checkov
         value: >-
           {tool: "checkov", tool_version, passed, failed, skipped} | with_entries(select(.value != null))
+
+leaderboard:
+  config: |
+    # A fixed list until Tendwell's pull requests score it.
+    interval: 15m
+    routes:
+      - environments: [visits-dev]
+        title: Most deploys this week
+        static:
+        - name: Maria Chen (41 deploys)
+          image_url: https://api.dicebear.com/9.x/personas/png?seed=Maria&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
+          email: maria@tendwell.example
+          handles: [slack:@maria, github:mchen]
+        - name: James Okafor (33 deploys)
+          image_url: https://api.dicebear.com/9.x/personas/png?seed=James&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
+          email: james@tendwell.example
+          handles: [slack:@james]
+        - name: Priya Shah (27 deploys)
+          image_url: https://api.dicebear.com/9.x/personas/png?seed=Priya&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
+          email: priya@tendwell.example
+          handles: [github:pshah]
+        - name: Daniel Kim (19 deploys)
+          image_url: https://api.dicebear.com/9.x/personas/png?seed=Daniel&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
+          email: daniel@tendwell.example
+        - name: Sofia Alvarez (12 deploys)
+          image_url: https://api.dicebear.com/9.x/personas/png?seed=Sofia&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
+          email: sofia@tendwell.example
+
+oncall:
+  config: |
+    # A fixed list until Tendwell has a PagerDuty or incident.io schedule.
+    interval: 2m
+    routes:
+      - environments: [visits-dev]
+        title: Visits on call
+        static:
+        - name: Dana Smith (primary)
+          image_url: https://api.dicebear.com/9.x/personas/png?seed=Dana&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
+          email: dana@tendwell.example
+          handles: [slack:@dana, pagerduty:dsmith]
+        - name: Lee Park (secondary)
+          image_url: https://api.dicebear.com/9.x/personas/png?seed=Lee&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf
+          email: lee@tendwell.example
+          handles: [slack:@lee]
