@@ -336,7 +336,7 @@ chaos-monkey:
     # live in the same organization.
     match:
       md-environment: dev
-      md-project: [visits, care, billing]
+      md-project: visits, care, billing
     status: [PROVISIONED]
     instances: 1
     strategies:
