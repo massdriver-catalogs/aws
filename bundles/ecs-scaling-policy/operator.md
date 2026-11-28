@@ -3,12 +3,11 @@ templating: mustache
 ---
 # ECS Scaling Policy
 
-{{#resources.policy}}**Policy:** `{{resources.policy.arn}}`{{/resources.policy}}{{^resources.policy}}**Not deployed yet.**{{/resources.policy}}
-
-| | |
-|---|---|
-| Covers | services named `{{params.service_name_prefix}}*` on cluster `{{dependencies.cluster.name}}` ({{dependencies.cluster.region}}) |
-| Allows | `ecs:DescribeServices`, and `ecs:UpdateService` for the task count only |
+{{#resources.policy}}
+- **Policy:** `{{resources.policy.arn}}`
+{{/resources.policy}}
+- **Covers:** services named `{{params.service_name_prefix}}*` on cluster `{{dependencies.cluster.name}}`, {{dependencies.cluster.region}}
+- **Allows:** `ecs:DescribeServices`, and `ecs:UpdateService` for the task count only
 
 ## The app gets AccessDeniedException on UpdateService
 

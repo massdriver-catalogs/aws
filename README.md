@@ -25,6 +25,7 @@ Deploy these once per environment (`dev`, `prod`) and set each as an environment
 | `ecs-service` | A container service on Fargate, at `<subdomain>.<zone>` or as a worker with no address. Apps run on it | — |
 | `ecs-agent` | A Claude agent on Fargate with its own Massdriver service account, working on one goal around the clock | — |
 | `lab-box` | A private box where a coding agent (OpenCode) builds browser games with a kid, with rules set by the player's age. Reachable only inside the VPC | `lab-endpoint` |
+| `ecs-scaling-policy` | An IAM policy that lets an app on `ecs-service` set the task count of other ECS services whose names start with a prefix | `aws-iam-policy` |
 | `dev-workspace` | A developer's workspace on Fargate with Claude Code, OpenCode, `mass`, the Massdriver MCP server and git, a persistent home directory, and a shell through ECS Exec | — |
 
 ### Data stores
@@ -98,6 +99,7 @@ Massdriver builds the app and its runtime into one bundle when the app is publis
 |---|---|
 | [telehealth](examples/telehealth/) | Tendwell Health: patients book video visits, clinicians chart them, billing files the claims |
 | [gamelab](examples/gamelab/) | Gamelab: a parent makes a lab for a kid, and a helper builds the games the kid dreams up. Every lab is a Massdriver environment the app forks through the API |
+| [rocketsled](examples/rocketsled/) | Rocketsled: two PaaS knock-offs, a Heroku and a Vercel, where every customer environment is a Massdriver environment forked from a runtime's template |
 
 **Sync it to your organization and build your own.** Fork this repository and connect its publish workflow:
 
@@ -126,6 +128,7 @@ platforms/        Credentials
 resource-types/   Contracts between bundles
 bundles/          OpenTofu bundles
 examples/         Example companies built on the catalog, with their apps
+docs/             Guides longer than a bundle's README
 scripts/          Publishes the official Massdriver resource types; syncs the automation bundles; renders the README diagrams
 .github/workflows Publishing
 ```

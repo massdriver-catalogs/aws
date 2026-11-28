@@ -3,16 +3,16 @@ templating: mustache
 ---
 # Lab Box
 
-{{#resources.lab}}**Inside the VPC:** agent `{{resources.lab.agent_url}}` · game `{{resources.lab.game_url}}`. People open both through Gamelab, not directly.{{/resources.lab}}{{^resources.lab}}**Not deployed yet.**{{/resources.lab}}
+{{#resources.lab}}
+**URL:** none of its own. People open the lab through Gamelab. Inside the VPC, the agent is at `{{resources.lab.agent_url}}` and the game at `{{resources.lab.game_url}}`.
 
-| | |
-|---|---|
-| Player | {{params.player_name}}, age {{params.player_age}} |
-| Model | `{{params.model}}` |
-| Size | {{params.size}} CPU/MB, {{#params.spot}}Spot{{/params.spot}}{{^params.spot}}on demand{{/params.spot}}, {{params.architecture}} |
-| Service | `{{params.md_metadata.name_prefix}}` on cluster `{{dependencies.cluster.name}}` ({{dependencies.cluster.region}}) |
-| Saves & scores | {{#dependencies.gamedata}}DynamoDB table `{{dependencies.gamedata.name}}`{{/dependencies.gamedata}}{{^dependencies.gamedata}}off{{/dependencies.gamedata}} |
-| Sleeps | when Gamelab sets the service's desired count to 0; a deploy leaves it as it is |
+{{/resources.lab}}
+- **Player:** {{params.player_name}}, age {{params.player_age}}
+- **Model:** `{{params.model}}`
+- **Size:** {{params.size}} CPU/MB, {{#params.spot}}Spot{{/params.spot}}{{^params.spot}}on demand{{/params.spot}}, {{params.architecture}}
+- **Service:** `{{params.md_metadata.name_prefix}}` on cluster `{{dependencies.cluster.name}}`, {{dependencies.cluster.region}}
+- **Saves & scores:** {{#dependencies.gamedata}}DynamoDB table `{{dependencies.gamedata.name}}`{{/dependencies.gamedata}}{{^dependencies.gamedata}}off{{/dependencies.gamedata}}
+- **Sleeps:** when Gamelab sets the service's desired count to 0. A deploy leaves the count as it is.
 
 ## The box is asleep
 

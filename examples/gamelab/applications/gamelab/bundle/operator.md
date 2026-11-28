@@ -3,15 +3,19 @@ templating: mustache
 ---
 # Gamelab Server
 
-{{#params.subdomain}}**Open Gamelab: https://{{params.subdomain}}.{{dependencies.cluster.zone.domain}}**{{/params.subdomain}}{{^params.subdomain}}**No address yet:** set **Subdomain** (e.g. `play`) and deploy.{{/params.subdomain}}
+{{#params.subdomain}}
+**URL:** https://{{params.subdomain}}.{{dependencies.cluster.zone.domain}}
 
-| | |
-|---|---|
-| Service | `{{params.md_metadata.name_prefix}}` on cluster `{{dependencies.cluster.name}}` ({{dependencies.cluster.region}}) |
-| Image | `{{params.image_uri}}` |
-| Size | {{params.size}} CPU/MB, {{params.desired_count}} task(s){{#params.spot}}, on Spot{{/params.spot}} |
-| Acts in Massdriver as | the **Gamelab Server** service account (its token is the `MASSDRIVER_API_KEY` secret) |
-| Makes labs from | `labs-template`, in the `labs` project |
+{{/params.subdomain}}
+{{^params.subdomain}}
+**URL:** none. Set **Subdomain**, such as `play`, and deploy.
+
+{{/params.subdomain}}
+- **Service:** `{{params.md_metadata.name_prefix}}` on cluster `{{dependencies.cluster.name}}`, {{dependencies.cluster.region}}
+- **Image:** `{{params.image_uri}}`
+- **Size:** {{params.size}} CPU/MB, {{params.desired_count}} task(s){{#params.spot}}, on Spot{{/params.spot}}
+- **Acts as:** the **Gamelab Server** service account, whose token is the `MASSDRIVER_API_KEY` secret
+- **Makes labs from:** `labs-template`, in the `labs` project
 
 ## Nobody can sign in
 

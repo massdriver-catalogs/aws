@@ -3,7 +3,7 @@ templating: mustache
 ---
 # Fauxcel Static Site
 
-**Open first:** {{dependencies.api.endpoint}}
+**URL:** {{dependencies.api.endpoint}}
 
 - **Files:** `s3://{{dependencies.files.name}}/`
 - **Function and logs:** `{{params.md_metadata.name_prefix}}`, `/aws/lambda/{{params.md_metadata.name_prefix}}`
