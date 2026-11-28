@@ -188,9 +188,9 @@ cmd_results() {
     return
   fi
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  json "$dep.md/v1/step/src" "$(jq -nc --arg t "$now" '{tool: "opentofu", action: "apply", status: "succeeded", finished_at: $t, duration_s: 142, message: "Apply complete! Resources: 1 added, 2 changed, 0 destroyed."}')" --label "OpenTofu step"
-  json "$dep.md/v1/changes/src" '{"tool": "opentofu", "add": 1, "change": 2, "destroy": 0}' --label "Changes"
-  json "$dep.md/v1/compliance/src" '{"tool": "checkov", "passed": 36, "failed": 0, "skipped": 2}' --label "Checkov"
+  json "$dep.md/v1/step/src" "$(jq -nc --arg t "$now" '{tool: "opentofu", action: "apply", status: "succeeded", finished_at: $t, duration_s: 142, message: "Apply complete! Resources: 1 added, 2 changed, 0 destroyed."}')" --label "OpenTofu step" --immutable
+  json "$dep.md/v1/changes/src" '{"tool": "opentofu", "add": 1, "change": 2, "destroy": 0}' --label "Changes" --immutable
+  json "$dep.md/v1/compliance/src" '{"tool": "checkov", "passed": 36, "failed": 0, "skipped": 2}' --label "Checkov" --immutable
   say "results on $inst deployment $dep"
 }
 
